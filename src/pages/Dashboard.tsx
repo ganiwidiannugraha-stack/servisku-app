@@ -46,6 +46,11 @@ export const Dashboard: React.FC = () => {
           if (detail) rev += detail.harga * sp.qty;
         });
       }
+      if (o.jasa) {
+        o.jasa.forEach(j => {
+          rev += j.harga;
+        });
+      }
     });
     return rev;
   }, [orders, spareparts]);
@@ -252,7 +257,7 @@ export const Dashboard: React.FC = () => {
                     };
                     const getRelativeTime = (dateString: string) => {
                       const diffDays = Math.floor((new Date().getTime() - new Date(dateString).getTime()) / (1000 * 3600 * 24));
-                      if (diffDays === 0) return 'Hari ini';
+                      if (diffDays <= 0) return 'Hari ini';
                       if (diffDays === 1) return 'Kemarin';
                       return `${diffDays} hari lalu`;
                     };
@@ -277,8 +282,11 @@ export const Dashboard: React.FC = () => {
                             {getStatusLabel(order.status)}
                           </span>
                         </td>
-                        <td className="px-6 py-5 text-center text-gray-600 font-medium">
-                          {getRelativeTime(order.tanggalMasuk)}
+                        <td className="px-6 py-5 text-center">
+                          <div className="flex flex-col items-center">
+                            <span className="text-gray-900 font-medium">{getRelativeTime(order.tanggalMasuk)}</span>
+                            <span className="text-xs text-gray-500 mt-0.5">{new Date(order.tanggalMasuk).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                          </div>
                         </td>
                         <td className="px-6 py-5">
                           <button 

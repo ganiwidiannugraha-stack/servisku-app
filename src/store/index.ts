@@ -3,74 +3,169 @@ import { persist } from 'zustand/middleware';
 import type { StatusOrder } from '../components/ui/StatusBadge';
 import { MOCK_CUSTOMERS, MOCK_SPAREPARTS, MOCK_ORDERS, MOCK_MUTASISTOK, MOCK_TECHNICIANS, DEFAULT_SETTINGS } from './mockData';
 
+/**
+ * Entitas Pelanggan (Customer).
+ * Menyimpan informasi profil pelanggan serta metrik historis servis.
+ */
 export interface Customer {
+  /** ID unik pelanggan (contoh: c1) */
   id: string;
+  /** Nama lengkap pelanggan */
   nama: string;
+  /** Nomor telepon / WhatsApp yang valid (digunakan untuk notifikasi) */
   noHp: string;
+  /** Alamat domisili pelanggan (opsional) */
   alamat?: string;
+  /** Total kuantitas perangkat yang pernah diservis oleh pelanggan ini */
   totalServis: number;
+  /** Tanggal terakhir kali pelanggan melakukan servis (format ISO string) */
   terakhirServis: string;
 }
 
+/**
+ * Entitas Suku Cadang (Sparepart).
+ * Merepresentasikan item inventaris fisik yang digunakan dalam perbaikan.
+ */
 export interface Sparepart {
+  /** ID unik SKU (contoh: s1) */
   id: string;
+  /** Nama komponen / sparepart */
   nama: string;
+  /** Kategori komponen (contoh: RAM, SSD, Layar) */
   kategori: string;
+  /** Jumlah kuantitas fisik yang tersedia di gudang saat ini */
   stok: number;
+  /** Ambang batas stok minimum untuk memicu notifikasi peringatan (low stock) */
   minStok: number;
-  hargaModal: number; // Cost price
-  harga: number; // Selling price (used to be just harga)
-  pajak: number; // Tax percentage e.g., 11 for 11%
+  /** Harga Pokok Penjualan (HPP) / Modal (digunakan untuk kalkulasi laba bersih) */
+  hargaModal: number;
+  /** Harga Jual ke pelanggan (digunakan pada rincian tagihan) */
+  harga: number;
+  /** Persentase pajak yang dikenakan pada item ini (misal: 11 untuk PPN 11%) */
+  pajak: number;
 }
 
+/**
+ * Rekam Jejak Mutasi Inventaris (Stock Ledger).
+ * Digunakan untuk melakukan *tracking* barang masuk (IN) maupun barang keluar (OUT).
+ */
 export interface MutasiStok {
+  /** ID unik mutasi (contoh: m1) */
   id: string;
+  /** Referensi ke ID dari entitas Sparepart yang termutasi */
   sparepartId: string;
+  /** 
+   * Arah pergerakan stok:
+   * - `IN`: Pembelian / *Restock* / Retur dari order batal
+   * - `OUT`: Pemakaian servis / Barang cacat / Hilang
+   */
   tipe: 'IN' | 'OUT';
+  /** Kuantitas barang yang masuk atau keluar */
   qty: number;
-  hargaBeli?: number; // Only for 'IN' type
+  /** Harga Beli per item pada saat mutasi (Hanya diwajibkan untuk tipe 'IN' guna menghitung HPP) */
+  hargaBeli?: number;
+  /** Waktu transaksi mutasi (format ISO string) */
   tanggal: string;
+  /** Deskripsi atau alasan mutasi (contoh: "Restock distributor A" atau "Pengembalian batal order") */
   keterangan: string;
 }
 
+/**
+ * Entitas Teknisi.
+ * Menyimpan profil serta parameter performa SDM teknisi.
+ */
 export interface Technician {
+  /** ID unik teknisi (contoh: t1) */
   id: string;
+  /** Nama lengkap teknisi */
   name: string;
+  /** URL atau path ke gambar profil teknisi */
   avatar: string;
+  /** Nilai kepuasan pelanggan / skor performa teknisi (skala 1.0 - 5.0) */
   rating: number;
+  /** Total pekerjaan yang berhasil diselesaikan oleh teknisi ini */
   jobs: number;
+  /** Status keaktifan teknisi (true jika sedang bekerja/tersedia) */
   active: boolean;
 }
 
+/**
+ * Role-Based Access Control (RBAC).
+ * Mendefinisikan peran aksesibilitas aplikasi.
+ */
+export type Role = 'ADMIN' | 'TEKNISI';
+
+/**
+ * Konfigurasi Global Aplikasi (System Settings).
+ * Diterapkan di seluruh modul termasuk format cetak dokumen dan integrasi.
+ */
 export interface Settings {
+  /** Nama gerai / bengkel yang ditampilkan pada aplikasi dan nota */
   shopName: string;
+  /** Nama pemilik gerai / penanggung jawab */
   ownerName: string;
+  /** Alamat operasional yang ditampilkan pada nota kasir */
   address: string;
+  /** Nomor kontak utama bengkel */
   phone: string;
+  /** Format lebar kertas cetak kasir thermal (58mm atau 80mm) */
   printerWidth: '58mm' | '80mm';
+  /** *Feature Flag*: Mengaktifkan integrasi rute WhatsApp Gateway secara otomatis */
   enableWA: boolean;
+  /** *Feature Flag*: Mengaktifkan *push notification* / peringatan via UI aplikasi */
   enableNotifications: boolean;
 }
 
+/**
+ * Entitas Order Servis (Job Order / Service Request).
+ * Objek *root* untuk satu siklus bisnis perbaikan elektronik.
+ * Merupakan agregat dari pelanggan, teknisi, sparepart, dan jasa.
+ */
 export interface Order {
+  /** ID unik order (contoh: o1) */
   id: string;
+  /** Nomor referensi faktur / servis yang manusiawi (contoh: SRV-20260625-001) */
   noServis: string;
+  /** Referensi ke entitas Customer */
   pelangganId: string;
+  /** Klasifikasi kategori perangkat (misal: "Laptop", "Handphone", "PC") */
   jenisPerangkat: string;
+  /** Detail tipe produk (opsional, misal: "Asus ROG Strix G15") */
   merkModel?: string;
+  /** Nomor Seri Identifikasi / SN / IMEI perangkat (opsional) */
   noSeri?: string;
+  /** Penambahan aksesoris bawaan dari pelanggan (misal: "Charger", "Tas") */
   kelengkapan?: string[];
+  /** Deskripsi simptom awal dari pelanggan (Voice of Customer) */
   keluhan: string;
+  /** (Legacy) Log evaluasi tahap awal, *Deprecated*, lihat `hasilDiagnosa` */
   pemeriksaanAwal?: string;
+  /** Analisa terperinci secara teknis setelah dilakukan observasi oleh Teknisi */
   hasilDiagnosa?: string;
+  /** Biaya estimasi awal yang dijanjikan ke pelanggan saat *intake* (bisa berubah) */
   estimasiBiaya: number;
+  /** Tarif Jasa Utama / Biaya *troubleshooting* dasar yang dikenakan */
   biayaJasa?: number;
+  /** Tenggat waktu proyeksi penyelesaian servis (opsional, ISO string) */
   estimasiSelesai?: string;
+  /** Log rahasia / Catatan pergantian *shift* antar pegawai dan kendala *sparepart* (hanya internal) */
   catatanInternal?: string;
+  /** *Finite State Machine* dari tahapan proses operasional perbaikan perangkat */
   status: StatusOrder;
+  /** Stempel waktu (Timestamp) masuknya order perangkat (ISO string) */
   tanggalMasuk: string;
+  /** ID dari teknisi utama yang di-*assign* untuk memperbaiki (opsional jika belum ditunjuk) */
   teknisiId?: string;
+  /** 
+   * Rincian Suku Cadang Fisik yang digunakan pada perbaikan ini.
+   * Setiap *entry* mengurangi stok saat dikonfirmasi, dan menambah inventaris ketika *Order* dibatalkan.
+   */
   spareparts?: { id: string; qty: number }[];
+  /** 
+   * Rincian Jasa Kustom / Tambahan yang dieksekusi teknisi.
+   * Fleksibel dan independen terhadap *Biaya Jasa Utama*. 
+   */
+  jasa?: { id: string; nama: string; harga: number }[];
 }
 
 /**
@@ -92,6 +187,12 @@ interface AppState {
   settings: Settings;
   /** Status autentikasi user saat ini */
   isAuthenticated: boolean;
+  /** Role user saat ini (Admin atau Teknisi) */
+  userRole: Role | null;
+  /** ID user saat ini (berguna jika teknisi yang login) */
+  userId: string | null;
+  /** Nama user saat ini */
+  userName: string | null;
 
   /**
    * Melakukan proses login admin.
@@ -179,19 +280,34 @@ export const useStore = create<AppState>()(
       technicians: MOCK_TECHNICIANS,
       settings: DEFAULT_SETTINGS,
       isAuthenticated: false,
+      userRole: null,
+      userId: null,
+      userName: null,
 
-      login: async (username, password) => {
-        // Simulate network delay
+      login: async (username, pass) => {
+        // Simulasi delay jaringan
         await new Promise((resolve) => setTimeout(resolve, 800));
-        // Hardcoded admin logic for demo
-        if (username === 'admin' && password === 'admin123') {
-          set({ isAuthenticated: true });
+        
+        // RBAC Logic
+        if (username === 'admin' && pass === 'admin') {
+          set({ isAuthenticated: true, userRole: 'ADMIN', userId: 'admin', userName: 'Administrator' });
+          return true;
+        } else if (username === 'teknisi' && pass === 'teknisi') {
+          set({ isAuthenticated: true, userRole: 'TEKNISI', userId: 't1', userName: 'Deni Setiawan' });
           return true;
         }
+        
         return false;
       },
 
-      logout: () => set({ isAuthenticated: false }),
+      logout: () => {
+        set({ 
+          isAuthenticated: false,
+          userRole: null,
+          userId: null,
+          userName: null
+        });
+      },
 
       addOrder: (newOrderData) => set((state) => {
         const newId = `o${state.orders.length + 1}`;

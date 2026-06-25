@@ -7,9 +7,12 @@ import { Breadcrumb } from '../components/ui/Breadcrumb';
 import { EmptyState } from '../components/ui/EmptyState';
 
 export const Stok: React.FC = () => {
-  const { spareparts, mutasiStok, addSparepart, tambahMutasiStok } = useStore();
+  const { spareparts, mutasiStok, addSparepart, tambahMutasiStok, userRole } = useStore();
   const [searchTerm, setSearchTerm] = useState('');
   const [dateFilter, setDateFilter] = useState('');
+  const [kategoriFilter, setKategoriFilter] = useState('ALL');
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 10;
   
   // Modals state
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -18,10 +21,24 @@ export const Stok: React.FC = () => {
   const [selectedSparepart, setSelectedSparepart] = useState<Sparepart | null>(null);
   const [activeTab, setActiveTab] = useState<'STOK' | 'RIWAYAT'>('STOK');
 
-  const filteredSpareparts = (spareparts || []).filter(
-    s => (s.nama || '').toLowerCase().includes(searchTerm.toLowerCase()) || 
-         (s.kategori || '').toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredSpareparts = (spareparts || []).filter(s => {
+    const matchesSearch = (s.nama || '').toLowerCase().includes(searchTerm.toLowerCase()) || 
+                          (s.kategori || '').toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesKategori = kategoriFilter === 'ALL' || s.kategori === kategoriFilter;
+    return matchesSearch && matchesKategori;
+  });
+
+  const paginatedSpareparts = filteredSpareparts.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE,
+    currentPage * ITEMS_PER_PAGE
   );
+  
+  const totalPages = Math.ceil(filteredSpareparts.length / ITEMS_PER_PAGE);
+
+  // Reset page when search or filters change
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, kategoriFilter]);
 
   const totalNilaiStok = useMemo(() => {
     return (spareparts || []).reduce((sum, sp) => sum + (sp.stok * (sp.hargaModal || 0)), 0);
@@ -47,13 +64,15 @@ export const Stok: React.FC = () => {
           <p className="mt-1 text-gray-500 font-medium">Kelola ketersediaan barang dan riwayat mutasi.</p>
         </div>
         <div className="flex gap-3">
-          <button 
-            onClick={() => setIsModalOpen(true)}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl font-semibold transition-colors flex items-center gap-2 shadow-sm"
-          >
-            <Plus size={18} />
-            Tambah Sparepart
-          </button>
+          {userRole === 'ADMIN' && (
+            <button 
+              onClick={() => setIsModalOpen(true)}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl font-semibold transition-colors flex items-center gap-2 shadow-sm"
+            >
+              <Plus size={18} />
+              Tambah Sparepart
+            </button>
+          )}
         </div>
       </div>
 
@@ -88,7 +107,7 @@ export const Stok: React.FC = () => {
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
           <input
             type="text"
-            placeholder="Cari nama, kategori atau SKU..."
+            placeholder={activeTab === 'STOK' ? "Cari nama, kategori atau SKU..." : "Cari nama barang..."}
             className="w-full py-2.5 pl-10 pr-4 text-sm font-medium border border-gray-200 bg-white rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 shadow-sm placeholder:font-normal"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
@@ -96,25 +115,33 @@ export const Stok: React.FC = () => {
         </div>
         
         <div className="flex gap-3">
-          <div className="relative flex items-center border border-gray-200 rounded-xl shadow-sm bg-white">
-            <Filter size={16} className="absolute left-3 text-gray-500" />
-            <select className="py-2.5 pl-9 pr-8 text-sm font-medium bg-transparent focus:outline-none appearance-none">
-              <option>Semua Kategori</option>
-              <option>Memory</option>
-              <option>Storage</option>
-              <option>Motherboard</option>
-            </select>
-          </div>
+          {activeTab === 'STOK' && (
+            <div className="relative flex items-center border border-gray-200 rounded-xl shadow-sm bg-white">
+              <Filter size={16} className="absolute left-3 text-gray-500" />
+              <select 
+                value={kategoriFilter}
+                onChange={(e) => setKategoriFilter(e.target.value)}
+                className="py-2.5 pl-9 pr-8 text-sm font-medium bg-transparent focus:outline-none appearance-none"
+              >
+                <option value="ALL">Semua Kategori</option>
+                {Array.from(new Set((spareparts || []).map(s => s.kategori))).filter(Boolean).map(k => (
+                  <option key={k} value={k}>{k}</option>
+                ))}
+              </select>
+            </div>
+          )}
           
-          <div className="relative hidden md:flex items-center border border-gray-200 rounded-xl shadow-sm bg-white overflow-hidden">
-            <Calendar size={16} className="absolute left-3 text-gray-500 pointer-events-none" />
-            <input 
-              type="date"
-              className="py-2.5 pl-9 pr-4 text-sm font-medium bg-transparent focus:outline-none w-full text-gray-600 cursor-pointer"
-              value={dateFilter}
-              onChange={(e) => setDateFilter(e.target.value)}
-            />
-          </div>
+          {activeTab === 'RIWAYAT' && (
+            <div className="relative hidden md:flex items-center border border-gray-200 rounded-xl shadow-sm bg-white overflow-hidden">
+              <Calendar size={16} className="absolute left-3 text-gray-500 pointer-events-none" />
+              <input 
+                type="date"
+                className="py-2.5 pl-9 pr-4 text-sm font-medium bg-transparent focus:outline-none w-full text-gray-600 cursor-pointer"
+                value={dateFilter}
+                onChange={(e) => setDateFilter(e.target.value)}
+              />
+            </div>
+          )}
         </div>
       </div>
 
@@ -162,12 +189,12 @@ export const Stok: React.FC = () => {
                   <th className="px-6 py-4 text-right">Harga Modal</th>
                   <th className="px-6 py-4 text-right">Harga Jual</th>
                   <th className="px-6 py-4 text-center">Keuntungan</th>
-                  <th className="px-6 py-4">Stok Saat Ini</th>
-                  <th className="px-6 py-4 text-center">Aksi</th>
+                  <th className="px-6 py-4">Status Stok</th>
+                  {userRole === 'ADMIN' && <th className="px-6 py-4 text-center">Aksi Mutasi</th>}
                 </tr>
               </thead>
               <tbody>
-                {(filteredSpareparts || []).map((item) => {
+                {(paginatedSpareparts || []).map((item) => {
                   const isLowStock = item.stok <= (item.minStok || 0);
                   const modal = item.hargaModal || 0;
                   const harga = item.harga || 0;
@@ -204,27 +231,56 @@ export const Stok: React.FC = () => {
                           </div>
                         </div>
                       </td>
-                      <td className="px-6 py-5">
-                        <div className="flex items-center justify-center gap-2">
-                          <button 
-                            onClick={() => handleOpenMutasiModal(item, 'IN')}
-                            className="bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-1.5 px-3 rounded-lg flex items-center gap-1 text-xs transition-colors"
-                          >
-                            + IN
-                          </button>
-                          <button 
-                            onClick={() => handleOpenMutasiModal(item, 'OUT')}
-                            className="bg-rose-500 hover:bg-rose-600 text-white font-bold py-1.5 px-3 rounded-lg flex items-center gap-1 text-xs transition-colors"
-                          >
-                            - OUT
-                          </button>
-                        </div>
-                      </td>
+                      {userRole === 'ADMIN' && (
+                        <td className="px-6 py-5">
+                          <div className="flex items-center justify-center gap-2">
+                            <button 
+                              onClick={() => handleOpenMutasiModal(item, 'IN')}
+                              className="bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-1.5 px-3 rounded-lg flex items-center gap-1 text-xs transition-colors"
+                            >
+                              + IN
+                            </button>
+                            <button 
+                              onClick={() => handleOpenMutasiModal(item, 'OUT')}
+                              className="bg-rose-500 hover:bg-rose-600 text-white font-bold py-1.5 px-3 rounded-lg flex items-center gap-1 text-xs transition-colors"
+                            >
+                              - OUT
+                            </button>
+                          </div>
+                        </td>
+                      )}
                     </tr>
                   );
                 })}
               </tbody>
             </table>
+
+            {/* Pagination Controls */}
+            {totalPages > 1 && (
+              <div className="px-6 py-4 border-t border-gray-100 flex items-center justify-between bg-gray-50/30">
+                <p className="text-sm text-gray-500">
+                  Menampilkan <span className="font-medium text-gray-900">{(currentPage - 1) * ITEMS_PER_PAGE + 1}</span> - <span className="font-medium text-gray-900">{Math.min(currentPage * ITEMS_PER_PAGE, filteredSpareparts.length)}</span> dari <span className="font-medium text-gray-900">{filteredSpareparts.length}</span> data
+                </p>
+                <div className="flex gap-2">
+                  <Button 
+                    variant="secondary" 
+                    size="sm" 
+                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                    disabled={currentPage === 1}
+                  >
+                    Sebelumnya
+                  </Button>
+                  <Button 
+                    variant="secondary" 
+                    size="sm" 
+                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                    disabled={currentPage === totalPages}
+                  >
+                    Selanjutnya
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
         )}
 

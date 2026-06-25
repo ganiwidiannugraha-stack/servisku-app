@@ -3,19 +3,21 @@ import { useNavigate } from 'react-router-dom';
 import { useStore } from '../store';
 import { Breadcrumb } from '../components/ui/Breadcrumb';
 import { EmptyState } from '../components/ui/EmptyState';
-import { Search, Filter, Calendar, ClipboardList, Eye } from 'lucide-react';
+import { Search, Filter, Calendar, ClipboardList, Eye, User, Lock, PlusCircle } from 'lucide-react';
+import toast from 'react-hot-toast';
 
 const getRelativeTime = (dateString: string) => {
   const diffDays = Math.floor((new Date().getTime() - new Date(dateString).getTime()) / (1000 * 3600 * 24));
-  if (diffDays === 0) return 'Hari ini';
+  if (diffDays <= 0) return 'Hari ini';
   if (diffDays === 1) return 'Kemarin';
   return `${diffDays} hari lalu`;
 };
 
 export const OrderList: React.FC = () => {
   const navigate = useNavigate();
-  const { orders, customers } = useStore();
+  const { orders, customers, userRole, userId, technicians, updateOrder } = useStore();
   const [activeTab, setActiveTab] = useState<'AKTIF' | 'SELESAI'>('AKTIF');
+  const [techFilter, setTechFilter] = useState<'ALL' | 'MINE' | 'UNASSIGNED'>('ALL');
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
   const [dateFilter, setDateFilter] = useState('');
@@ -23,6 +25,14 @@ export const OrderList: React.FC = () => {
   const ITEMS_PER_PAGE = 10;
 
   const getCustomer = (id: string) => customers.find(c => c.id === id);
+  const getTechnician = (id: string) => technicians.find(t => t.id === id);
+
+  const handleAmbilAlih = (orderId: string) => {
+    if (userId) {
+      updateOrder(orderId, { teknisiId: userId });
+      toast.success('Pekerjaan berhasil diambil alih!');
+    }
+  };
 
   const filteredOrders = orders.filter(order => {
     // AKTIF: Semua KECUALI DIAMBIL, BATAL, BATAL_SIAP_DIAMBIL, BATAL_DIAMBIL
@@ -38,7 +48,13 @@ export const OrderList: React.FC = () => {
     const matchesStatus = statusFilter === 'ALL' || order.status === statusFilter;
     const matchesDate = !dateFilter || order.tanggalMasuk.startsWith(dateFilter);
     
-    return matchesSearch && matchesStatus && matchesDate;
+    let matchesTech = true;
+    if (userRole === 'TEKNISI' && activeTab === 'AKTIF') {
+      if (techFilter === 'MINE') matchesTech = order.teknisiId === userId;
+      if (techFilter === 'UNASSIGNED') matchesTech = !order.teknisiId;
+    }
+    
+    return matchesSearch && matchesStatus && matchesDate && matchesTech;
   });
 
   const totalPages = Math.ceil(filteredOrders.length / ITEMS_PER_PAGE);
@@ -87,12 +103,14 @@ export const OrderList: React.FC = () => {
           <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Daftar Order Servis</h1>
           <p className="mt-1 text-gray-500 font-medium">Kelola semua perangkat servis pelanggan.</p>
         </div>
-        <button 
-          onClick={() => navigate('/order/baru')} 
-          className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl font-semibold transition-colors flex items-center gap-2 shadow-sm"
-        >
-          + Terima Perangkat
-        </button>
+        {userRole === 'ADMIN' && (
+          <button 
+            onClick={() => navigate('/order/baru')} 
+            className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl font-semibold transition-colors flex items-center gap-2 shadow-sm"
+          >
+            + Terima Perangkat
+          </button>
+        )}
       </div>
 
       <div className="flex flex-col md:flex-row gap-4 mb-6">
@@ -168,6 +186,30 @@ export const OrderList: React.FC = () => {
             Arsip (Riwayat & Batal)
           </button>
         </div>
+
+        {userRole === 'TEKNISI' && activeTab === 'AKTIF' && (
+          <div className="flex gap-2 p-4 bg-slate-50 border-b border-gray-100">
+            <button
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${techFilter === 'ALL' ? 'bg-white shadow-sm border border-gray-200 text-gray-900' : 'text-gray-500 hover:bg-gray-100'}`}
+              onClick={() => { setTechFilter('ALL'); setCurrentPage(1); }}
+            >
+              Semua Order Aktif
+            </button>
+            <button
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5 ${techFilter === 'MINE' ? 'bg-blue-50 text-blue-700 border border-blue-200 shadow-sm' : 'text-gray-500 hover:bg-gray-100'}`}
+              onClick={() => { setTechFilter('MINE'); setCurrentPage(1); }}
+            >
+              <User size={14} /> Tugas Saya
+            </button>
+            <button
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5 ${techFilter === 'UNASSIGNED' ? 'bg-orange-50 text-orange-700 border border-orange-200 shadow-sm' : 'text-gray-500 hover:bg-gray-100'}`}
+              onClick={() => { setTechFilter('UNASSIGNED'); setCurrentPage(1); }}
+            >
+              <Search size={14} /> Menunggu Teknisi
+            </button>
+          </div>
+        )}
+
         <div className="overflow-x-auto">
           <table className="w-full text-sm text-left">
             <thead className="text-xs text-gray-500 uppercase bg-gray-50/50 border-b border-gray-100">
@@ -185,10 +227,23 @@ export const OrderList: React.FC = () => {
               {paginatedOrders.length > 0 ? (
                 paginatedOrders.map((order) => {
                   const customer = getCustomer(order.pelangganId);
+                  
+                  const isTech = userRole === 'TEKNISI';
+                  const isMine = isTech && order.teknisiId === userId;
+                  const isUnassigned = isTech && !order.teknisiId;
+                  const isOthers = isTech && order.teknisiId && order.teknisiId !== userId;
+                  
+                  const rowClass = isOthers ? 'border-b border-gray-50 opacity-60 bg-gray-50' : 'border-b border-gray-50 hover:bg-gray-50/50 transition-colors';
+
                   return (
-                    <tr key={order.id} className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors">
+                    <tr key={order.id} className={rowClass}>
                       <td className="px-6 py-5">
-                        <span className="font-bold text-gray-900">{order.noServis}</span>
+                        <div className="flex flex-col gap-1">
+                          <span className="font-bold text-gray-900">{order.noServis}</span>
+                          {isTech && isMine && <span className="inline-flex items-center gap-1 text-[10px] font-bold text-blue-700 bg-blue-100 px-2 py-0.5 rounded w-max"><User size={10} /> TUGAS SAYA</span>}
+                          {isTech && isUnassigned && <span className="inline-flex items-center gap-1 text-[10px] font-bold text-orange-700 bg-orange-100 px-2 py-0.5 rounded w-max">⚠️ MENUNGGU TEKNISI</span>}
+                          {isTech && isOthers && <span className="inline-flex items-center gap-1 text-[10px] font-bold text-gray-600 bg-gray-200 px-2 py-0.5 rounded w-max"><Lock size={10} /> {getTechnician(order.teknisiId)?.name?.split(' ')[0] || 'ORANG LAIN'}</span>}
+                        </div>
                       </td>
                       <td className="px-6 py-5">
                         <p className="font-bold text-gray-900">{customer?.nama || 'Unknown'}</p>
@@ -205,18 +260,30 @@ export const OrderList: React.FC = () => {
                           {getStatusLabel(order.status)}
                         </span>
                       </td>
-                      <td className="px-6 py-5 text-center text-gray-600 font-medium">
-                        {getRelativeTime(order.tanggalMasuk)}
+                      <td className="px-6 py-5 text-center">
+                        <div className="flex flex-col items-center">
+                          <span className="text-gray-900 font-medium">{getRelativeTime(order.tanggalMasuk)}</span>
+                          <span className="text-xs text-gray-500 mt-0.5">{new Date(order.tanggalMasuk).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                        </div>
                       </td>
                       <td className="px-6 py-5">
                         <div className="flex items-center justify-center gap-2">
-                          <button 
-                            onClick={() => navigate(`/order/${order.id}`)}
-                            className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-1.5 px-3.5 rounded-lg flex items-center gap-1.5 text-xs transition-colors shadow-sm"
-                          >
-                            <Eye size={14} /> Detail
-                          </button>
-                          {customer?.noHp && (
+                          {isUnassigned ? (
+                            <button 
+                              onClick={() => handleAmbilAlih(order.id)}
+                              className="bg-orange-500 hover:bg-orange-600 text-white font-bold py-1.5 px-3.5 rounded-lg flex items-center gap-1.5 text-xs transition-colors shadow-sm"
+                            >
+                              <PlusCircle size={14} /> Ambil Alih
+                            </button>
+                          ) : (
+                            <button 
+                              onClick={() => navigate(`/order/${order.id}`)}
+                              className={`${isOthers ? 'bg-gray-200 text-gray-700 hover:bg-gray-300' : 'bg-blue-600 hover:bg-blue-700 text-white'} font-medium py-1.5 px-3.5 rounded-lg flex items-center gap-1.5 text-xs transition-colors shadow-sm`}
+                            >
+                              <Eye size={14} /> {isOthers ? 'Lihat' : 'Detail'}
+                            </button>
+                          )}
+                          {!isOthers && customer?.noHp && (
                             <a
                               href={`https://wa.me/${customer.noHp.replace(/\D/g, '')}`}
                               target="_blank"

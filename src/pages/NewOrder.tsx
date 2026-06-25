@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Navigate } from 'react-router-dom';
 import { useStore } from '../store';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
@@ -11,7 +11,11 @@ import toast from 'react-hot-toast';
 
 export const NewOrder: React.FC = () => {
   const navigate = useNavigate();
-  const { customers, technicians, addOrder } = useStore();
+  const { customers, technicians, addOrder, userRole } = useStore();
+
+  if (userRole === 'TEKNISI') {
+    return <Navigate to="/order" replace />;
+  }
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [successData, setSuccessData] = useState<{ id: string, noServis: string, pelanggan: string, hp: string, perangkat: string, keluhan: string, biaya: number, estimasiSelesai: string } | null>(null);
 
@@ -139,7 +143,21 @@ export const NewOrder: React.FC = () => {
                 required
                 placeholder="Mis: Budi Santoso"
                 value={formData.namaPelanggan}
-                onChange={(e) => setFormData({ ...formData, namaPelanggan: e.target.value })}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setFormData({ ...formData, namaPelanggan: val });
+                  if (val.length >= 3) {
+                    const existing = customers.find(c => c.nama.toLowerCase() === val.toLowerCase());
+                    if (existing) {
+                      setFormData(prev => ({
+                        ...prev,
+                        namaPelanggan: val, // maintain exactly what they typed or existing.nama
+                        noHpPelanggan: prev.noHpPelanggan || existing.noHp,
+                        alamat: prev.alamat || existing.alamat || ''
+                      }));
+                    }
+                  }
+                }}
               />
               <Input
                 label="No. HP / WhatsApp"

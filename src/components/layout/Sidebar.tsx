@@ -14,7 +14,7 @@ interface SidebarProps {
  * Dilengkapi dengan badge dinamis (Notifikasi jumlah order aktif & stok menipis).
  */
 export const Sidebar: React.FC<SidebarProps> = ({ onNavigate }) => {
-  const { orders, spareparts } = useStore();
+  const { orders, spareparts, userRole } = useStore();
 
   // Dynamic Badges
   const activeOrdersCount = useMemo(() => {
@@ -25,13 +25,19 @@ export const Sidebar: React.FC<SidebarProps> = ({ onNavigate }) => {
     return spareparts.filter(s => s.stok <= (s.minStok || 0)).length;
   }, [spareparts]);
 
-  const menuItems = [
+  const baseMenuItems = [
     { name: 'Dashboard', path: '/dashboard', icon: <Home size={20} /> },
     { name: 'Order Servis', path: '/order', icon: <ClipboardList size={20} />, badge: activeOrdersCount > 0 ? activeOrdersCount : undefined },
     { name: 'Stok Sparepart', path: '/stok', icon: <Box size={20} />, badge: lowStockCount > 0 ? lowStockCount : undefined, danger: true },
+  ];
+
+  const adminMenuItems = [
+    ...baseMenuItems,
     { name: 'Pelanggan', path: '/pelanggan', icon: <Users size={20} /> },
     { name: 'Laporan', path: '/laporan', icon: <BarChart3 size={20} /> },
   ];
+
+  const menuItems = userRole === 'ADMIN' ? adminMenuItems : baseMenuItems;
 
   return (
     <div className="flex flex-col w-64 h-screen bg-white border-r border-gray-100 shadow-[2px_0_8px_rgba(0,0,0,0.02)]">
@@ -89,22 +95,24 @@ export const Sidebar: React.FC<SidebarProps> = ({ onNavigate }) => {
       </div>
 
       <div className="p-4 space-y-1">
-        <NavLink 
-          to="/pengaturan" 
-          onClick={onNavigate}
-          className={({ isActive }) => 
-            `flex items-center w-full px-4 py-2.5 font-medium transition-colors rounded-xl ${
-              isActive ? 'bg-[#eef2ff] text-blue-700 font-bold' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-            }`
-          }
-        >
-          {({ isActive }) => (
-            <>
-              <Settings size={20} className={`mr-3 ${isActive ? 'text-blue-600' : 'text-gray-400'}`} />
-              Pengaturan
-            </>
-          )}
-        </NavLink>
+        {userRole === 'ADMIN' && (
+          <NavLink 
+            to="/pengaturan" 
+            onClick={onNavigate}
+            className={({ isActive }) => 
+              `flex items-center w-full px-4 py-2.5 font-medium transition-colors rounded-xl ${
+                isActive ? 'bg-[#eef2ff] text-blue-700 font-bold' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+              }`
+            }
+          >
+            {({ isActive }) => (
+              <>
+                <Settings size={20} className={`mr-3 ${isActive ? 'text-blue-600' : 'text-gray-400'}`} />
+                Pengaturan
+              </>
+            )}
+          </NavLink>
+        )}
         <button 
           onClick={() => {
             useStore.getState().logout();

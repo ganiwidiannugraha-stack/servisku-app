@@ -29,6 +29,9 @@ const parseRibuan = (val: string) => val.replace(/\./g, '');
 /**
  * Helper: Menentukan dropdown status yang tersedia berdasarkan status order saat ini.
  * Mencegah pengguna mengubah status secara tidak logis (misal: dari DIAMBIL kembali ke PROSES).
+ * 
+ * @param currentStatus - Status order saat ini
+ * @returns Array dari status yang diperbolehkan
  */
 const getAvailableStatusOptions = (currentStatus: StatusOrder | undefined): StatusOrder[] => {
   if (currentStatus === 'SIAP_DIAMBIL') return ['SIAP_DIAMBIL', 'DIAMBIL'];
@@ -46,7 +49,7 @@ const getAvailableStatusOptions = (currentStatus: StatusOrder | undefined): Stat
 export const OrderDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { orders, customers, spareparts, technicians, updateOrderStatus, updateOrder } = useStore();
+  const { orders, customers, spareparts, technicians, updateOrderStatus, updateOrder, userRole, userId } = useStore();
   
   const [isUpdateStatusOpen, setIsUpdateStatusOpen] = useState(false);
   const [newStatus, setNewStatus] = useState<StatusOrder | null>(null);
@@ -59,6 +62,10 @@ export const OrderDetail: React.FC = () => {
   const [isEditJasaOpen, setIsEditJasaOpen] = useState(false);
   const [editJasaValue, setEditJasaValue] = useState('');
 
+  const [isAddJasaOpen, setIsAddJasaOpen] = useState(false);
+  const [jasaName, setJasaName] = useState('');
+  const [jasaPrice, setJasaPrice] = useState('');
+
   const [isEditDiagnosaOpen, setIsEditDiagnosaOpen] = useState(false);
   const [editDiagnosaValue, setEditDiagnosaValue] = useState('');
 
@@ -70,6 +77,9 @@ export const OrderDetail: React.FC = () => {
   const [editTeknisiValue, setEditTeknisiValue] = useState('');
 
   const [isPrintVisible, setIsPrintVisible] = useState(false);
+  
+  const [isReleaseModalOpen, setIsReleaseModalOpen] = useState(false);
+  const [releaseReason, setReleaseReason] = useState('');
 
   const order = orders.find(o => o.id === id);
   const customer = customers.find(c => c.id === order?.pelangganId);
@@ -80,6 +90,36 @@ export const OrderDetail: React.FC = () => {
   }).filter(sp => sp.detail);
 
   const assignedTechnician = technicians.find(t => t.id === order?.teknisiId);
+
+  // Jika yang login teknisi, dia hanya bisa melihat (read-only) jika order ini sudah diambil teknisi LLAIN
+  const isReadOnly = userRole === 'TEKNISI' && !!order?.teknisiId && order.teknisiId !== userId;
+
+  const handleClaimJob = () => {
+    if (order && userId) {
+      updateOrder(order.id, { teknisiId: userId });
+      toast.success('Pekerjaan berhasil diambil. Selamat bekerja!');
+    }
+  };
+
+  const handleReleaseJob = () => {
+    setIsReleaseModalOpen(true);
+    setReleaseReason('');
+  };
+
+  const confirmReleaseJob = () => {
+    if (releaseReason && releaseReason.trim() !== '') {
+      if (order) {
+        updateOrder(order.id, { 
+          teknisiId: '', // kosongkan
+          catatanInternal: order.catatanInternal ? `${order.catatanInternal}\n[LEPAS TUGAS]: ${releaseReason}` : `[LEPAS TUGAS]: ${releaseReason}` 
+        });
+        toast.success('Pekerjaan berhasil dilepas.');
+        setIsReleaseModalOpen(false);
+      }
+    } else {
+      toast.error('Alasan wajib diisi untuk melepas pekerjaan!');
+    }
+  };
 
   // Auto-generate WA text based on selected status
   useEffect(() => {
@@ -195,11 +235,35 @@ export const OrderDetail: React.FC = () => {
     setIsUpdateStatusOpen(true);
   };
 
+  /**
+   * Menangani penyimpanan perubahan status pesanan.
+   * Termasuk mengirimkan notifikasi WA dan melakukan pengembalian stok jika dibatalkan.
+   */
   const handleSaveStatus = () => {
     if (!newStatus) return;
     
     if (newStatus === 'DIAMBIL') {
        toast('Jangan lupa mencatat pembayaran sebelum status final diambil.', { icon: '⚠️' });
+    }
+
+    // LOGIC FLAW FIX: Kembalikan stok jika pesanan dibatalkan dan ada sparepart yang sudah dialokasikan
+    if ((newStatus === 'BATAL' || newStatus === 'BATAL_SIAP_DIAMBIL' || newStatus === 'BATAL_DIAMBIL') && order.status !== 'BATAL' && order.status !== 'BATAL_SIAP_DIAMBIL' && order.status !== 'BATAL_DIAMBIL') {
+      const currentSp = order.spareparts || [];
+      if (currentSp.length > 0) {
+        currentSp.forEach(sp => {
+          useStore.getState().tambahMutasiStok({
+            sparepartId: sp.id,
+            tipe: 'IN',
+            qty: sp.qty,
+            keterangan: `Pengembalian otomatis karena order #${order.noServis} dibatalkan`
+          });
+        });
+        // Kosongkan sparepart dari order yang dibatalkan
+        if (updateOrder) {
+          updateOrder(order.id, { spareparts: [] });
+        }
+        toast.success('Sparepart yang terpakai telah dikembalikan ke stok gudang.');
+      }
     }
 
     updateOrderStatus(order.id, newStatus);
@@ -319,11 +383,37 @@ export const OrderDetail: React.FC = () => {
     }
   };
 
+  const handleAddJasa = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (jasaName && jasaPrice && order) {
+      const newJasa = {
+        id: 'JASA-' + Date.now(),
+        nama: jasaName,
+        harga: parseInt(parseRibuan(jasaPrice)) || 0
+      };
+      const currentJasa = order.jasa || [];
+      updateOrder(order.id, { jasa: [...currentJasa, newJasa] });
+      toast.success('Jasa berhasil ditambahkan');
+      setIsAddJasaOpen(false);
+      setJasaName('');
+      setJasaPrice('');
+    }
+  };
+
+  const handleRemoveJasa = (idToRemove: string) => {
+    if (order) {
+      const currentJasa = order.jasa || [];
+      updateOrder(order.id, { jasa: currentJasa.filter(j => j.id !== idToRemove) });
+      toast.success('Jasa dihapus');
+    }
+  };
+
   const pastOrders = orders.filter(o => o.pelangganId === customer.id && o.id !== order.id);
 
   const totalSparepartCost = orderSpareparts.reduce((sum, sp) => sum + (sp.detail!.harga * sp.qty), 0);
   const totalPajak = orderSpareparts.reduce((sum, sp) => sum + ((sp.detail!.harga * sp.qty) * ((sp.detail!.pajak || 0) / 100)), 0);
-  const totalBiaya = (order.biayaJasa ?? 0) + totalSparepartCost + totalPajak;
+  const totalCustomJasa = (order.jasa || []).reduce((sum, j) => sum + j.harga, 0);
+  const totalBiaya = (order.biayaJasa ?? 0) + totalSparepartCost + totalPajak + totalCustomJasa;
 
   return (
     <div className="p-8 w-full min-h-screen pb-24 bg-gray-50/30">
@@ -341,16 +431,18 @@ export const OrderDetail: React.FC = () => {
             <StatusBadge status={order.status} />
           </div>
           <div className="flex flex-wrap gap-2">
-            <Button variant="secondary" onClick={() => setIsPrintVisible(true)} leftIcon={<Printer size={16} />} className="bg-white hover:bg-gray-50 text-gray-700 border-gray-200">
-              Cetak Label
-            </Button>
-            <Button variant="secondary" onClick={handleWA} leftIcon={<MessageCircle size={16} />} className="bg-emerald-500 hover:bg-emerald-600 text-white border-transparent">
+            {userRole === 'ADMIN' && (
+              <Button variant="secondary" onClick={() => setIsPrintVisible(true)} leftIcon={<Printer size={16} />} className="bg-white hover:bg-gray-50 text-gray-700 border-gray-200">
+                Cetak Label
+              </Button>
+            )}
+            <Button variant="primary" onClick={handleWA} leftIcon={<MessageCircle size={16} />} className="bg-emerald-500 hover:bg-emerald-600 text-white border-transparent">
               Kirim WA
             </Button>
             {!['DIAMBIL', 'BATAL_DIAMBIL'].includes(order.status) && (
               <Button variant="primary" onClick={handleOpenUpdate} className="bg-blue-600 hover:bg-blue-700">Update Status</Button>
             )}
-            {['SELESAI', 'BATAL'].includes(order.status) && (
+            {userRole === 'ADMIN' && ['SELESAI', 'BATAL'].includes(order.status) && (
               <Button variant="primary" onClick={() => navigate(`/order/${order.id}/bayar`)} leftIcon={<Wallet size={16} />} className="bg-emerald-600 hover:bg-emerald-700 border-none">
                 Pembayaran
               </Button>
@@ -454,10 +546,15 @@ export const OrderDetail: React.FC = () => {
                 <h2 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
                   <Wrench size={18} className="text-blue-500" /> Penggunaan Sparepart & Jasa
                 </h2>
-                {order.status !== 'DIAMBIL' && (
-                  <Button variant="secondary" size="sm" onClick={() => setIsAddSparepartOpen(true)} leftIcon={<Plus size={16}/>} className="bg-blue-50 text-blue-700 border-none hover:bg-blue-100 rounded-full px-4">
-                    Tambah Item
-                  </Button>
+                {order.status !== 'DIAMBIL' && !isReadOnly && (
+                  <div className="flex gap-2">
+                    <Button variant="secondary" size="sm" onClick={() => setIsAddJasaOpen(true)} leftIcon={<Plus size={16}/>} className="bg-amber-50 text-amber-700 border-none hover:bg-amber-100 rounded-full px-4">
+                      Tambah Jasa
+                    </Button>
+                    <Button variant="secondary" size="sm" onClick={() => setIsAddSparepartOpen(true)} leftIcon={<Plus size={16}/>} className="bg-blue-50 text-blue-700 border-none hover:bg-blue-100 rounded-full px-4">
+                      Tambah Sparepart
+                    </Button>
+                  </div>
                 )}
               </div>
               
@@ -483,8 +580,27 @@ export const OrderDetail: React.FC = () => {
                         <td className="px-6 py-4 text-right text-gray-600">Rp {sp.detail!.harga.toLocaleString('id-ID')}</td>
                         <td className="px-6 py-4 text-right font-bold text-gray-900">Rp {(sp.detail!.harga * sp.qty).toLocaleString('id-ID')}</td>
                         <td className="px-4 py-4 text-right">
-                          {order.status !== 'DIAMBIL' && (
-                            <button onClick={() => handleRemoveSparepart(sp.id)} className="text-gray-300 hover:text-red-500 transition-colors p-2" title="Hapus">
+                          {order.status !== 'DIAMBIL' && !isReadOnly && (
+                            <button onClick={() => handleRemoveSparepart(sp.id)} className="text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all p-2" title="Hapus">
+                              <Trash2 size={16} />
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                    
+                    {(order.jasa || []).map((j, idx) => (
+                      <tr key={`jasa-${idx}`} className="hover:bg-gray-50/50 transition-colors group">
+                        <td className="px-6 py-4">
+                          <p className="font-bold text-gray-900">{j.nama}</p>
+                          <p className="text-xs text-amber-600 mt-0.5">Jasa Tambahan</p>
+                        </td>
+                        <td className="px-6 py-4 text-center font-semibold text-gray-700">1</td>
+                        <td className="px-6 py-4 text-right text-gray-600">Rp {j.harga.toLocaleString('id-ID')}</td>
+                        <td className="px-6 py-4 text-right font-bold text-gray-900">Rp {j.harga.toLocaleString('id-ID')}</td>
+                        <td className="px-4 py-4 text-right">
+                          {order.status !== 'DIAMBIL' && !isReadOnly && (
+                            <button onClick={() => handleRemoveJasa(j.id)} className="text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all p-2" title="Hapus">
                               <Trash2 size={16} />
                             </button>
                           )}
@@ -502,7 +618,7 @@ export const OrderDetail: React.FC = () => {
                       <td className="px-6 py-4 text-right text-gray-600">Rp {(order.biayaJasa ?? 0).toLocaleString('id-ID')}</td>
                       <td className="px-6 py-4 text-right font-bold text-gray-900">Rp {(order.biayaJasa ?? 0).toLocaleString('id-ID')}</td>
                       <td className="px-4 py-4 text-right">
-                        {order.status !== 'DIAMBIL' && (
+                        {order.status !== 'DIAMBIL' && !isReadOnly && (
                            <button onClick={() => { setEditJasaValue((order.biayaJasa ?? 0).toString()); setIsEditJasaOpen(true); }} className="text-gray-300 hover:text-blue-600 opacity-0 group-hover:opacity-100 transition-all p-2" title="Edit Biaya Jasa">
                              <Edit2 size={16} />
                            </button>
@@ -518,7 +634,7 @@ export const OrderDetail: React.FC = () => {
                 <div className="w-full max-w-sm space-y-3">
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-500">Subtotal</span>
-                    <span className="font-medium text-gray-700">Rp {((order.biayaJasa ?? 0) + totalSparepartCost).toLocaleString('id-ID')}</span>
+                    <span className="font-medium text-gray-700">Rp {((order.biayaJasa ?? 0) + totalSparepartCost + totalCustomJasa).toLocaleString('id-ID')}</span>
                   </div>
                   {totalPajak > 0 && (
                     <div className="flex justify-between text-sm">
@@ -540,7 +656,7 @@ export const OrderDetail: React.FC = () => {
                 <h2 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
                   <FileText size={18} className="text-blue-500" /> Hasil Diagnosa & Catatan
                 </h2>
-                {order.status !== 'DIAMBIL' && (
+                {order.status !== 'DIAMBIL' && !isReadOnly && (
                   <button onClick={() => {
                     setEditDiagnosaValue(order.hasilDiagnosa || '');
                     setIsEditDiagnosaOpen(true);
@@ -568,7 +684,7 @@ export const OrderDetail: React.FC = () => {
             <div className="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden">
               <div className="px-6 py-5 border-b border-gray-50 flex justify-between items-center">
                 <h2 className="text-sm font-semibold text-gray-900">Teknisi Utama</h2>
-                {order.status !== 'DIAMBIL' && (
+                {userRole === 'ADMIN' && order.status !== 'DIAMBIL' && (
                   <button onClick={() => {
                     setEditTeknisiValue(order.teknisiId || '');
                     setIsEditTeknisiOpen(true);
@@ -583,7 +699,7 @@ export const OrderDetail: React.FC = () => {
                     <div className="w-12 h-12 rounded-full bg-slate-800 text-white flex items-center justify-center font-bold text-lg shrink-0">
                       {assignedTechnician.avatar}
                     </div>
-                    <div>
+                    <div className="flex-1">
                       <p className="font-bold text-gray-900">{assignedTechnician.name}</p>
                       <p className="text-xs text-gray-500 mt-1">
                         <span className="text-orange-500 font-bold">★ {assignedTechnician.rating}</span> • {assignedTechnician.jobs} Pekerjaan diselesaikan
@@ -594,6 +710,22 @@ export const OrderDetail: React.FC = () => {
                   <div className="text-sm text-gray-500 italic w-full text-center">Belum ada teknisi yang ditugaskan.</div>
                 )}
               </div>
+              
+              {/* Claim / Release logic for TEKNISI */}
+              {userRole === 'TEKNISI' && !order.teknisiId && order.status !== 'DIAMBIL' && (
+                <div className="px-6 pb-6 pt-2">
+                  <Button onClick={handleClaimJob} variant="primary" className="w-full bg-green-600 hover:bg-green-700">
+                    Ambil Pekerjaan Ini
+                  </Button>
+                </div>
+              )}
+              {userRole === 'TEKNISI' && order.teknisiId === userId && order.status !== 'DIAMBIL' && (
+                <div className="px-6 pb-6 pt-2 border-t border-gray-50">
+                  <Button onClick={handleReleaseJob} variant="danger" className="w-full">
+                    Lepas Pekerjaan
+                  </Button>
+                </div>
+              )}
             </div>
 
             {/* Timeline Status */}
@@ -830,6 +962,43 @@ export const OrderDetail: React.FC = () => {
       </Modal>
 
       <Modal
+        isOpen={isAddJasaOpen}
+        onClose={() => setIsAddJasaOpen(false)}
+        title="➕ Tambah Jasa Tambahan"
+      >
+        <form onSubmit={handleAddJasa} className="space-y-4 py-2">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Nama Pekerjaan Jasa <span className="text-red-500">*</span></label>
+            <input
+              type="text"
+              required
+              placeholder="Contoh: Instal Ulang Windows 11, Ganti Thermal Paste..."
+              className="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 text-gray-900 font-medium placeholder:font-normal"
+              value={jasaName}
+              onChange={(e) => setJasaName(e.target.value)}
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Biaya Jasa (Rp) <span className="text-red-500">*</span></label>
+            <div className="relative">
+              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-medium text-sm">Rp</span>
+              <input
+                type="text"
+                required
+                className="w-full pl-11 pr-4 py-2.5 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 font-semibold text-gray-900"
+                value={jasaPrice}
+                onChange={(e) => setJasaPrice(formatRibuan(e.target.value))}
+              />
+            </div>
+          </div>
+          <div className="flex justify-end gap-3 pt-4">
+            <Button variant="secondary" type="button" onClick={() => setIsAddJasaOpen(false)}>Batal</Button>
+            <Button variant="primary" type="submit" className="bg-amber-500 hover:bg-amber-600 border-none">Tambahkan</Button>
+          </div>
+        </form>
+      </Modal>
+
+      <Modal
         isOpen={isUpdateStatusOpen}
         onClose={() => setIsUpdateStatusOpen(false)}
         title="⚡ Perbarui Status Order"
@@ -875,6 +1044,36 @@ export const OrderDetail: React.FC = () => {
           <div className="flex items-center gap-3 justify-end pt-4 border-t">
             <Button variant="secondary" onClick={() => setIsUpdateStatusOpen(false)}>Batal</Button>
             <Button variant="primary" onClick={handleSaveStatus}>Simpan Perubahan</Button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal
+        isOpen={isReleaseModalOpen}
+        onClose={() => setIsReleaseModalOpen(false)}
+        title="Lepas Pekerjaan"
+      >
+        <div className="space-y-4 py-2">
+          <p className="text-sm text-gray-600">
+            Apakah Anda yakin ingin melepas tugas ini? Teknisi lain atau admin dapat mengambil alih pekerjaan ini setelah Anda melepasnya.
+          </p>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Alasan Melepas Pekerjaan <span className="text-red-500">*</span>
+            </label>
+            <textarea
+              className="w-full py-2.5 px-3.5 text-sm border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors"
+              rows={3}
+              placeholder="Contoh: Sedang mengerjakan order lain, sparepart tidak tersedia, dll"
+              value={releaseReason}
+              onChange={(e) => setReleaseReason(e.target.value)}
+            />
+          </div>
+          <div className="flex justify-end gap-3 pt-4 border-t border-gray-100 mt-6">
+            <Button variant="secondary" onClick={() => setIsReleaseModalOpen(false)}>Batal</Button>
+            <Button variant="danger" onClick={confirmReleaseJob} className="bg-red-600 hover:bg-red-700 text-white">
+              Lepas Pekerjaan
+            </Button>
           </div>
         </div>
       </Modal>

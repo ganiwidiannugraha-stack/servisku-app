@@ -13,6 +13,8 @@ export const Pelanggan: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [tierFilter, setTierFilter] = useState('ALL');
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 10;
 
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [formData, setFormData] = useState({ nama: '', noHp: '', alamat: '' });
@@ -56,6 +58,9 @@ export const Pelanggan: React.FC = () => {
   const pelangganBaru = 15; // Mock data for demo
   const totalServisAll = customers.reduce((sum, c) => sum + (c.totalServis || 0), 0);
   const rataRataServis = totalPelanggan > 0 ? (totalServisAll / totalPelanggan).toFixed(1) : '0';
+
+  const totalPages = Math.ceil(filteredCustomers.length / ITEMS_PER_PAGE);
+  const paginatedCustomers = filteredCustomers.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
 
   return (
     <div className="p-8 w-full min-h-screen pb-24 bg-[#f8fafc]">
@@ -157,7 +162,7 @@ export const Pelanggan: React.FC = () => {
             placeholder="Cari nama, nomor HP, atau ID..."
             className="w-full py-3 pl-12 pr-4 text-sm font-medium border border-gray-200 bg-white rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 shadow-sm placeholder:font-normal placeholder:text-gray-400"
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
           />
         </div>
         
@@ -165,7 +170,7 @@ export const Pelanggan: React.FC = () => {
           <div className="relative flex items-center border border-gray-200 rounded-xl shadow-sm bg-white">
             <select 
               value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
+              onChange={(e) => { setStatusFilter(e.target.value); setCurrentPage(1); }}
               className="py-3 pl-4 pr-10 text-sm font-medium text-gray-700 bg-transparent focus:outline-none appearance-none cursor-pointer"
             >
               <option value="ALL">Semua Status</option>
@@ -177,7 +182,7 @@ export const Pelanggan: React.FC = () => {
           <div className="relative flex items-center border border-gray-200 rounded-xl shadow-sm bg-white">
             <select 
               value={tierFilter}
-              onChange={(e) => setTierFilter(e.target.value)}
+              onChange={(e) => { setTierFilter(e.target.value); setCurrentPage(1); }}
               className="py-3 pl-4 pr-10 text-sm font-medium text-gray-700 bg-transparent focus:outline-none appearance-none cursor-pointer"
             >
               <option value="ALL">Semua Tier</option>
@@ -192,7 +197,7 @@ export const Pelanggan: React.FC = () => {
 
       {/* Customer List */}
       <div className="space-y-4">
-        {filteredCustomers.length > 0 ? filteredCustomers.map((customer) => {
+        {paginatedCustomers.length > 0 ? paginatedCustomers.map((customer) => {
           const tier = getCustomerTier(customer.totalServis);
           const activeOrders = getActiveOrdersCount(customer.id);
           const isGold = tier.type === 'Gold';
@@ -255,6 +260,30 @@ export const Pelanggan: React.FC = () => {
           </div>
         )}
       </div>
+
+      {totalPages > 1 && (
+        <div className="px-6 py-4 mt-6 border border-gray-100 flex items-center justify-between bg-white rounded-2xl shadow-sm">
+          <span className="text-sm text-gray-500 font-medium">
+            Menampilkan {(currentPage - 1) * ITEMS_PER_PAGE + 1} - {Math.min(currentPage * ITEMS_PER_PAGE, filteredCustomers.length)} dari {filteredCustomers.length} data
+          </span>
+          <div className="flex gap-2">
+            <button 
+              disabled={currentPage === 1}
+              onClick={() => setCurrentPage(p => p - 1)}
+              className="px-4 py-2 border border-gray-200 rounded-xl text-sm font-medium text-gray-600 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-100 bg-white transition-colors"
+            >
+              Sebelumnya
+            </button>
+            <button 
+              disabled={currentPage === totalPages}
+              onClick={() => setCurrentPage(p => p + 1)}
+              className="px-4 py-2 border border-gray-200 rounded-xl text-sm font-medium text-gray-600 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-100 bg-white transition-colors"
+            >
+              Selanjutnya
+            </button>
+          </div>
+        </div>
+      )}
 
       <Modal
         isOpen={isAddModalOpen}

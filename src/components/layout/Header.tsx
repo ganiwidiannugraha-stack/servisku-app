@@ -19,7 +19,7 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
-  const { orders, customers, spareparts, settings } = useStore();
+  const { orders, customers, spareparts, settings, userName, userRole } = useStore();
 
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     setQuery(e.target.value);
@@ -172,13 +172,16 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
             <span className="absolute top-2 right-2.5 w-2 h-2 bg-red-500 rounded-full ring-2 ring-white"></span>
           )}
         </button>
-        <div className="flex items-center space-x-3 cursor-pointer group" onClick={() => navigate('/pengaturan')}>
-          <div className="w-9 h-9 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold shadow-sm group-hover:shadow transition-shadow">
-            {settings.ownerName ? settings.ownerName.charAt(0).toUpperCase() : 'T'}
+        <div 
+          className={`flex items-center space-x-3 group ${userRole === 'ADMIN' ? 'cursor-pointer' : 'cursor-default'}`} 
+          onClick={() => userRole === 'ADMIN' && navigate('/pengaturan')}
+        >
+          <div className={`w-9 h-9 rounded-full flex items-center justify-center font-bold shadow-sm group-hover:shadow transition-shadow ${userRole === 'ADMIN' ? 'bg-purple-100 text-purple-700' : 'bg-emerald-100 text-emerald-700'}`}>
+            {userName ? userName.charAt(0).toUpperCase() : 'U'}
           </div>
           <div className="hidden md:flex flex-col items-start justify-center">
-            <p className="text-sm font-bold text-gray-900 leading-tight">{settings.ownerName || 'Admin'}</p>
-            <p className="text-xs text-gray-500 font-medium leading-tight">{settings.shopName || 'Toko'}</p>
+            <p className="text-sm font-bold text-gray-900 leading-tight">{userName || 'User'}</p>
+            <p className="text-xs text-gray-500 font-medium leading-tight">{userRole === 'ADMIN' ? 'Administrator' : 'Teknisi Servis'}</p>
           </div>
           <ChevronDown size={16} className="text-gray-400 ml-1 hidden md:block group-hover:text-gray-600 transition-colors" />
         </div>

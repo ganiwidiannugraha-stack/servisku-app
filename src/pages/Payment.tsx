@@ -44,7 +44,8 @@ export const Payment: React.FC = () => {
     return sum + (itemCost * (pajakPercent / 100));
   }, 0);
   
-  const totalBiaya = (order.biayaJasa ?? 0) + totalSparepartCost + totalPajak - numDiskon;
+  const totalCustomJasa = (order.jasa || []).reduce((sum, j) => sum + j.harga, 0);
+  const totalBiaya = (order.biayaJasa ?? 0) + totalSparepartCost + totalPajak + totalCustomJasa - numDiskon;
   
   const jumlahDibayar = Number(jumlahBayar) || 0;
   const kembalian = jumlahDibayar - totalBiaya;
@@ -96,10 +97,18 @@ export const Payment: React.FC = () => {
 
           <table className="w-full text-sm mb-6">
             <tbody>
-              <tr>
-                <td className="py-2">Biaya Jasa Servis</td>
-                <td className="text-right py-2">Rp {(order.biayaJasa ?? 0).toLocaleString('id-ID')}</td>
-              </tr>
+              {!!order.biayaJasa && (
+                <tr>
+                  <td className="py-2">Biaya Jasa Servis Utama</td>
+                  <td className="text-right py-2">Rp {order.biayaJasa.toLocaleString('id-ID')}</td>
+                </tr>
+              )}
+              {(order.jasa || []).map((j, idx) => (
+                <tr key={`jasa-${idx}`}>
+                  <td className="py-2">Jasa: {j.nama}</td>
+                  <td className="text-right py-2">Rp {j.harga.toLocaleString('id-ID')}</td>
+                </tr>
+              ))}
               {orderSpareparts.map((sp, idx) => (
                 <tr key={idx}>
                   <td className="py-2">Sparepart: {sp.detail!.nama} (x{sp.qty})</td>
@@ -177,16 +186,31 @@ export const Payment: React.FC = () => {
                 </div>
               </div>
 
-              {/* Jasa Perbaikan */}
-              <div className="bg-[#f0f7ff] rounded-2xl p-5 mb-6 flex justify-between items-center border border-blue-100/50">
-                <div>
-                  <h3 className="font-bold text-gray-900 text-lg mb-1">Jasa Perbaikan<br/>Hardware</h3>
-                  <p className="text-xs text-gray-500">Biaya Pemeriksaan & Perbaikan</p>
+              {/* Jasa Perbaikan (Utama) */}
+              {!!order.biayaJasa && (
+                <div className="bg-[#f0f7ff] rounded-2xl p-5 mb-6 flex justify-between items-center border border-blue-100/50">
+                  <div>
+                    <h3 className="font-bold text-gray-900 text-lg mb-1">Jasa Perbaikan<br/>Utama</h3>
+                    <p className="text-xs text-gray-500">Biaya Pemeriksaan Dasar</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-bold text-blue-700 text-xl">Rp {order.biayaJasa.toLocaleString('id-ID')}</p>
+                  </div>
                 </div>
-                <div className="text-right">
-                  <p className="font-bold text-blue-700 text-xl">Rp {(order.biayaJasa ?? 0).toLocaleString('id-ID')}</p>
+              )}
+
+              {/* Custom Jasa Tambahan */}
+              {(order.jasa || []).map((j, idx) => (
+                <div key={`custom-jasa-${idx}`} className="bg-amber-50/30 rounded-2xl p-5 mb-6 flex justify-between items-center border border-amber-100/50">
+                  <div>
+                    <h3 className="font-bold text-gray-900 text-lg mb-1">{j.nama}</h3>
+                    <p className="text-xs text-amber-600">Jasa Tambahan</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-bold text-amber-700 text-xl">Rp {j.harga.toLocaleString('id-ID')}</p>
+                  </div>
                 </div>
-              </div>
+              ))}
 
               {/* Suku Cadang */}
               <div>
@@ -219,7 +243,7 @@ export const Payment: React.FC = () => {
               <div className="space-y-3 mb-6">
                 <div className="flex justify-between items-center text-sm">
                   <span className="text-gray-500 font-medium">Subtotal</span>
-                  <span className="text-gray-500">Rp {((order.biayaJasa ?? 0) + totalSparepartCost).toLocaleString('id-ID')}</span>
+                  <span className="text-gray-500">Rp {((order.biayaJasa ?? 0) + totalSparepartCost + totalCustomJasa).toLocaleString('id-ID')}</span>
                 </div>
                 <div className="flex justify-between items-center text-sm">
                   <span className="text-gray-500 font-medium">PPN (11%)</span>
