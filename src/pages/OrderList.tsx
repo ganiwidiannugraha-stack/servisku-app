@@ -242,7 +242,7 @@ export const OrderList: React.FC = () => {
                           <span className="font-bold text-gray-900">{order.noServis}</span>
                           {isTech && isMine && <span className="inline-flex items-center gap-1 text-[10px] font-bold text-blue-700 bg-blue-100 px-2 py-0.5 rounded w-max"><User size={10} /> TUGAS SAYA</span>}
                           {isTech && isUnassigned && <span className="inline-flex items-center gap-1 text-[10px] font-bold text-orange-700 bg-orange-100 px-2 py-0.5 rounded w-max">⚠️ MENUNGGU TEKNISI</span>}
-                          {isTech && isOthers && <span className="inline-flex items-center gap-1 text-[10px] font-bold text-gray-600 bg-gray-200 px-2 py-0.5 rounded w-max"><Lock size={10} /> {getTechnician(order.teknisiId)?.name?.split(' ')[0] || 'ORANG LAIN'}</span>}
+                          {isTech && isOthers && <span className="inline-flex items-center gap-1 text-[10px] font-bold text-gray-600 bg-gray-200 px-2 py-0.5 rounded w-max"><Lock size={10} /> {getTechnician(order.teknisiId || '')?.name?.split(' ')[0] || 'ORANG LAIN'}</span>}
                         </div>
                       </td>
                       <td className="px-6 py-5">

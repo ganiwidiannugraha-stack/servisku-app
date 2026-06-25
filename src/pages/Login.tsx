@@ -1,8 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, Navigate } from 'react-router-dom';
 import { useStore } from '../store';
-import { Button } from '../components/ui/Button';
-import { Input } from '../components/ui/Input';
 import { Eye, EyeOff, Wrench } from 'lucide-react';
 
 /**
