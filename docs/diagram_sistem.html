@@ -1,0 +1,128 @@
+<h1>Diagram Sistem (UML) ServisKu</h1>
+<p>Berikut adalah arsitektur logika dan alur sistem untuk memudahkan pemahaman teknis di masa depan.</p>
+<h2>1. Use Case Diagram</h2>
+<p>Diagram ini memetakan aktor (Admin/Pemilik) dan fitur-fitur yang bisa mereka akses dalam sistem.</p>
+<pre><code class="language-mermaid">usecaseDiagram
+    actor Admin
+    
+    rectangle &quot;Aplikasi ServisKu&quot; {
+        usecase &quot;Login Sistem&quot; as UC1
+        usecase &quot;Pantau Dashboard&quot; as UC2
+        usecase &quot;Kelola Order Servis&quot; as UC3
+        usecase &quot;Cetak Struk/Nota&quot; as UC4
+        usecase &quot;Hubungi Pelanggan via WA&quot; as UC5
+        usecase &quot;Kelola Stok &amp; Sparepart&quot; as UC6
+        usecase &quot;Mutasi Barang (Masuk/Keluar)&quot; as UC7
+        usecase &quot;Lihat &amp; Cetak Laporan&quot; as UC8
+        usecase &quot;Kelola Pengaturan Toko&quot; as UC9
+    }
+    
+    Admin --&gt; UC1
+    Admin --&gt; UC2
+    Admin --&gt; UC3
+    Admin --&gt; UC4
+    Admin --&gt; UC5
+    Admin --&gt; UC6
+    Admin --&gt; UC7
+    Admin --&gt; UC8
+    Admin --&gt; UC9
+    
+    UC4 ..&gt; UC3 : extends
+    UC5 ..&gt; UC3 : extends
+    UC7 ..&gt; UC6 : extends
+</code></pre>
+<hr>
+<h2>2. Activity Diagram: Alur Order Servis</h2>
+<p>Diagram ini menjelaskan <em>flow</em> dari pelanggan datang membawa perangkat rusak hingga selesai.</p>
+<pre><code class="language-mermaid">stateDiagram-v2
+    [*] --&gt; BuatOrderBaru: Pelanggan Datang
+    BuatOrderBaru --&gt; ANTRIAN: Masukkan Data &amp; Keluhan
+    
+    state &quot;Proses Diagnosa&quot; as Diagnosa {
+        ANTRIAN --&gt; PROSES: Teknisi Mengecek
+        PROSES --&gt; UpdateBiayaJasa: Tentukan Biaya Jasa
+    }
+    
+    state &quot;Pengerjaan&quot; as Kerja {
+        UpdateBiayaJasa --&gt; ButuhSparepart?
+        ButuhSparepart? --&gt; TambahSparepart: Ya
+        TambahSparepart --&gt; PotongStokOtomatis
+        PotongStokOtomatis --&gt; MENUNGGU_PART: Part Belum Ada / Diorder
+        MENUNGGU_PART --&gt; PROSES: Part Datang &amp; Dipasang
+        ButuhSparepart? --&gt; PROSES: Tidak (Hanya Jasa)
+    }
+    
+    PROSES --&gt; SIAP_DIAMBIL: Servis Selesai &amp; Lulus QC
+    SIAP_DIAMBIL --&gt; HubungiWA: Beri Tahu Pelanggan
+    HubungiWA --&gt; SELESAI: Pelanggan Ambil &amp; Bayar
+    SELESAI --&gt; CetakStruk
+    CetakStruk --&gt; [*]
+    
+    PROSES --&gt; BATAL: Servis Tidak Sanggup/Batal
+    BATAL --&gt; [*]
+</code></pre>
+<hr>
+<h2>3. Entity Relationship Diagram (ERD) / Data Model</h2>
+<p>Struktur relasi data dalam Store / Database.</p>
+<pre><code class="language-mermaid">erDiagram
+    CUSTOMER ||--o{ ORDER : &quot;memiliki&quot;
+    CUSTOMER {
+        string id PK
+        string nama
+        string noHp
+        string alamat
+        number totalServis
+        date terakhirServis
+    }
+
+    TECHNICIAN ||--o{ ORDER : &quot;menangani&quot;
+    TECHNICIAN {
+        string id PK
+        string name
+        string avatar
+        number rating
+        number jobs
+        boolean active
+    }
+
+    ORDER {
+        string id PK
+        string noServis
+        string pelangganId FK
+        string teknisiId FK
+        string jenisPerangkat
+        string keluhan
+        number estimasiBiaya
+        number biayaJasa
+        string status
+        date tanggalMasuk
+    }
+
+    ORDER ||--o{ ORDER_SPAREPART : &quot;menggunakan&quot;
+    ORDER_SPAREPART {
+        string orderId FK
+        string sparepartId FK
+        number qty
+    }
+
+    SPAREPART ||--o{ ORDER_SPAREPART : &quot;dibeli dalam&quot;
+    SPAREPART ||--o{ MUTASI_STOK : &quot;dicatat di&quot;
+    SPAREPART {
+        string id PK
+        string nama
+        string kategori
+        number stok
+        number minStok
+        number hargaModal
+        number hargaJual
+    }
+
+    MUTASI_STOK {
+        string id PK
+        string sparepartId FK
+        string tipe &quot;IN/OUT&quot;
+        number qty
+        number hargaBeli
+        date tanggal
+    }
+</code></pre>
