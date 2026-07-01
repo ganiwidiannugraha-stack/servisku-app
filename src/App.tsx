@@ -16,6 +16,7 @@ import { useStore } from './store';
 
 import { useEffect } from 'react';
 
+
 // Protected Route Wrapper
 const ProtectedRoute = () => {
   const { isAuthenticated } = useStore();
@@ -28,6 +29,9 @@ const ProtectedRoute = () => {
 };
 
 function App() {
+  const loadInitialData = useStore(
+    state => state.loadInitialData
+  );
   useEffect(() => {
     // Auto-inject 15 mock data if not present (Dev Only)
     const storeData = localStorage.getItem('servisku-storage');
@@ -42,6 +46,9 @@ function App() {
         // Abaikan error parse
       }
     }
+    loadInitialData()
+      // testConnection()
+      // seedCostumers()
   }, []);
 
   return (
