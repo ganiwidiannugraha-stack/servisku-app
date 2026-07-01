@@ -17,7 +17,9 @@ interface HeaderProps {
 export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
   const [query, setQuery] = useState('');
   const [isOpen, setIsOpen] = useState(false);
+  const [isNotifOpen, setIsNotifOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const notifRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
   const { orders, customers, spareparts, settings, userName, userRole } = useStore();
 
@@ -31,10 +33,17 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setIsOpen(false);
       }
+      if (notifRef.current && !notifRef.current.contains(event.target as Node)) {
+        setIsNotifOpen(false);
+      }
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  const unpaidOrdersCount = orders.filter(o => o.status === 'SIAP_DIAMBIL' || o.status === 'SELESAI').length;
+  const lowStockCount = spareparts.filter(s => s.stok <= (s.minStok || 5)).length;
+  const totalNotifications = unpaidOrdersCount + lowStockCount;
 
   const searchResults = () => {
     if (!query) return null;
@@ -166,12 +175,56 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
         </div>
       </div>
       <div className="flex items-center space-x-6">
-        <button className="relative p-2.5 text-gray-500 rounded-full hover:bg-gray-50 transition-colors">
-          <Bell size={20} />
-          {settings.enableNotifications && (
-            <span className="absolute top-2 right-2.5 w-2 h-2 bg-red-500 rounded-full ring-2 ring-white"></span>
+        <div className="relative" ref={notifRef}>
+          <button 
+            onClick={() => setIsNotifOpen(!isNotifOpen)}
+            className="relative p-2.5 text-gray-500 rounded-full hover:bg-gray-50 transition-colors"
+          >
+            <Bell size={20} />
+            {settings.enableNotifications && totalNotifications > 0 && (
+              <span className="absolute top-1.5 right-1.5 min-w-[18px] h-[18px] flex items-center justify-center bg-red-500 text-white text-[10px] font-bold rounded-full px-1 border-2 border-white">
+                {totalNotifications}
+              </span>
+            )}
+          </button>
+
+          {isNotifOpen && (
+            <div className="absolute right-0 top-full mt-2 w-80 bg-white border border-gray-200 rounded-2xl shadow-xl overflow-hidden animate-in fade-in slide-in-from-top-2 z-50">
+              <div className="p-4 border-b border-gray-100">
+                <h3 className="font-bold text-gray-900">Notifikasi</h3>
+              </div>
+              <div className="max-h-[350px] overflow-y-auto">
+                {unpaidOrdersCount > 0 && (
+                  <div className="p-4 border-b border-gray-50 hover:bg-gray-50 cursor-pointer transition-colors" onClick={() => { navigate('/order'); setIsNotifOpen(false); }}>
+                    <div className="flex items-start gap-3">
+                      <div className="mt-1.5 w-2 h-2 rounded-full bg-red-500 shrink-0"></div>
+                      <div>
+                        <p className="text-sm font-semibold text-gray-900">{unpaidOrdersCount} order selesai belum dibayar</p>
+                        <p className="text-xs text-gray-500 mt-0.5">Perlu konfirmasi pembayaran</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                {lowStockCount > 0 && (
+                  <div className="p-4 border-b border-gray-50 hover:bg-gray-50 cursor-pointer transition-colors" onClick={() => { navigate('/stok'); setIsNotifOpen(false); }}>
+                    <div className="flex items-start gap-3">
+                      <div className="mt-1.5 w-2 h-2 rounded-full bg-orange-500 shrink-0"></div>
+                      <div>
+                        <p className="text-sm font-semibold text-gray-900">{lowStockCount} spare part stok rendah</p>
+                        <p className="text-xs text-gray-500 mt-0.5">Segera lakukan restock</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                {totalNotifications === 0 && (
+                  <div className="p-6 text-center text-gray-500 text-sm">
+                    Belum ada notifikasi baru
+                  </div>
+                )}
+              </div>
+            </div>
           )}
-        </button>
+        </div>
         <div 
           className={`flex items-center space-x-3 group ${userRole === 'ADMIN' ? 'cursor-pointer' : 'cursor-default'}`} 
           onClick={() => userRole === 'ADMIN' && navigate('/pengaturan')}

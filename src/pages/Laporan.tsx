@@ -473,9 +473,16 @@ export const Laporan: React.FC = () => {
             <span className="text-gray-500 font-medium">
               Menampilkan {filteredTx.length} dari {metrics.txDetails.length} transaksi
             </span>
-            <div className="flex gap-2">
-              <button className="px-4 py-2 border border-gray-200 rounded-lg text-gray-600 font-medium hover:bg-gray-50 disabled:opacity-50">Sebelumnya</button>
-              <button className="px-4 py-2 border border-gray-200 rounded-lg text-gray-600 font-medium hover:bg-gray-50 disabled:opacity-50">Selanjutnya</button>
+            <div className="flex items-center gap-1 border border-gray-200 rounded-full p-1 shadow-sm bg-white">
+              <button disabled className="w-8 h-8 flex items-center justify-center rounded-full text-sm font-medium text-gray-500 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-100 transition-colors">
+                &larr;
+              </button>
+              <button className="w-8 h-8 flex items-center justify-center rounded-full text-sm font-bold bg-blue-600 text-white shadow-sm transition-colors">1</button>
+              <button className="w-8 h-8 flex items-center justify-center rounded-full text-sm font-bold text-gray-600 hover:bg-gray-100 transition-colors">2</button>
+              <button className="w-8 h-8 flex items-center justify-center rounded-full text-sm font-bold text-gray-600 hover:bg-gray-100 transition-colors">3</button>
+              <button className="w-8 h-8 flex items-center justify-center rounded-full text-sm font-medium text-gray-500 hover:bg-gray-100 transition-colors">
+                &rarr;
+              </button>
             </div>
           </div>
         </div>

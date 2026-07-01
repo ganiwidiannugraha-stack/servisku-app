@@ -184,8 +184,10 @@ export const Stok: React.FC = () => {
             <table className="w-full text-sm text-left">
               <thead className="text-gray-500 font-medium bg-gray-50/50 border-b border-gray-100">
                 <tr>
+                  <th className="px-6 py-4">SKU</th>
                   <th className="px-6 py-4">Nama Barang</th>
                   <th className="px-6 py-4">Kategori</th>
+                  <th className="px-6 py-4">Merek</th>
                   <th className="px-6 py-4 text-right">Harga Modal</th>
                   <th className="px-6 py-4 text-right">Harga Jual</th>
                   <th className="px-6 py-4 text-center">Keuntungan</th>
@@ -204,9 +206,14 @@ export const Stok: React.FC = () => {
                   return (
                     <tr key={item.id} className={`border-b border-gray-50 transition-colors ${isLowStock ? 'bg-red-50/30' : 'hover:bg-gray-50/50'}`}>
                       <td className="px-6 py-5">
+                        <span className="font-mono text-sm font-semibold text-gray-600 whitespace-nowrap">{item.id.toUpperCase()}</span>
+                      </td>
+                      <td className="px-6 py-5">
                         <p className="font-bold text-gray-900">{item.nama}</p>
+                        {item.rak && <p className="text-xs text-gray-400 mt-0.5">Lokasi: {item.rak}</p>}
                       </td>
                       <td className="px-6 py-5 font-medium text-gray-600">{item.kategori}</td>
+                      <td className="px-6 py-5 font-medium text-gray-600">{item.merek || '-'}</td>
                       <td className="px-6 py-5 text-right font-medium text-gray-600">
                         Rp {modal.toLocaleString('id-ID')}
                       </td>
@@ -261,23 +268,36 @@ export const Stok: React.FC = () => {
                 <p className="text-sm text-gray-500">
                   Menampilkan <span className="font-medium text-gray-900">{(currentPage - 1) * ITEMS_PER_PAGE + 1}</span> - <span className="font-medium text-gray-900">{Math.min(currentPage * ITEMS_PER_PAGE, filteredSpareparts.length)}</span> dari <span className="font-medium text-gray-900">{filteredSpareparts.length}</span> data
                 </p>
-                <div className="flex gap-2">
-                  <Button 
-                    variant="secondary" 
-                    size="sm" 
-                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                <div className="flex items-center gap-1 border border-gray-200 rounded-full p-1 shadow-sm bg-white">
+                  <button 
                     disabled={currentPage === 1}
+                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                    className="w-8 h-8 flex items-center justify-center rounded-full text-sm font-medium text-gray-500 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-100 transition-colors"
                   >
-                    Sebelumnya
-                  </Button>
-                  <Button 
-                    variant="secondary" 
-                    size="sm" 
-                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                    &larr;
+                  </button>
+                  
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                    <button
+                      key={page}
+                      onClick={() => setCurrentPage(page)}
+                      className={`w-8 h-8 flex items-center justify-center rounded-full text-sm font-bold transition-colors ${
+                        currentPage === page 
+                          ? 'bg-blue-600 text-white shadow-sm' 
+                          : 'text-gray-600 hover:bg-gray-100'
+                      }`}
+                    >
+                      {page}
+                    </button>
+                  ))}
+
+                  <button 
                     disabled={currentPage === totalPages}
+                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                    className="w-8 h-8 flex items-center justify-center rounded-full text-sm font-medium text-gray-500 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-100 transition-colors"
                   >
-                    Selanjutnya
-                  </Button>
+                    &rarr;
+                  </button>
                 </div>
               </div>
             )}
@@ -391,8 +411,11 @@ export const Stok: React.FC = () => {
               e.preventDefault();
               const formData = new FormData(e.currentTarget);
               addSparepart({
+                id: formData.get('id') as string,
                 nama: formData.get('nama') as string,
                 kategori: formData.get('kategori') as string,
+                merek: formData.get('merek') as string || undefined,
+                rak: formData.get('rak') as string || undefined,
                 hargaModal: Number(formData.get('hargaModal')),
                 harga: Number(formData.get('harga')),
                 stok: Number(formData.get('stok')),
@@ -402,13 +425,29 @@ export const Stok: React.FC = () => {
               setIsModalOpen(false);
             }}>
               <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Nama Barang</label>
-                  <input name="nama" type="text" required className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" />
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Kode SKU</label>
+                    <input name="id" type="text" required placeholder="Cth: RAM-8GB-01" className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 font-mono text-sm" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Nama Barang</label>
+                    <input name="nama" type="text" required className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" />
+                  </div>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Kategori</label>
                   <input name="kategori" type="text" required className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Merek (Opsional)</label>
+                    <input name="merek" type="text" className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Lokasi Rak (Opsional)</label>
+                    <input name="rak" type="text" className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" />
+                  </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>

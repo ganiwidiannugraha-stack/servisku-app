@@ -178,6 +178,29 @@ export const Payment: React.FC = () => {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           {/* KIRI - Rincian Tagihan */}
           <div className="lg:col-span-5 space-y-6">
+            
+            {/* Info Cards Top Left */}
+            <div className="grid grid-cols-2 gap-6">
+              <div className="bg-white rounded-3xl p-5 shadow-sm border border-gray-100 flex items-center gap-4">
+                <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center flex-shrink-0">
+                  <MonitorSmartphone size={24} />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-[10px] font-bold text-gray-400 tracking-wider uppercase mb-0.5">Perangkat</p>
+                  <p className="font-bold text-gray-900 text-sm truncate">{order.jenisPerangkat} {order.merkModel}</p>
+                </div>
+              </div>
+              <div className="bg-white rounded-3xl p-5 shadow-sm border border-gray-100 flex items-center gap-4">
+                <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center flex-shrink-0">
+                  <User size={24} />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-[10px] font-bold text-gray-400 tracking-wider uppercase mb-0.5">Pelanggan</p>
+                  <p className="font-bold text-gray-900 text-sm truncate">{customer.nama}</p>
+                </div>
+              </div>
+            </div>
+
             <div className="bg-white rounded-3xl p-8 shadow-sm border border-gray-100">
               <div className="flex justify-between items-center mb-6">
                 <h2 className="text-xl font-bold text-gray-900">Rincian Tagihan</h2>
@@ -343,27 +366,7 @@ export const Payment: React.FC = () => {
               </div>
             </div>
 
-            {/* Info Cards Bottom */}
-            <div className="grid grid-cols-2 gap-6">
-              <div className="bg-white rounded-3xl p-5 shadow-sm border border-gray-100 flex items-center gap-4">
-                <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center flex-shrink-0">
-                  <MonitorSmartphone size={24} />
-                </div>
-                <div>
-                  <p className="text-[10px] font-bold text-gray-400 tracking-wider uppercase mb-0.5">Perangkat</p>
-                  <p className="font-bold text-gray-900 text-sm truncate">{order.jenisPerangkat} {order.merkModel}</p>
-                </div>
-              </div>
-              <div className="bg-white rounded-3xl p-5 shadow-sm border border-gray-100 flex items-center gap-4">
-                <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center flex-shrink-0">
-                  <User size={24} />
-                </div>
-                <div>
-                  <p className="text-[10px] font-bold text-gray-400 tracking-wider uppercase mb-0.5">Pelanggan</p>
-                  <p className="font-bold text-gray-900 text-sm truncate">{customer.nama}</p>
-                </div>
-              </div>
-            </div>
+
 
           </div>
         </div>

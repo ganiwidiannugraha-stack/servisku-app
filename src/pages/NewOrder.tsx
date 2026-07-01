@@ -23,6 +23,7 @@ export const NewOrder: React.FC = () => {
     // Pelanggan
     namaPelanggan: '',
     noHpPelanggan: '',
+    emailPelanggan: '',
     alamat: '',
     // Perangkat
     jenisPerangkat: '',
@@ -40,6 +41,7 @@ export const NewOrder: React.FC = () => {
     teknisiId: '',
     // Internal
     catatanInternal: '',
+    prioritas: 'NORMAL' as 'NORMAL' | 'HIGH' | 'URGENT',
   });
 
   const [showExitConfirm, setShowExitConfirm] = useState(false);
@@ -67,6 +69,7 @@ export const NewOrder: React.FC = () => {
         pelangganId = addCustomer({
           nama: formData.namaPelanggan,
           noHp: formData.noHpPelanggan,
+          email: formData.emailPelanggan || undefined,
           alamat: formData.alamat,
         });
       }
@@ -87,6 +90,7 @@ export const NewOrder: React.FC = () => {
         pemeriksaanAwal: formData.pemeriksaanAwal,
         estimasiBiaya: Number(formData.estimasiBiaya) || 0,
         estimasiSelesai: formData.estimasiSelesai,
+        prioritas: formData.prioritas,
         teknisiId: formData.teknisiId || undefined,
         catatanInternal: formData.catatanInternal,
         status: 'MASUK',
@@ -138,27 +142,36 @@ export const NewOrder: React.FC = () => {
           <div className="p-6">
             <h2 className="text-sm font-medium text-gray-500 uppercase tracking-wide mb-4">Data Pelanggan</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Input
-                label="Nama Pelanggan"
-                required
-                placeholder="Mis: Budi Santoso"
-                value={formData.namaPelanggan}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  setFormData({ ...formData, namaPelanggan: val });
-                  if (val.length >= 3) {
-                    const existing = customers.find(c => c.nama.toLowerCase() === val.toLowerCase());
-                    if (existing) {
-                      setFormData(prev => ({
-                        ...prev,
-                        namaPelanggan: val, // maintain exactly what they typed or existing.nama
-                        noHpPelanggan: prev.noHpPelanggan || existing.noHp,
-                        alamat: prev.alamat || existing.alamat || ''
-                      }));
+              <div className="relative">
+                <Input
+                  label="Nama Pelanggan"
+                  required
+                  list="customer-names"
+                  placeholder="Ketik untuk mencari pelanggan..."
+                  value={formData.namaPelanggan}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setFormData({ ...formData, namaPelanggan: val });
+                    if (val.length >= 3) {
+                      const existing = customers.find(c => c.nama.toLowerCase() === val.toLowerCase());
+                      if (existing) {
+                        setFormData(prev => ({
+                          ...prev,
+                          namaPelanggan: val,
+                          noHpPelanggan: prev.noHpPelanggan || existing.noHp,
+                          emailPelanggan: prev.emailPelanggan || existing.email || '',
+                          alamat: prev.alamat || existing.alamat || ''
+                        }));
+                      }
                     }
-                  }
-                }}
-              />
+                  }}
+                />
+                <datalist id="customer-names">
+                  {customers.map(c => (
+                    <option key={c.id} value={c.nama}>{c.noHp}</option>
+                  ))}
+                </datalist>
+              </div>
               <Input
                 label="No. HP / WhatsApp"
                 required
@@ -174,12 +187,22 @@ export const NewOrder: React.FC = () => {
                       setFormData(prev => ({ 
                         ...prev, 
                         namaPelanggan: prev.namaPelanggan || existing.nama,
+                        emailPelanggan: prev.emailPelanggan || existing.email || '',
                         alamat: prev.alamat || existing.alamat || ''
                       }));
                     }
                   }
                 }}
               />
+              <div className="md:col-span-2">
+                <Input
+                  label="Email Pelanggan"
+                  type="email"
+                  placeholder="Mis: user@email.com (Opsional)"
+                  value={formData.emailPelanggan}
+                  onChange={(e) => setFormData({ ...formData, emailPelanggan: e.target.value })}
+                />
+              </div>
               <div className="md:col-span-2">
                 <label className="block mb-1 text-sm font-medium text-gray-700">Alamat</label>
                 <textarea
@@ -318,13 +341,27 @@ export const NewOrder: React.FC = () => {
                     />
                   </div>
                 </div>
-                <Input
-                  label="Estimasi Selesai (Opsional)"
-                  type="date"
-                  className="rounded-xl border-gray-300 py-2.5 bg-gray-50/50 hover:bg-white focus:bg-white transition-colors"
-                  value={formData.estimasiSelesai}
-                  onChange={(e) => setFormData({ ...formData, estimasiSelesai: e.target.value })}
-                />
+                <div className="grid grid-cols-2 gap-4">
+                  <Input
+                    label="Estimasi Selesai"
+                    type="date"
+                    className="rounded-xl border-gray-300 py-2.5 bg-gray-50/50 hover:bg-white focus:bg-white transition-colors"
+                    value={formData.estimasiSelesai}
+                    onChange={(e) => setFormData({ ...formData, estimasiSelesai: e.target.value })}
+                  />
+                  <div>
+                    <label className="block mb-1 text-sm font-medium text-gray-700">Prioritas</label>
+                    <select
+                      className="w-full py-2.5 px-3 text-sm border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent bg-gray-50/50 hover:bg-white focus:bg-white transition-colors"
+                      value={formData.prioritas}
+                      onChange={(e) => setFormData({ ...formData, prioritas: e.target.value as 'NORMAL' | 'HIGH' | 'URGENT' })}
+                    >
+                      <option value="NORMAL">Normal</option>
+                      <option value="HIGH">Tinggi</option>
+                      <option value="URGENT">Mendesak</option>
+                    </select>
+                  </div>
+                </div>
               </div>
             </div>
           </div>

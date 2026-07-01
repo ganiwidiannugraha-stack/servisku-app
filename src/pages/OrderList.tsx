@@ -6,12 +6,7 @@ import { EmptyState } from '../components/ui/EmptyState';
 import { Search, Filter, Calendar, ClipboardList, Eye, User, Lock, PlusCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 
-const getRelativeTime = (dateString: string) => {
-  const diffDays = Math.floor((new Date().getTime() - new Date(dateString).getTime()) / (1000 * 3600 * 24));
-  if (diffDays <= 0) return 'Hari ini';
-  if (diffDays === 1) return 'Kemarin';
-  return `${diffDays} hari lalu`;
-};
+
 
 export const OrderList: React.FC = () => {
   const navigate = useNavigate();
@@ -214,12 +209,12 @@ export const OrderList: React.FC = () => {
           <table className="w-full text-sm text-left">
             <thead className="text-xs text-gray-500 uppercase bg-gray-50/50 border-b border-gray-100">
               <tr>
-                <th className="px-6 py-4 font-semibold">NO. SERVIS</th>
+                <th className="px-6 py-4 font-semibold">NO. ORDER</th>
                 <th className="px-6 py-4 font-semibold">PELANGGAN</th>
                 <th className="px-6 py-4 font-semibold">PERANGKAT</th>
-                <th className="px-6 py-4 font-semibold">KELUHAN</th>
                 <th className="px-6 py-4 font-semibold text-center">STATUS</th>
-                <th className="px-6 py-4 font-semibold text-center">MASUK</th>
+                <th className="px-6 py-4 font-semibold text-center">PRIORITAS</th>
+                <th className="px-6 py-4 font-semibold">TIMELINE (WAKTU)</th>
                 <th className="px-6 py-4 font-semibold text-center">AKSI</th>
               </tr>
             </thead>
@@ -249,21 +244,38 @@ export const OrderList: React.FC = () => {
                         <p className="font-bold text-gray-900">{customer?.nama || 'Unknown'}</p>
                         <p className="text-xs text-gray-500 mt-0.5">{customer?.noHp}</p>
                       </td>
-                      <td className="px-6 py-5 text-gray-700 font-medium">
-                        {order.jenisPerangkat} - {order.merkModel}
-                      </td>
-                      <td className="px-6 py-5 text-gray-600 max-w-[200px] truncate">
-                        {order.keluhan}
+                      <td className="px-6 py-5">
+                        <p className="font-bold text-gray-900">{order.merkModel || order.jenisPerangkat}</p>
+                        <p className="text-xs text-gray-500 mt-0.5">{order.jenisPerangkat}</p>
                       </td>
                       <td className="px-6 py-5 text-center">
                         <span className={`inline-block px-3 py-1 rounded-full text-xs font-bold border ${getStatusColor(order.status)}`}>
                           {getStatusLabel(order.status)}
                         </span>
                       </td>
-                      <td className="px-6 py-5 text-center">
-                        <div className="flex flex-col items-center">
-                          <span className="text-gray-900 font-medium">{getRelativeTime(order.tanggalMasuk)}</span>
-                          <span className="text-xs text-gray-500 mt-0.5">{new Date(order.tanggalMasuk).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                      <td className="px-6 py-5 text-center text-sm">
+                        {order.prioritas === 'URGENT' ? <span className="text-red-600 font-bold">Mendesak</span> : 
+                         order.prioritas === 'HIGH' ? <span className="text-amber-600 font-bold">Tinggi</span> : 
+                         <span className="text-blue-600 font-bold">Normal</span>}
+                      </td>
+                      <td className="px-6 py-5 text-sm">
+                        <div className="flex flex-col gap-1.5">
+                          <div className="flex items-center gap-2">
+                            <span className="text-[10px] font-bold text-gray-400 uppercase w-12">Masuk</span>
+                            <span className="text-gray-700 font-medium">
+                              {new Date(order.tanggalMasuk).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-[10px] font-bold text-amber-500 uppercase w-12">Target</span>
+                            {order.estimasiSelesai ? (
+                              <span className="text-amber-700 font-medium bg-amber-50 px-1.5 py-0.5 rounded text-xs">
+                                {new Date(order.estimasiSelesai).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
+                              </span>
+                            ) : (
+                              <span className="text-gray-400 italic text-xs">-</span>
+                            )}
+                          </div>
                         </div>
                       </td>
                       <td className="px-6 py-5">
@@ -316,24 +328,39 @@ export const OrderList: React.FC = () => {
           </table>
         </div>
         {totalPages > 1 && (
-          <div className="px-6 py-4 border-t border-gray-100 flex items-center justify-between bg-gray-50/30">
+          <div className="px-6 py-5 border-t border-gray-100 flex items-center justify-between bg-white rounded-b-2xl">
             <span className="text-sm text-gray-500 font-medium">
-              Menampilkan {(currentPage - 1) * ITEMS_PER_PAGE + 1} - {Math.min(currentPage * ITEMS_PER_PAGE, filteredOrders.length)} dari {filteredOrders.length} data
+              Halaman {currentPage} dari {totalPages} ({filteredOrders.length} total)
             </span>
-            <div className="flex gap-2">
+            <div className="flex items-center gap-1 border border-gray-200 rounded-full p-1 shadow-sm">
               <button 
                 disabled={currentPage === 1}
                 onClick={() => setCurrentPage(p => p - 1)}
-                className="px-4 py-2 border border-gray-200 rounded-xl text-sm font-medium text-gray-600 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-100 bg-white transition-colors"
+                className="w-8 h-8 flex items-center justify-center rounded-full text-sm font-medium text-gray-500 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-100 transition-colors"
               >
-                Sebelumnya
+                &larr;
               </button>
+              
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                <button
+                  key={page}
+                  onClick={() => setCurrentPage(page)}
+                  className={`w-8 h-8 flex items-center justify-center rounded-full text-sm font-bold transition-colors ${
+                    currentPage === page 
+                      ? 'bg-blue-600 text-white shadow-sm' 
+                      : 'text-gray-600 hover:bg-gray-100'
+                  }`}
+                >
+                  {page}
+                </button>
+              ))}
+
               <button 
                 disabled={currentPage === totalPages}
                 onClick={() => setCurrentPage(p => p + 1)}
-                className="px-4 py-2 border border-gray-200 rounded-xl text-sm font-medium text-gray-600 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-100 bg-white transition-colors"
+                className="w-8 h-8 flex items-center justify-center rounded-full text-sm font-medium text-gray-500 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-100 transition-colors"
               >
-                Selanjutnya
+                &rarr;
               </button>
             </div>
           </div>

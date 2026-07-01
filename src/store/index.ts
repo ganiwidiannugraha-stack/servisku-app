@@ -14,6 +14,8 @@ export interface Customer {
   nama: string;
   /** Nomor telepon / WhatsApp yang valid (digunakan untuk notifikasi) */
   noHp: string;
+  /** Email pelanggan (opsional) */
+  email?: string;
   /** Alamat domisili pelanggan (opsional) */
   alamat?: string;
   /** Total kuantitas perangkat yang pernah diservis oleh pelanggan ini */
@@ -33,6 +35,10 @@ export interface Sparepart {
   nama: string;
   /** Kategori komponen (contoh: RAM, SSD, Layar) */
   kategori: string;
+  /** Merek atau Brand dari komponen (opsional) */
+  merek?: string;
+  /** Lokasi penyimpanan atau Rak di gudang (opsional) */
+  rak?: string;
   /** Jumlah kuantitas fisik yang tersedia di gudang saat ini */
   stok: number;
   /** Ambang batas stok minimum untuk memicu notifikasi peringatan (low stock) */
@@ -150,6 +156,8 @@ export interface Order {
   estimasiSelesai?: string;
   /** Log rahasia / Catatan pergantian *shift* antar pegawai dan kendala *sparepart* (hanya internal) */
   catatanInternal?: string;
+  /** Tingkat prioritas pesanan */
+  prioritas?: 'NORMAL' | 'HIGH' | 'URGENT';
   /** *Finite State Machine* dari tahapan proses operasional perbaikan perangkat */
   status: StatusOrder;
   /** Stempel waktu (Timestamp) masuknya order perangkat (ISO string) */
@@ -237,7 +245,7 @@ interface AppState {
    * Menambahkan sparepart baru ke dalam katalog.
    * @param sparepart - Data sparepart baru
    */
-  addSparepart: (sparepart: Omit<Sparepart, 'id'>) => void;
+  addSparepart: (sparepart: Sparepart) => void;
 
   /**
    * Mencatat mutasi stok (Stok Masuk / Stok Keluar).
@@ -253,6 +261,13 @@ interface AppState {
    * @returns String berupa ID pelanggan yang baru dibuat
    */
   addCustomer: (customer: Omit<Customer, 'id' | 'totalServis' | 'terakhirServis'>) => string;
+
+  /**
+   * Memperbarui data pelanggan.
+   * @param id - ID pelanggan
+   * @param updates - Data yang diubah
+   */
+  updateCustomer: (id: string, updates: Partial<Customer>) => void;
 
   /**
    * Memperbarui konfigurasi/pengaturan bengkel.
@@ -335,7 +350,7 @@ export const useStore = create<AppState>()(
         spareparts: state.spareparts.map(s => s.id === id ? { ...s, ...updates } : s)
       })),
       addSparepart: (newSparepartData) => set((state) => ({
-        spareparts: [...state.spareparts, { ...newSparepartData, id: `s${state.spareparts.length + 1}` }]
+        spareparts: [...state.spareparts, newSparepartData]
       })),
       tambahMutasiStok: (mutasiData) => set((state) => {
         const newMutasi: MutasiStok = {
@@ -375,20 +390,27 @@ export const useStore = create<AppState>()(
           spareparts
         };
       }),
-      addCustomer: (newCustomerData) => {
+      addCustomer: (customer) => {
         let newId = '';
         set((state) => {
           newId = `c${state.customers.length + 1}`;
-          const newCustomer: Customer = {
-            ...newCustomerData,
-            id: newId,
-            totalServis: 0,
-            terakhirServis: new Date().toISOString(),
+          return {
+            customers: [
+              ...state.customers,
+              {
+                ...customer,
+                id: newId,
+                totalServis: 0,
+                terakhirServis: new Date().toISOString()
+              }
+            ]
           };
-          return { customers: [...state.customers, newCustomer] };
         });
         return newId;
       },
+      updateCustomer: (id, updates) => set((state) => ({
+        customers: state.customers.map(c => c.id === id ? { ...c, ...updates } : c)
+      })),
       updateSettings: (updates) => set((state) => ({ 
         settings: { ...state.settings, ...updates } 
       })),
@@ -397,7 +419,7 @@ export const useStore = create<AppState>()(
       })),
     }),
     {
-      name: 'servisku-storage-v2',
+      name: 'servisku-storage-v4',
     }
   )
 );
