@@ -523,7 +523,7 @@ export const Laporan: React.FC = () => {
         checkPage(30);
         doc.setFontSize(11);
         doc.setTextColor(80);
-        doc.text('⚠ Daftar Stok Kritis (Perlu Restock):', 14, yPos);
+        doc.text('Daftar Stok Kritis (Perlu Restock):', 14, yPos);
         autoTable(doc, {
           startY: yPos + 3,
           head: [['Nama', 'Kategori', 'Sisa Stok', 'Min Stok']],
