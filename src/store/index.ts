@@ -488,6 +488,7 @@ export const useStore = create<AppState>()(
               ...newCustomerData,
               id: createdId,
               totalServis: 0,
+              terakhirServis: new Date().toISOString(),
             },
             ...state.customers,
           ],
