@@ -32,6 +32,8 @@ export interface Customer {
   nama: string;
   /** Nomor telepon / WhatsApp yang valid (digunakan untuk notifikasi) */
   noHp: string;
+  /** Email pelanggan (opsional) */
+  email?: string;
   /** Alamat domisili pelanggan (opsional) */
   alamat?: string;
   /** Total kuantitas perangkat yang pernah diservis oleh pelanggan ini */
@@ -51,6 +53,10 @@ export interface Sparepart {
   nama: string;
   /** Kategori komponen (contoh: RAM, SSD, Layar) */
   kategori: string;
+  /** Merek atau Brand dari komponen (opsional) */
+  merek?: string;
+  /** Lokasi penyimpanan atau Rak di gudang (opsional) */
+  rak?: string;
   /** Jumlah kuantitas fisik yang tersedia di gudang saat ini */
   stok: number;
   /** Ambang batas stok minimum untuk memicu notifikasi peringatan (low stock) */
@@ -168,6 +174,8 @@ export interface Order {
   estimasiSelesai?: string;
   /** Log rahasia / Catatan pergantian *shift* antar pegawai dan kendala *sparepart* (hanya internal) */
   catatanInternal?: string;
+  /** Tingkat prioritas pesanan */
+  prioritas?: 'NORMAL' | 'HIGH' | 'URGENT';
   /** *Finite State Machine* dari tahapan proses operasional perbaikan perangkat */
   status: StatusOrder;
   /** Stempel waktu (Timestamp) masuknya order perangkat (ISO string) */
