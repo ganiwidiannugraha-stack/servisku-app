@@ -91,10 +91,10 @@ export const Pengaturan: React.FC = () => {
     setShowUserForm(true);
   };
   
-  const handleSaveUser = (e: React.FormEvent) => {
+  const handleSaveUser = async (e: React.FormEvent) => {
     e.preventDefault();
     if (editingUserId) {
-      updateUser(editingUserId, {
+      await updateUser(editingUserId, {
         name: userFormData.name,
         username: userFormData.username,
         passwordHash: userFormData.password,
@@ -106,7 +106,7 @@ export const Pengaturan: React.FC = () => {
       logActivity('EDIT_USER', `Memperbarui data pengguna ${userFormData.username}`);
       toast.success('Pengguna berhasil diperbarui');
     } else {
-      addUser({
+      await addUser({
         name: userFormData.name,
         username: userFormData.username,
         passwordHash: userFormData.password,
@@ -123,15 +123,15 @@ export const Pengaturan: React.FC = () => {
     setShowUserForm(false);
   };
 
-  const handleToggleUserActive = (u: any) => {
-    updateUser(u.id, { isActive: !u.isActive });
+  const handleToggleUserActive = async (u: any) => {
+    await updateUser(u.id, { isActive: !u.isActive });
     logActivity('TOGGLE_USER', `Mengubah status aktif pengguna ${u.username} menjadi ${!u.isActive}`);
     toast.success(`Status ${u.username} berhasil diubah`);
   };
 
-  const handleDeleteUser = (id: string, username: string) => {
+  const handleDeleteUser = async (id: string, username: string) => {
     if (confirm(`Yakin ingin menghapus pengguna ${username}?`)) {
-      deleteUser(id);
+      await deleteUser(id);
       logActivity('DELETE_USER', `Menghapus pengguna ${username}`);
       toast.success('Pengguna berhasil dihapus');
     }
@@ -139,20 +139,20 @@ export const Pengaturan: React.FC = () => {
 
   if (!currentUser) return <Navigate to="/login" />;
 
-  const handleSaveProfile = (e: React.FormEvent) => {
+  const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
-    updateProfile(profileData);
+    await updateProfile(profileData);
     logActivity('UPDATE_PROFILE', 'Memperbarui profil pribadi');
     toast.success('Profil berhasil disimpan');
   };
 
-  const handleChangePassword = (e: React.FormEvent) => {
+  const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
     if (passData.new !== passData.confirm) {
       toast.error('Konfirmasi kata sandi tidak cocok!');
       return;
     }
-    const success = changePassword(passData.old, passData.new);
+    const success = await changePassword(passData.old, passData.new);
     if (success) {
       toast.success('Kata sandi berhasil diubah');
       setPassData({ old: '', new: '', confirm: '' });

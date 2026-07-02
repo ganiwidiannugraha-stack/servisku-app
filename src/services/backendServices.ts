@@ -1,7 +1,20 @@
 import { supabase } from "../lib/supabase";
 import { DEFAULT_SETTINGS, MOCK_CUSTOMERS, MOCK_MUTASISTOK, MOCK_ORDERS, MOCK_SPAREPARTS, MOCK_TECHNICIANS } from "../store/mockData";
-import type { Customer, MutasiStok, Order, Settings, Sparepart, Technician } from "../store";
+import type { AppUser, Customer, MutasiStok, Order, Settings, Sparepart, Technician } from "../store";
 import type { StatusOrder } from "../components/ui/StatusBadge";
+
+type UserRow = {
+  id: string;
+  username: string;
+  password_hash: string;
+  role: AppUser["role"];
+  name: string;
+  email: string | null;
+  phone: string | null;
+  position: string | null;
+  avatar: string | null;
+  is_active: boolean;
+};
 
 type CustomerRow = {
   id: string;
@@ -80,6 +93,35 @@ type SettingsRow = {
 };
 
 const settingsId = "default";
+
+const mapUser = (row: UserRow): AppUser => ({
+  id: row.id,
+  username: row.username,
+  passwordHash: row.password_hash,
+  role: row.role,
+  name: row.name,
+  email: row.email || "",
+  phone: row.phone || "",
+  position: row.position || "",
+  avatar: row.avatar || row.name.charAt(0),
+  isActive: row.is_active,
+});
+
+const toUserRow = (user: Omit<AppUser, "id">, id?: string): Partial<UserRow> => {
+  const row: Partial<UserRow> = {
+    username: user.username,
+    password_hash: user.passwordHash,
+    role: user.role,
+    name: user.name,
+    email: user.email || null,
+    phone: user.phone || null,
+    position: user.position || null,
+    avatar: user.avatar || null,
+    is_active: user.isActive,
+  };
+  if (id) row.id = id;
+  return row;
+};
 
 const mapCustomer = (row: CustomerRow): Customer => ({
   id: row.id,
@@ -458,5 +500,41 @@ export async function updateSettingsDB(updates: Partial<Settings>) {
   if (updates.enableNotifications !== undefined) payload.enable_notifications = updates.enableNotifications;
 
   const { error } = await supabase.from("settings").update(payload).eq("id", settingsId);
+  if (error) throw error;
+}
+
+// ==========================================
+// USERS CRUD
+// ==========================================
+export async function getUsers() {
+  const { data, error } = await supabase.from("users").select("*");
+  if (error) throw error;
+  return (data || []).map((row) => mapUser(row as UserRow));
+}
+
+export async function createUserDB(user: Omit<AppUser, "id">) {
+  const { data, error } = await supabase.from("users").insert(toUserRow(user)).select("id").single();
+  if (error) throw error;
+  return data.id as string;
+}
+
+export async function updateUserDB(id: string, updates: Partial<AppUser>) {
+  const payload: Partial<UserRow> = {};
+  if (updates.username !== undefined) payload.username = updates.username;
+  if (updates.passwordHash !== undefined) payload.password_hash = updates.passwordHash;
+  if (updates.role !== undefined) payload.role = updates.role;
+  if (updates.name !== undefined) payload.name = updates.name;
+  if (updates.email !== undefined) payload.email = updates.email || null;
+  if (updates.phone !== undefined) payload.phone = updates.phone || null;
+  if (updates.position !== undefined) payload.position = updates.position || null;
+  if (updates.avatar !== undefined) payload.avatar = updates.avatar || null;
+  if (updates.isActive !== undefined) payload.is_active = updates.isActive;
+
+  const { error } = await supabase.from("users").update(payload).eq("id", id);
+  if (error) throw error;
+}
+
+export async function deleteUserDB(id: string) {
+  const { error } = await supabase.from("users").delete().eq("id", id);
   if (error) throw error;
 }

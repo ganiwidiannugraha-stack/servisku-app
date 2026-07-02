@@ -28,8 +28,13 @@ CREATE TABLE users (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     username TEXT UNIQUE NOT NULL,
     password_hash TEXT NOT NULL,
-    role TEXT NOT NULL CHECK (role IN ('OWNER', 'ADMIN', 'TEKNISI')),
+    role TEXT NOT NULL CHECK (role IN ('OWNER', 'ADMIN', 'FRONTLINE', 'FINANCE', 'INVENTORY', 'TEKNISI')),
     name TEXT NOT NULL,
+    email TEXT,
+    phone TEXT,
+    position TEXT,
+    avatar TEXT,
+    is_active BOOLEAN DEFAULT true NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
@@ -196,5 +201,13 @@ INSERT INTO spareparts (id, nama, kategori, merek, rak, stok, min_stok, harga_mo
 -- Insert Default Settings
 INSERT INTO settings (shop_name, owner_name, address, phone, printer_width, enable_wa, enable_notifications) VALUES
 ('ServisKu Repair', 'Pak Teten', 'Jl. Teknologi No. 123, Jakarta', '081234567890', '58mm', true, true);
+
+-- Insert Default Users
+INSERT INTO users (username, password_hash, role, name, position, avatar) VALUES
+('owner', 'owner', 'OWNER', 'Bos Owner', 'Pemilik Bengkel', 'B'),
+('frontline', 'frontline', 'FRONTLINE', 'Sari Kasir', 'Kasir Depan', 'S'),
+('teknisi', 'teknisi', 'TEKNISI', 'Deni Setiawan', 'Teknisi Utama', 'D'),
+('inventory', 'inventory', 'INVENTORY', 'Agus Gudang', 'Admin Gudang', 'A'),
+('finance', 'finance', 'FINANCE', 'Rina Keuangan', 'Staf Keuangan', 'R');
 
 -- Selesai!

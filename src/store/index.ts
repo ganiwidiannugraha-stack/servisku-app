@@ -20,6 +20,10 @@ import {
   updateTechnicianDB,
   updateSettingsDB,
   deleteCustomerDB,
+  getUsers,
+  createUserDB,
+  updateUserDB,
+  deleteUserDB,
 } from "../services/backendServices";
 /**
  * Entitas Pelanggan (Customer).
@@ -255,12 +259,12 @@ interface AppState {
   
   logActivity: (action: string, details: string) => void;
   clearLogs: () => void;
-  updateProfile: (updates: Partial<AppUser>) => void;
-  changePassword: (oldPass: string, newPass: string) => boolean;
-  resetUserPassword: (id: string, newPass: string) => void;
-  addUser: (user: Omit<AppUser, 'id'>) => void;
-  deleteUser: (id: string) => void;
-  updateUser: (id: string, updates: Partial<AppUser>) => void;
+  updateProfile: (updates: Partial<AppUser>) => Promise<void>;
+  changePassword: (oldPass: string, newPass: string) => Promise<boolean>;
+  resetUserPassword: (id: string, newPass: string) => Promise<void>;
+  addUser: (user: Omit<AppUser, 'id'>) => Promise<void>;
+  deleteUser: (id: string) => Promise<void>;
+  updateUser: (id: string, updates: Partial<AppUser>) => Promise<void>;
 
   /**
    * Melakukan proses login admin.
@@ -363,16 +367,17 @@ export const useStore = create<AppState>()(
         try {
           await seedBackendDataIfEmpty();
 
-          const [customers, spareparts, orders, mutasiStok, technicians, settings] = await Promise.all([
+          const [customers, spareparts, orders, mutasiStok, technicians, settings, users] = await Promise.all([
             getCustomers(),
             getSpareparts(),
             getOrders(),
             getMutasiStok(),
             getTechnicians(),
             getSettings(),
+            getUsers(),
           ]);
 
-          set({ customers, spareparts, orders, mutasiStok, technicians, settings });
+          set({ customers, spareparts, orders, mutasiStok, technicians, settings, users });
         } catch (error) {
           console.error(error);
         }
@@ -404,28 +409,7 @@ export const useStore = create<AppState>()(
       userId: null,
       userName: null,
 
-      users: [
-        {
-          id: 'u1', username: 'owner', passwordHash: 'owner', role: 'OWNER', 
-          name: 'Bapak Owner', email: 'owner@servisku.id', phone: '0811111111', position: 'Pemilik Bengkel', avatar: '', isActive: true
-        },
-        {
-          id: 'u2', username: 'frontline', passwordHash: 'frontline', role: 'FRONTLINE', 
-          name: 'Mbak Kasir', email: 'kasir@servisku.id', phone: '0822222222', position: 'Customer Service', avatar: '', isActive: true
-        },
-        {
-          id: 'u3', username: 'finance', passwordHash: 'finance', role: 'FINANCE', 
-          name: 'Mas Keuangan', email: 'finance@servisku.id', phone: '0833333333', position: 'Admin Keuangan', avatar: '', isActive: true
-        },
-        {
-          id: 'u4', username: 'inventory', passwordHash: 'inventory', role: 'INVENTORY', 
-          name: 'Pak Gudang', email: 'gudang@servisku.id', phone: '0844444444', position: 'Admin Gudang', avatar: '', isActive: true
-        },
-        {
-          id: 'u5', username: 'teknisi', passwordHash: 'teknisi', role: 'TEKNISI', 
-          name: 'Deni Setiawan', email: 'teknisi@servisku.id', phone: '0855555555', position: 'Teknisi Senior', avatar: '', isActive: true
-        }
-      ],
+      users: [],
       auditLogs: [],
 
       clearLogs: () => set({ auditLogs: [] }),
@@ -450,63 +434,69 @@ export const useStore = create<AppState>()(
         return { auditLogs: [newLog, ...filteredLogs] };
       }),
       
-      updateProfile: (updates) => set(state => {
-        if (!state.userId) return {};
-        const nextUsers = state.users.map(u => u.id === state.userId ? { ...u, ...updates } : u);
-        // Sync profile name to global userName
+      updateProfile: async (updates) => {
+        const state = get();
+        if (!state.userId) return;
+        await updateUserDB(state.userId, updates);
+        const users = await getUsers();
         const newUserName = updates.name !== undefined ? updates.name : state.userName;
-        return { users: nextUsers, userName: newUserName };
-      }),
-      
-      changePassword: (oldPass, newPass) => {
-        let success = false;
-        set(state => {
-          if (!state.userId) return {};
-          const user = state.users.find(u => u.id === state.userId);
-          if (user && user.passwordHash === oldPass) {
-            success = true;
-            const nextUsers = state.users.map(u => u.id === state.userId ? { ...u, passwordHash: newPass } : u);
-            return { users: nextUsers };
-          }
-          return {};
-        });
-        return success;
+        set({ users, userName: newUserName });
       },
       
-      addUser: (user) => set(state => ({ users: [...state.users, { ...user, id: `u_${Date.now()}` }] })),
-      deleteUser: (id) => set(state => ({ users: state.users.filter(u => u.id !== id) })),
-      updateUser: (id, updates) => set(state => ({
-        users: state.users.map(u => u.id === id ? { ...u, ...updates } : u)
-      })),
-      resetUserPassword: (id, newPass) => set(state => ({
-        users: state.users.map(u => u.id === id ? { ...u, passwordHash: newPass } : u)
-      })),
+      changePassword: async (oldPass, newPass) => {
+        const state = get();
+        if (!state.userId) return false;
+        const user = state.users.find(u => u.id === state.userId);
+        if (user && user.passwordHash === oldPass) {
+          await updateUserDB(state.userId, { passwordHash: newPass });
+          const users = await getUsers();
+          set({ users });
+          return true;
+        }
+        return false;
+      },
+      
+      addUser: async (user) => {
+        await createUserDB(user);
+        const users = await getUsers();
+        set({ users });
+      },
+      deleteUser: async (id) => {
+        await deleteUserDB(id);
+        const users = await getUsers();
+        set({ users });
+      },
+      updateUser: async (id, updates) => {
+        await updateUserDB(id, updates);
+        const users = await getUsers();
+        set({ users });
+      },
+      resetUserPassword: async (id, newPass) => {
+        await updateUserDB(id, { passwordHash: newPass });
+        const users = await getUsers();
+        set({ users });
+      },
 
       login: async (username, pass) => {
-        // Simulasi delay jaringan
-        await new Promise((resolve) => setTimeout(resolve, 800));
-
-        // RBAC Logic from Users
-        let success = false;
-        set(state => {
-          const user = state.users.find(u => u.username === username && u.passwordHash === pass && u.isActive);
-          if (user) {
-            success = true;
-            return {
-              isAuthenticated: true,
-              userRole: user.role,
-              userId: user.id,
-              userName: user.name,
-            };
-          }
-          return {};
-        });
+        // Karena users mungkin belum ter-load jika login pertama kali (sebelum app mount full),
+        // ambil langsung dari DB untuk pengecekan login:
+        const dbUsers = await getUsers();
+        set({ users: dbUsers }); // Update state sekalian
         
-        if (success) {
+        const user = dbUsers.find(u => u.username === username && u.passwordHash === pass && u.isActive);
+        
+        if (user) {
+          set({
+            isAuthenticated: true,
+            userRole: user.role,
+            userId: user.id,
+            userName: user.name,
+          });
           get().logActivity("LOGIN", "Pengguna masuk ke sistem");
+          return true;
         }
         
-        return success;
+        return false;
       },
 
       logout: () => {
