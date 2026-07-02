@@ -52,21 +52,28 @@ export const Dashboard: React.FC = () => {
 
   // Pie chart data based on devices
   const pieData = useMemo(() => {
-    let laptop = 0, hp = 0, printer = 0;
-    orders.forEach(o => {
-      const j = o.jenisPerangkat.toLowerCase();
-      if (j.includes('laptop') || j.includes('komputer')) laptop++;
-      else if (j.includes('hp') || j.includes('handphone')) hp++;
-      else if (j.includes('printer')) printer++;
-    });
-    if (laptop === 0 && hp === 0 && printer === 0) {
+    if (orders.length === 0) {
       return [{ name: 'Belum Ada Data', value: 1, color: '#e5e7eb' }];
     }
-    return [
-      { name: 'Laptop', value: laptop, color: '#2563eb' },
-      { name: 'HP', value: hp, color: '#60a5fa' },
-      { name: 'Printer', value: printer, color: '#bfdbfe' }
-    ];
+
+    const counts: Record<string, number> = {};
+    orders.forEach(o => {
+      // Normalize string: Trim whitespace and Capitalize first letter
+      const raw = o.jenisPerangkat?.trim() || 'Lainnya';
+      const category = raw.charAt(0).toUpperCase() + raw.slice(1).toLowerCase();
+      counts[category] = (counts[category] || 0) + 1;
+    });
+
+    // Preset colors for nice gradient/variety
+    const colors = ['#2563eb', '#3b82f6', '#60a5fa', '#93c5fd', '#bfdbfe', '#8b5cf6', '#a78bfa', '#c4b5fd'];
+    
+    return Object.entries(counts)
+      .sort((a, b) => b[1] - a[1]) // Sort descending by count
+      .map(([name, value], index) => ({
+        name,
+        value,
+        color: colors[index % colors.length]
+      }));
   }, [orders]);
 
   // Generate 7-day activity and revenue data
