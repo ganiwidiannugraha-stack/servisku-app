@@ -65,17 +65,43 @@ VITE_SUPABASE_PUBLISHABLE_KEY=eyJh...<ANON_KEY>
 
 > **Catatan Keamanan:** Jangan pernah menaruh `.env` ke *Version Control* (GitHub). File ini sudah dimasukkan ke `.gitignore`.
 
-## 🚦 Menjalankan Proyek secara Lokal
+## 🚦 Panduan Setup untuk Kolaborator (Developer)
 
+Ikuti langkah-langkah berikut agar aplikasi bisa berjalan sempurna di komputermu dengan database Supabase yang asli.
+
+### 1. Tarik (Pull) Kode Terbaru
+Pastikan kamu memiliki versi terbaru dari repository ini:
 ```bash
-# 1. Install dependencies
+git pull origin main
+```
+
+### 2. Install Dependensi Baru
+Terdapat tambahan library untuk fitur PDF, Excel, dan Grafik. Wajib menjalankan:
+```bash
 npm install
+```
 
-# 2. Jalankan development server (Vite)
+### 3. Setup Database Supabase
+Kamu tidak perlu merancang tabel secara manual.
+1. Buka dashboard proyek **Supabase** kalian.
+2. Masuk ke menu **SQL Editor**.
+3. Buka file **`supabase_schema.sql`** yang ada di repository ini.
+4. *Copy* seluruh isinya, *paste* ke SQL Editor Supabase, lalu klik **Run**.
+
+### 4. Hubungkan Aplikasi ke Database (Variabel Lingkungan)
+Aplikasi butuh akses ke Supabase untuk membaca dan menulis data.
+1. Buat file baru bernama **`.env`** di root folder (sejajar dengan `package.json`).
+2. Isi dengan URL dan API Key proyek Supabase kalian:
+```env
+VITE_SUPABASE_URL=https://<ID_PROJECT>.supabase.co
+VITE_SUPABASE_PUBLISHABLE_KEY=eyJh...<API_KEY_ANON>
+```
+*(Catatan: Ambil URL dan Key ini dari dashboard Supabase: Project Settings > API).*
+
+### 5. Jalankan Aplikasi
+Setelah semuanya siap, jalankan server pengembangan lokal:
+```bash
 npm run dev
-
-# 3. Build untuk production
-npm run build
 ```
 
 ## 👥 Sistem Akun (Role-Based Demo)
