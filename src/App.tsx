@@ -4,6 +4,7 @@ import { Toaster } from 'react-hot-toast';
 import { lazy, Suspense, useEffect } from 'react';
 
 import { PageWrapper } from './components/layout/PageWrapper';
+import { ErrorBoundary } from './components/ui/ErrorBoundary';
 import { useStore } from './store';
 import {
   SplashLoader,
@@ -60,8 +61,9 @@ function App() {
   }, []);
 
   return (
-    <BrowserRouter>
-      <Toaster position="top-center" containerStyle={{ top: 140 }} />
+    <ErrorBoundary>
+      <BrowserRouter>
+        <Toaster position="top-center" containerStyle={{ top: 140 }} />
       <Routes>
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
 
@@ -101,6 +103,7 @@ function App() {
         />
       </Routes>
     </BrowserRouter>
+    </ErrorBoundary>
   );
 }
 
