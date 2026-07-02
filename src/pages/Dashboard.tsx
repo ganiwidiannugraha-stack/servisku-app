@@ -10,8 +10,10 @@ const formatDateShort = (d: Date) => d.toLocaleDateString('id-ID', { day: 'numer
 
 export const Dashboard: React.FC = () => {
   const navigate = useNavigate();
-  const { orders, spareparts, customers, userRole, userId, users } = useStore();
+  const { orders, spareparts, customers, userRole, userId, users, technicians } = useStore();
   const currentUser = users.find(u => u.id === userId);
+  const currentTech = currentUser ? technicians.find(t => t.name === currentUser.name) : undefined;
+  const technicianId = currentTech?.id;
 
   const containerVariants: Variants = {
     hidden: { opacity: 0 },
@@ -30,8 +32,8 @@ export const Dashboard: React.FC = () => {
   // TEKNISI DASHBOARD LOGIC
   // ---------------------------------------------------------
   if (userRole === 'TEKNISI') {
-    const myTasks = orders.filter(o => o.teknisiId === userId && (o.status === 'PROSES' || o.status === 'DIAGNOSA'));
-    const myDoneTasks = orders.filter(o => o.teknisiId === userId && o.status === 'SELESAI');
+    const myTasks = orders.filter(o => o.teknisiId === technicianId && (o.status === 'PROSES' || o.status === 'DIAGNOSA'));
+    const myDoneTasks = orders.filter(o => o.teknisiId === technicianId && o.status === 'SELESAI');
     
     return (
       <motion.div 

@@ -544,7 +544,7 @@ export const useStore = create<AppState>()(
         set((state) => {
           const newMutasi: MutasiStok = {
             ...mutasiData,
-            id: `m${Date.now()}`,
+            id: crypto.randomUUID(),
             tanggal: new Date().toISOString(),
           };
 
@@ -629,7 +629,7 @@ export const useStore = create<AppState>()(
       addOrder: (newOrderData) =>
         set((state) => {
           // ✅ ID unik berbasis timestamp untuk mencegah collision saat data dihapus/di-reload
-          const newId = `o_${Date.now()}`;
+          const newId = crypto.randomUUID();
           const date = new Date();
           const dateString = date.toISOString().split("T")[0].replace(/-/g, "");
           // ✅ Nomor servis unik berbasis timestamp (6 digit terakhir) — bukan length array

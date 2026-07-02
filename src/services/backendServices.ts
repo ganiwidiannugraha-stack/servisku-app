@@ -276,7 +276,7 @@ export async function getCustomers() {
 }
 
 export async function createCustomer(customer: Omit<Customer, "id" | "totalServis" | "terakhirServis">) {
-  const id = `c${Date.now()}`;
+  const id = crypto.randomUUID();
   const { error } = await supabase.from("customers").insert(toCustomerRow(customer, id));
   if (error) throw error;
   return id;

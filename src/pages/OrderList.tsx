@@ -10,7 +10,12 @@ import toast from 'react-hot-toast';
 
 export const OrderList: React.FC = () => {
   const navigate = useNavigate();
-  const { orders, customers, userRole, userId, technicians, updateOrder } = useStore();
+  const { orders, customers, userRole, userId, users, technicians, updateOrder } = useStore();
+  
+  const currentUser = users.find(u => u.id === userId);
+  const currentTech = currentUser ? technicians.find(t => t.name === currentUser.name) : undefined;
+  const technicianId = currentTech?.id;
+
   const [activeTab, setActiveTab] = useState<'AKTIF' | 'SELESAI'>('AKTIF');
   const [techFilter, setTechFilter] = useState<'ALL' | 'MINE' | 'UNASSIGNED'>('ALL');
   const [searchTerm, setSearchTerm] = useState('');
@@ -23,8 +28,8 @@ export const OrderList: React.FC = () => {
   const getTechnician = (id: string) => technicians.find(t => t.id === id);
 
   const handleAmbilAlih = (orderId: string) => {
-    if (userId) {
-      updateOrder(orderId, { teknisiId: userId });
+    if (technicianId) {
+      updateOrder(orderId, { teknisiId: technicianId });
       toast.success('Pekerjaan berhasil diambil alih!');
     }
   };
@@ -45,7 +50,7 @@ export const OrderList: React.FC = () => {
     
     let matchesTech = true;
     if (userRole === 'TEKNISI' && activeTab === 'AKTIF') {
-      if (techFilter === 'MINE') matchesTech = order.teknisiId === userId;
+      if (techFilter === 'MINE') matchesTech = order.teknisiId === technicianId;
       if (techFilter === 'UNASSIGNED') matchesTech = !order.teknisiId;
     }
     
@@ -98,7 +103,7 @@ export const OrderList: React.FC = () => {
           <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Daftar Order Servis</h1>
           <p className="mt-1 text-gray-500 font-medium">Kelola semua perangkat servis pelanggan.</p>
         </div>
-        {['OWNER', 'FRONTLINE'].includes(userRole || '') && (
+        {['OWNER', 'FRONTLINE', 'ADMIN'].includes(userRole || '') && (
           <button 
             onClick={() => navigate('/order/baru')} 
             className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl font-semibold transition-colors flex items-center gap-2 shadow-sm"
@@ -224,9 +229,9 @@ export const OrderList: React.FC = () => {
                   const customer = getCustomer(order.pelangganId);
                   
                   const isTech = userRole === 'TEKNISI';
-                  const isMine = isTech && order.teknisiId === userId;
+                  const isMine = isTech && order.teknisiId === technicianId;
                   const isUnassigned = isTech && !order.teknisiId;
-                  const isOthers = isTech && order.teknisiId && order.teknisiId !== userId;
+                  const isOthers = isTech && order.teknisiId && order.teknisiId !== technicianId;
                   
                   const rowClass = isOthers ? 'border-b border-gray-50 opacity-60 bg-gray-50' : 'border-b border-gray-50 hover:bg-gray-50/50 transition-colors';
 

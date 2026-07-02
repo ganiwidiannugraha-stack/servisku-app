@@ -189,7 +189,7 @@ export const Pengaturan: React.FC = () => {
               <UserCircle size={18} /> Profil Saya
             </button>
 
-            {userRole === 'OWNER' && (
+            {['OWNER', 'ADMIN'].includes(userRole || '') && (
               <>
                 <button
                   onClick={() => setActiveTab('toko')}
@@ -204,7 +204,7 @@ export const Pengaturan: React.FC = () => {
                   <Bell size={18} /> Notifikasi
                 </button>
                 <div className="my-2 border-t border-gray-200"></div>
-                <h3 className="px-4 py-2 text-xs font-bold text-gray-400 uppercase tracking-wider">Manajemen (Owner)</h3>
+                <h3 className="px-4 py-2 text-xs font-bold text-gray-400 uppercase tracking-wider">Manajemen (Owner/Admin)</h3>
                 <button
                   onClick={() => setActiveTab('akun')}
                   className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-colors ${activeTab === 'akun' ? 'bg-blue-50 text-blue-700' : 'text-gray-600 hover:bg-gray-100'}`}
@@ -299,7 +299,7 @@ export const Pengaturan: React.FC = () => {
             </motion.div>
             )}
 
-            {activeTab === 'toko' && userRole === 'OWNER' && (
+            {activeTab === 'toko' && ['OWNER', 'ADMIN'].includes(userRole || '') && (
               <motion.form key="toko" onSubmit={handleSaveToko} variants={tabVariants} initial="hidden" animate="show" exit="exit" className="space-y-6">
               <div className="border-b border-gray-100 pb-4">
                 <h2 className="text-xl font-bold text-[#1e3a8a]">Informasi Bengkel</h2>
@@ -331,7 +331,7 @@ export const Pengaturan: React.FC = () => {
             </motion.form>
             )}
 
-            {activeTab === 'notifikasi' && userRole === 'OWNER' && (
+            {activeTab === 'notifikasi' && ['OWNER', 'ADMIN'].includes(userRole || '') && (
               <motion.div key="notifikasi" variants={tabVariants} initial="hidden" animate="show" exit="exit" className="space-y-6">
               <div className="border-b border-gray-100 pb-4">
                 <h2 className="text-xl font-bold text-[#1e3a8a]">Notifikasi & Fitur Tambahan</h2>
@@ -375,7 +375,7 @@ export const Pengaturan: React.FC = () => {
             </motion.div>
             )}
 
-            {activeTab === 'akun' && userRole === 'OWNER' && (
+            {activeTab === 'akun' && ['OWNER', 'ADMIN'].includes(userRole || '') && (
               <motion.div key="akun" variants={tabVariants} initial="hidden" animate="show" exit="exit" className="space-y-6">
               <div className="flex justify-between items-start border-b border-gray-100 pb-4">
                 <div>
@@ -469,7 +469,7 @@ export const Pengaturan: React.FC = () => {
             </motion.div>
             )}
 
-            {activeTab === 'log' && userRole === 'OWNER' && (
+            {activeTab === 'log' && ['OWNER', 'ADMIN'].includes(userRole || '') && (
               <motion.div key="log" variants={tabVariants} initial="hidden" animate="show" exit="exit" className="space-y-6">
               <div className="flex justify-between items-start border-b border-gray-100 pb-4">
                 <div>

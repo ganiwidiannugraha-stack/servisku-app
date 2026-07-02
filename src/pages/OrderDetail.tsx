@@ -140,7 +140,11 @@ const getAvailableStatusOptions = (currentStatus: StatusOrder | undefined): Stat
 export const OrderDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { orders, customers, spareparts, technicians, updateOrderStatus, updateOrder, userRole, userId } = useStore();
+  const { orders, customers, spareparts, technicians, updateOrderStatus, updateOrder, userRole, userId, users } = useStore();
+  
+  const currentUser = users.find(u => u.id === userId);
+  const currentTech = currentUser ? technicians.find(t => t.name === currentUser.name) : undefined;
+  const technicianId = currentTech?.id;
   
   const [isUpdateStatusOpen, setIsUpdateStatusOpen] = useState(false);
   const [newStatus, setNewStatus] = useState<StatusOrder | null>(null);
@@ -183,11 +187,11 @@ export const OrderDetail: React.FC = () => {
   const assignedTechnician = technicians.find(t => t.id === order?.teknisiId);
 
   // Jika yang login teknisi, dia hanya bisa melihat (read-only) jika order ini sudah diambil teknisi LAIN
-  const isReadOnly = userRole === 'TEKNISI' && !!order?.teknisiId && order.teknisiId !== userId;
+  const isReadOnly = userRole === 'TEKNISI' && !!order?.teknisiId && order.teknisiId !== technicianId;
 
   const handleClaimJob = () => {
-    if (order && userId) {
-      updateOrder(order.id, { teknisiId: userId });
+    if (order && technicianId) {
+      updateOrder(order.id, { teknisiId: technicianId });
       toast.success('Pekerjaan berhasil diambil. Selamat bekerja!');
     }
   };
@@ -532,7 +536,7 @@ export const OrderDetail: React.FC = () => {
             </div>
           </div>
           <div className="flex flex-wrap gap-2">
-            {userRole === 'OWNER' && (
+            {['OWNER', 'ADMIN', 'FRONTLINE'].includes(userRole || '') && (
               <Button variant="secondary" onClick={() => setIsPrintVisible(true)} leftIcon={<Printer size={16} />} className="bg-white hover:bg-gray-50 text-gray-700 border-gray-200">
                 Cetak Label
               </Button>
@@ -543,7 +547,7 @@ export const OrderDetail: React.FC = () => {
             {!['DIAMBIL', 'BATAL_DIAMBIL'].includes(order.status) && (
               <Button variant="primary" onClick={handleOpenUpdate} className="bg-blue-600 hover:bg-blue-700">Update Status</Button>
             )}
-            {userRole === 'OWNER' && ['SELESAI', 'BATAL'].includes(order.status) && (
+            {['OWNER', 'ADMIN', 'FINANCE', 'FRONTLINE'].includes(userRole || '') && ['SELESAI', 'BATAL'].includes(order.status) && (
               <Button variant="primary" onClick={() => navigate(`/order/${order.id}/bayar`)} leftIcon={<Wallet size={16} />} className="bg-emerald-600 hover:bg-emerald-700 border-none">
                 Pembayaran
               </Button>
@@ -856,7 +860,7 @@ export const OrderDetail: React.FC = () => {
                   </Button>
                 </div>
               )}
-              {userRole === 'TEKNISI' && order.teknisiId === userId && order.status !== 'DIAMBIL' && (
+              {userRole === 'TEKNISI' && order.teknisiId === technicianId && order.status !== 'DIAMBIL' && (
                 <div className="px-6 pb-6 pt-2 border-t border-gray-50">
                   <Button onClick={handleReleaseJob} variant="danger" className="w-full">
                     Lepas Pekerjaan
