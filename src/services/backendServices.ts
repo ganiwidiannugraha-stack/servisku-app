@@ -311,18 +311,21 @@ export async function createCustomer(customer: Omit<Customer, "id" | "totalServi
 export async function updateCustomerDB(
   id: string,
   updates: {
-    nama: string;
-    noHp: string;
+    nama?: string;
+    noHp?: string;
+    email?: string;
     alamat?: string;
   },
 ) {
+  const payload: Partial<CustomerRow> = {};
+  if (updates.nama !== undefined) payload.nama = updates.nama;
+  if (updates.noHp !== undefined) payload.no_hp = updates.noHp;
+  if (updates.email !== undefined) payload.email = updates.email || null;
+  if (updates.alamat !== undefined) payload.alamat = updates.alamat || null;
+
   const { error } = await supabase
     .from("customers")
-    .update({
-      nama: updates.nama,
-      no_hp: updates.noHp,
-      alamat: updates.alamat || null,
-    })
+    .update(payload)
     .eq("id", id);
   if (error) throw error;
 }
@@ -347,6 +350,8 @@ export async function updateSparepartDB(id: string, updates: Partial<Sparepart>)
   const payload: Partial<SparepartRow> = {};
   if (updates.nama !== undefined) payload.nama = updates.nama;
   if (updates.kategori !== undefined) payload.kategori = updates.kategori;
+  if (updates.merek !== undefined) payload.merek = updates.merek || null;
+  if (updates.rak !== undefined) payload.rak = updates.rak || null;
   if (updates.stok !== undefined) payload.stok = updates.stok;
   if (updates.minStok !== undefined) payload.min_stok = updates.minStok;
   if (updates.hargaModal !== undefined) payload.harga_modal = updates.hargaModal;
@@ -401,6 +406,7 @@ export async function updateOrderDB(id: string, updates: Partial<Order>) {
   if (updates.biayaJasa !== undefined) payload.biaya_jasa = updates.biayaJasa ?? null;
   if (updates.estimasiSelesai !== undefined) payload.estimasi_selesai = updates.estimasiSelesai || null;
   if (updates.catatanInternal !== undefined) payload.catatan_internal = updates.catatanInternal || null;
+  if (updates.prioritas !== undefined) payload.prioritas = updates.prioritas || null;
   if (updates.status !== undefined) payload.status = updates.status;
   if (updates.tanggalMasuk !== undefined) payload.tanggal_masuk = updates.tanggalMasuk;
   if (updates.teknisiId !== undefined) payload.teknisi_id = updates.teknisiId || null;
