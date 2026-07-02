@@ -1,8 +1,26 @@
-import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
-import type { StatusOrder } from '../components/ui/StatusBadge';
-import { MOCK_CUSTOMERS, MOCK_SPAREPARTS, MOCK_ORDERS, MOCK_MUTASISTOK, MOCK_TECHNICIANS, DEFAULT_SETTINGS } from './mockData';
-
+import { create } from "zustand";
+import { persist } from "zustand/middleware";
+import type { StatusOrder } from "../components/ui/StatusBadge";
+import {
+  getCustomers,
+  getSpareparts,
+  getOrders,
+  getMutasiStok,
+  getTechnicians,
+  getSettings,
+  seedBackendDataIfEmpty,
+  createCustomer,
+  createSparepartDB,
+  createOrderDB,
+  createMutasiStokDB,
+  updateCustomerDB,
+  updateSparepartDB,
+  updateOrderDB,
+  updateOrderStatusDB,
+  updateTechnicianDB,
+  updateSettingsDB,
+  deleteCustomerDB,
+} from "../services/backendServices";
 /**
  * Entitas Pelanggan (Customer).
  * Menyimpan informasi profil pelanggan serta metrik historis servis.
@@ -14,8 +32,6 @@ export interface Customer {
   nama: string;
   /** Nomor telepon / WhatsApp yang valid (digunakan untuk notifikasi) */
   noHp: string;
-  /** Email pelanggan (opsional) */
-  email?: string;
   /** Alamat domisili pelanggan (opsional) */
   alamat?: string;
   /** Total kuantitas perangkat yang pernah diservis oleh pelanggan ini */
@@ -35,10 +51,6 @@ export interface Sparepart {
   nama: string;
   /** Kategori komponen (contoh: RAM, SSD, Layar) */
   kategori: string;
-  /** Merek atau Brand dari komponen (opsional) */
-  merek?: string;
-  /** Lokasi penyimpanan atau Rak di gudang (opsional) */
-  rak?: string;
   /** Jumlah kuantitas fisik yang tersedia di gudang saat ini */
   stok: number;
   /** Ambang batas stok minimum untuk memicu notifikasi peringatan (low stock) */
@@ -60,12 +72,12 @@ export interface MutasiStok {
   id: string;
   /** Referensi ke ID dari entitas Sparepart yang termutasi */
   sparepartId: string;
-  /** 
+  /**
    * Arah pergerakan stok:
    * - `IN`: Pembelian / *Restock* / Retur dari order batal
    * - `OUT`: Pemakaian servis / Barang cacat / Hilang
    */
-  tipe: 'IN' | 'OUT';
+  tipe: "IN" | "OUT";
   /** Kuantitas barang yang masuk atau keluar */
   qty: number;
   /** Harga Beli per item pada saat mutasi (Hanya diwajibkan untuk tipe 'IN' guna menghitung HPP) */
@@ -99,7 +111,7 @@ export interface Technician {
  * Role-Based Access Control (RBAC).
  * Mendefinisikan peran aksesibilitas aplikasi.
  */
-export type Role = 'ADMIN' | 'TEKNISI';
+export type Role = "ADMIN" | "TEKNISI";
 
 /**
  * Konfigurasi Global Aplikasi (System Settings).
@@ -115,7 +127,7 @@ export interface Settings {
   /** Nomor kontak utama bengkel */
   phone: string;
   /** Format lebar kertas cetak kasir thermal (58mm atau 80mm) */
-  printerWidth: '58mm' | '80mm';
+  printerWidth: "58mm" | "80mm";
   /** *Feature Flag*: Mengaktifkan integrasi rute WhatsApp Gateway secara otomatis */
   enableWA: boolean;
   /** *Feature Flag*: Mengaktifkan *push notification* / peringatan via UI aplikasi */
@@ -156,22 +168,20 @@ export interface Order {
   estimasiSelesai?: string;
   /** Log rahasia / Catatan pergantian *shift* antar pegawai dan kendala *sparepart* (hanya internal) */
   catatanInternal?: string;
-  /** Tingkat prioritas pesanan */
-  prioritas?: 'NORMAL' | 'HIGH' | 'URGENT';
   /** *Finite State Machine* dari tahapan proses operasional perbaikan perangkat */
   status: StatusOrder;
   /** Stempel waktu (Timestamp) masuknya order perangkat (ISO string) */
   tanggalMasuk: string;
   /** ID dari teknisi utama yang di-*assign* untuk memperbaiki (opsional jika belum ditunjuk) */
   teknisiId?: string;
-  /** 
+  /**
    * Rincian Suku Cadang Fisik yang digunakan pada perbaikan ini.
    * Setiap *entry* mengurangi stok saat dikonfirmasi, dan menambah inventaris ketika *Order* dibatalkan.
    */
   spareparts?: { id: string; qty: number }[];
-  /** 
+  /**
    * Rincian Jasa Kustom / Tambahan yang dieksekusi teknisi.
-   * Fleksibel dan independen terhadap *Biaya Jasa Utama*. 
+   * Fleksibel dan independen terhadap *Biaya Jasa Utama*.
    */
   jasa?: { id: string; nama: string; harga: number }[];
 }
@@ -181,6 +191,11 @@ export interface Order {
  * Mengelola seluruh data global aplikasi termasuk state persisten.
  */
 interface AppState {
+  updateCustomer: (
+  id: string,
+  updates: Omit<Customer, 'id' | 'totalServis' | 'terakhirServis'>
+) => Promise<void>;
+  deleteCustomer: (id: string) => Promise<void>;
   /** Daftar seluruh pelanggan yang terdaftar di sistem */
   customers: Customer[];
   /** Daftar katalog sparepart beserta stok dan harga */
@@ -210,6 +225,9 @@ interface AppState {
    */
   login: (username: string, pass: string) => Promise<boolean>;
 
+  /** Memuat semua data backend dan men-seed jika masih kosong */
+  loadInitialData: () => Promise<void>;
+
   /** Mengakhiri sesi pengguna saat ini */
   logout: () => void;
 
@@ -218,7 +236,7 @@ interface AppState {
    * ID, Nomor Servis, dan Tanggal Masuk di-generate secara otomatis.
    * @param order - Data order tanpa atribut auto-generated
    */
-  addOrder: (order: Omit<Order, 'id' | 'noServis' | 'tanggalMasuk'>) => void;
+  addOrder: (order: Omit<Order, "id" | "noServis" | "tanggalMasuk">) => void;
 
   /**
    * Memperbarui status dari sebuah order servis.
@@ -249,25 +267,21 @@ interface AppState {
 
   /**
    * Mencatat mutasi stok (Stok Masuk / Stok Keluar).
-   * Secara otomatis akan menghitung ulang jumlah stok saat ini, 
+   * Secara otomatis akan menghitung ulang jumlah stok saat ini,
    * dan menghitung HPP (Harga Pokok Penjualan) dengan metode Weighted Average jika stok masuk.
    * @param mutasi - Data mutasi tanpa ID dan Tanggal
    */
-  tambahMutasiStok: (mutasi: Omit<MutasiStok, 'id' | 'tanggal'>) => void;
+  tambahMutasiStok: (mutasi: Omit<MutasiStok, "id" | "tanggal">) => void;
 
   /**
    * Mendaftarkan pelanggan baru.
    * @param customer - Data pelanggan
    * @returns String berupa ID pelanggan yang baru dibuat
    */
-  addCustomer: (customer: Omit<Customer, 'id' | 'totalServis' | 'terakhirServis'>) => string;
-
-  /**
-   * Memperbarui data pelanggan.
-   * @param id - ID pelanggan
-   * @param updates - Data yang diubah
-   */
-  updateCustomer: (id: string, updates: Partial<Customer>) => void;
+  loadCustomers: () => Promise<void>;
+  addCustomer: (
+    customer: Omit<Customer, "id" | "totalServis" | "terakhirServis">,
+  ) => Promise<string>;
 
   /**
    * Memperbarui konfigurasi/pengaturan bengkel.
@@ -283,17 +297,63 @@ interface AppState {
   updateTechnician: (id: string, updates: Partial<Technician>) => void;
 }
 
-
-
 export const useStore = create<AppState>()(
   persist(
-    (set) => ({
-      customers: MOCK_CUSTOMERS,
-      spareparts: MOCK_SPAREPARTS,
-      mutasiStok: MOCK_MUTASISTOK,
-      orders: MOCK_ORDERS,
-      technicians: MOCK_TECHNICIANS,
-      settings: DEFAULT_SETTINGS,
+    (set, get) => ({
+      updateCustomer: async (id, data) => {
+        await updateCustomerDB(id, data);
+
+        const customers = await getCustomers();
+
+        set({ customers });
+      },
+      deleteCustomer: async (id) => {
+        await deleteCustomerDB(id);
+
+        const customers = await getCustomers();
+
+        set({ customers });
+      },
+      loadInitialData: async () => {
+        try {
+          await seedBackendDataIfEmpty();
+
+          const [customers, spareparts, orders, mutasiStok, technicians, settings] = await Promise.all([
+            getCustomers(),
+            getSpareparts(),
+            getOrders(),
+            getMutasiStok(),
+            getTechnicians(),
+            getSettings(),
+          ]);
+
+          set({ customers, spareparts, orders, mutasiStok, technicians, settings });
+        } catch (error) {
+          console.error(error);
+        }
+      },
+      loadCustomers: async () => {
+        try {
+          const customers = await getCustomers();
+          set({ customers });
+        } catch (error) {
+          console.error(error);
+        }
+      },
+      customers: [],
+      spareparts: [],
+      mutasiStok: [],
+      orders: [],
+      technicians: [],
+      settings: {
+        shopName: "ServisKu Repair",
+        ownerName: "Pak Teten",
+        address: "Jl. Teknologi No. 123, Jakarta",
+        phone: "081234567890",
+        printerWidth: "58mm",
+        enableWA: true,
+        enableNotifications: true,
+      },
       isAuthenticated: false,
       userRole: null,
       userId: null,
@@ -302,124 +362,160 @@ export const useStore = create<AppState>()(
       login: async (username, pass) => {
         // Simulasi delay jaringan
         await new Promise((resolve) => setTimeout(resolve, 800));
-        
+
         // RBAC Logic
-        if (username === 'admin' && pass === 'admin') {
-          set({ isAuthenticated: true, userRole: 'ADMIN', userId: 'admin', userName: 'Administrator' });
+        if (username === "admin" && pass === "admin") {
+          set({
+            isAuthenticated: true,
+            userRole: "ADMIN",
+            userId: "admin",
+            userName: "Administrator",
+          });
           return true;
-        } else if (username === 'teknisi' && pass === 'teknisi') {
-          set({ isAuthenticated: true, userRole: 'TEKNISI', userId: 't1', userName: 'Deni Setiawan' });
+        } else if (username === "teknisi" && pass === "teknisi") {
+          set({
+            isAuthenticated: true,
+            userRole: "TEKNISI",
+            userId: "t1",
+            userName: "Deni Setiawan",
+          });
           return true;
         }
-        
+
         return false;
       },
 
       logout: () => {
-        set({ 
+        set({
           isAuthenticated: false,
           userRole: null,
           userId: null,
-          userName: null
+          userName: null,
         });
       },
 
-      addOrder: (newOrderData) => set((state) => {
-        const newId = `o${state.orders.length + 1}`;
-        const date = new Date();
-        const dateString = date.toISOString().split('T')[0].replace(/-/g, '');
-        const numString = String(state.orders.length + 1).padStart(3, '0');
-        const noServis = `SRV-${dateString}-${numString}`;
-        
-        const newOrder: Order = {
-          ...newOrderData,
-          id: newId,
-          noServis,
-          tanggalMasuk: date.toISOString(),
-        };
-        
-        return { orders: [newOrder, ...state.orders] };
-      }),
-      updateOrderStatus: (orderId, status) => set((state) => ({
-        orders: state.orders.map(o => o.id === orderId ? { ...o, status } : o)
-      })),
-      updateOrder: (orderId, updates) => set((state) => ({
-        orders: state.orders.map(o => o.id === orderId ? { ...o, ...updates } : o)
-      })),
-      updateSparepart: (id, updates) => set((state) => ({
-        spareparts: state.spareparts.map(s => s.id === id ? { ...s, ...updates } : s)
-      })),
-      addSparepart: (newSparepartData) => set((state) => ({
-        spareparts: [...state.spareparts, newSparepartData]
-      })),
-      tambahMutasiStok: (mutasiData) => set((state) => {
-        const newMutasi: MutasiStok = {
-          ...mutasiData,
-          id: `m${Date.now()}`,
-          tanggal: new Date().toISOString()
-        };
-        
-        // Update stok sparepart and Average Cost (HPP)
-        const spareparts = state.spareparts.map(sp => {
-          if (sp.id === mutasiData.sparepartId) {
-            let newStok = sp.stok;
-            let newHargaModal = sp.hargaModal;
-
-            if (mutasiData.tipe === 'IN') {
-              const qtyIn = mutasiData.qty;
-              const hargaBeli = mutasiData.hargaBeli || sp.hargaModal;
-              
-              // Hitung Average Cost (HPP)
-              const oldTotalValue = Math.max(0, sp.stok) * sp.hargaModal;
-              const newTotalValue = qtyIn * hargaBeli;
-              const totalQty = Math.max(0, sp.stok) + qtyIn;
-              
-              newHargaModal = totalQty > 0 ? Math.round((oldTotalValue + newTotalValue) / totalQty) : hargaBeli;
-              newStok = sp.stok + qtyIn;
-            } else {
-              newStok = Math.max(0, sp.stok - mutasiData.qty);
-            }
-
-            return { ...sp, stok: newStok, hargaModal: newHargaModal };
-          }
-          return sp;
-        });
-
-        return { 
-          mutasiStok: [newMutasi, ...state.mutasiStok],
-          spareparts
-        };
-      }),
-      addCustomer: (customer) => {
-        let newId = '';
+      updateOrderStatus: (orderId, status) =>
         set((state) => {
-          newId = `c${state.customers.length + 1}`;
+          const nextOrders = state.orders.map((o) =>
+            o.id === orderId ? { ...o, status } : o,
+          );
+          void updateOrderStatusDB(orderId, status);
+          return { orders: nextOrders };
+        }),
+      updateOrder: (orderId, updates) =>
+        set((state) => {
+          const nextOrders = state.orders.map((o) =>
+            o.id === orderId ? { ...o, ...updates } : o,
+          );
+          void updateOrderDB(orderId, updates);
+          return { orders: nextOrders };
+        }),
+      updateSparepart: (id, updates) =>
+        set((state) => {
+          const nextSpareparts = state.spareparts.map((s) =>
+            s.id === id ? { ...s, ...updates } : s,
+          );
+          void updateSparepartDB(id, updates);
+          return { spareparts: nextSpareparts };
+        }),
+      addSparepart: (newSparepartData) =>
+        set((state) => {
+          void createSparepartDB(newSparepartData);
           return {
-            customers: [
-              ...state.customers,
-              {
-                ...customer,
-                id: newId,
-                totalServis: 0,
-                terakhirServis: new Date().toISOString()
-              }
-            ]
+            spareparts: [...state.spareparts, newSparepartData],
           };
-        });
-        return newId;
+        }),
+      tambahMutasiStok: (mutasiData) =>
+        set((state) => {
+          const newMutasi: MutasiStok = {
+            ...mutasiData,
+            id: `m${Date.now()}`,
+            tanggal: new Date().toISOString(),
+          };
+
+          // Update stok sparepart and Average Cost (HPP)
+          const spareparts = state.spareparts.map((sp) => {
+            if (sp.id === mutasiData.sparepartId) {
+              let newStok = sp.stok;
+              let newHargaModal = sp.hargaModal;
+
+              if (mutasiData.tipe === "IN") {
+                const qtyIn = mutasiData.qty;
+                const hargaBeli = mutasiData.hargaBeli || sp.hargaModal;
+
+                // Hitung Average Cost (HPP)
+                const oldTotalValue = Math.max(0, sp.stok) * sp.hargaModal;
+                const newTotalValue = qtyIn * hargaBeli;
+                const totalQty = Math.max(0, sp.stok) + qtyIn;
+
+                newHargaModal =
+                  totalQty > 0
+                    ? Math.round((oldTotalValue + newTotalValue) / totalQty)
+                    : hargaBeli;
+                newStok = sp.stok + qtyIn;
+              } else {
+                newStok = Math.max(0, sp.stok - mutasiData.qty);
+              }
+
+              return { ...sp, stok: newStok, hargaModal: newHargaModal };
+            }
+            return sp;
+          });
+
+          const nextState = {
+            mutasiStok: [newMutasi, ...state.mutasiStok],
+            spareparts,
+          };
+
+          void createMutasiStokDB(newMutasi);
+
+          return nextState;
+        }),
+      addCustomer: async (newCustomerData) => {
+        const createdId = await createCustomer(newCustomerData);
+
+        const customers = await getCustomers();
+
+        set({ customers });
+
+        return createdId;
       },
-      updateCustomer: (id, updates) => set((state) => ({
-        customers: state.customers.map(c => c.id === id ? { ...c, ...updates } : c)
-      })),
-      updateSettings: (updates) => set((state) => ({ 
-        settings: { ...state.settings, ...updates } 
-      })),
-      updateTechnician: (id, updates) => set((state) => ({
-        technicians: state.technicians.map((t) => (t.id === id ? { ...t, ...updates } : t)),
-      })),
+      updateSettings: (updates) =>
+        set((state) => {
+          const nextSettings = { ...state.settings, ...updates };
+          void updateSettingsDB(updates);
+          return { settings: nextSettings };
+        }),
+      updateTechnician: (id, updates) =>
+        set((state) => {
+          const nextTechnicians = state.technicians.map((t) =>
+            t.id === id ? { ...t, ...updates } : t,
+          );
+          void updateTechnicianDB(id, updates);
+          return { technicians: nextTechnicians };
+        }),
+      addOrder: (newOrderData) =>
+        set((state) => {
+          const newId = `o${state.orders.length + 1}`;
+          const date = new Date();
+          const dateString = date.toISOString().split("T")[0].replace(/-/g, "");
+          const numString = String(state.orders.length + 1).padStart(3, "0");
+          const noServis = `SRV-${dateString}-${numString}`;
+
+          const newOrder: Order = {
+            ...newOrderData,
+            id: newId,
+            noServis,
+            tanggalMasuk: date.toISOString(),
+          };
+
+          void createOrderDB(newOrder);
+
+          return { orders: [newOrder, ...state.orders] };
+        }),
     }),
     {
-      name: 'servisku-storage-v4',
-    }
-  )
+      name: "servisku-storage-v5",
+    },
+  ),
 );

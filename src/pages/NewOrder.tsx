@@ -58,7 +58,7 @@ export const NewOrder: React.FC = () => {
     e.preventDefault();
     setIsSubmitting(true);
     
-    setTimeout(() => {
+    setTimeout(async () => {
       let pelangganId = '';
       const existingCustomer = customers.find(c => c.noHp === formData.noHpPelanggan);
       
@@ -66,7 +66,7 @@ export const NewOrder: React.FC = () => {
         pelangganId = existingCustomer.id;
       } else {
         const { addCustomer } = useStore.getState();
-        pelangganId = addCustomer({
+        pelangganId = await addCustomer({
           nama: formData.namaPelanggan,
           noHp: formData.noHpPelanggan,
           email: formData.emailPelanggan || undefined,
