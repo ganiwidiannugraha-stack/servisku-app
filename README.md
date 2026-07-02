@@ -1,32 +1,100 @@
-# React + TypeScript + Vite
+# ServisKu - Sistem Manajemen Servis & Inventaris
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+ServisKu adalah aplikasi manajemen perbaikan perangkat elektronik terpadu yang dirancang untuk toko servis / bengkel. Aplikasi ini mengintegrasikan pencatatan *Customer Relationship Management* (CRM), manajemen inventaris (stok barang), rekam jejak teknisi, laporan keuangan otomatis, dan pengiriman notifikasi WhatsApp Gateway.
 
-Currently, two official plugins are available:
+## 🚀 Fitur Utama
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- **Dashboard Analitik Dinamis**: Memantau grafik pendapatan bulanan, pesanan yang sedang aktif, dan performa keuangan menggunakan `Recharts`.
+- **Manajemen Pesanan (Work Order)**: Siklus *Finite State Machine* dari perangkat Masuk, Diagnosa, Proses, Menunggu Sparepart, hingga Selesai/Batal.
+- **Role-Based Access Control (RBAC)**: Pembatasan rute dan aksi berdasarkan peran pengguna (`OWNER`, `ADMIN`, `TEKNISI`, `FINANCE`, `INVENTORY`, `FRONTLINE`).
+- **Inventory & Stock Ledger**: Manajemen stok *sparepart*, riwayat masuk/keluar mutasi stok (FIFO/Average HPP logic), dan notifikasi stok menipis.
+- **Sistem Laporan Komprehensif**: Cetak otomatis nota termal (58mm/80mm), ekspor laporan keuangan dan operasional ke PDF (`jspdf`) & Excel (`xlsx`).
+- **Data Persistance**: Local-first state synchronization dengan `Zustand` & sinkronisasi transaksional ke database `Supabase`.
 
-## React Compiler
+## 🛠️ Tech Stack
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- **Frontend Framework**: [React 19](https://react.dev/) + [TypeScript](https://www.typescriptlang.org/) (Vite)
+- **Styling**: [Tailwind CSS v3.4](https://tailwindcss.com/) dengan arsitektur UI *Glassmorphism* dan *Framer Motion* untuk animasi.
+- **State Management**: [Zustand](https://github.com/pmndrs/zustand) (`src/store/index.ts`) menggunakan *persist middleware*.
+- **Database & Backend**: [Supabase](https://supabase.com/) (PostgreSQL + PostgREST).
+- **Routing**: `react-router-dom` v7.
+- **Form & Validation**: `react-hook-form` + `zod`.
+- **Icons**: `lucide-react`.
 
-## Expanding the Oxlint configuration
+## 📂 Struktur Direktori (Architecture)
 
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
-
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
+```text
+servisku-app/
+├── public/                 # Aset statis (Logo, favicon)
+├── scripts/
+│   └── seedRealData.mjs    # Script seeder data Supabase untuk testing/dev
+├── src/
+│   ├── components/         # Reusable UI Components
+│   │   ├── layout/         # Shell aplikasi (Header, Sidebar, PageWrapper)
+│   │   └── ui/             # Komponen atomik (Button, Modal, StatusBadge, SkeletonLoader)
+│   ├── lib/                # Konfigurasi library pihak ketiga (Supabase Client)
+│   ├── pages/              # Komponen View Level (Routing targets)
+│   ├── services/           # Abstraksi Backend API (Interaksi Data Supabase)
+│   ├── store/              # Global State (Zustand) & Business Logic Interfaces
+│   ├── utils/              # Fungsi helper murni (Cetak PDF, Format Rupiah, WA link)
+│   ├── App.tsx             # Entry point router & Auth Boundary
+│   └── main.tsx            # React root injection
+├── supabase_schema.sql     # Skema database DDL untuk initial setup (BACA INI SEBELUM DEPLOY)
+└── package.json
 ```
 
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+## 🔒 Skema Database & Setup Supabase (Penting!)
+
+Aplikasi ini sangat bergantung pada struktur relasional di PostgreSQL (Supabase). Semua kode SQL yang diperlukan untuk membangun tabel, relasi (Foreign Keys), Index, dan RLS (Row Level Security) telah disediakan dalam file **`supabase_schema.sql`** di root folder.
+
+### Cara Inisialisasi:
+1. Buat proyek baru di [Supabase](https://supabase.com/).
+2. Masuk ke menu **SQL Editor**.
+3. *Copy* seluruh isi dari file `supabase_schema.sql`.
+4. *Paste* dan klik **Run**.
+5. Dapatkan `Project URL` dan `anon/public API Key` dari menu **Project Settings > API**.
+
+## 💻 Environment Variables
+
+Buat file `.env` di root direktori proyek Anda:
+
+```env
+VITE_SUPABASE_URL=https://<PROJECT_ID>.supabase.co
+VITE_SUPABASE_PUBLISHABLE_KEY=eyJh...<ANON_KEY>
+```
+
+> **Catatan Keamanan:** Jangan pernah menaruh `.env` ke *Version Control* (GitHub). File ini sudah dimasukkan ke `.gitignore`.
+
+## 🚦 Menjalankan Proyek secara Lokal
+
+```bash
+# 1. Install dependencies
+npm install
+
+# 2. Jalankan development server (Vite)
+npm run dev
+
+# 3. Build untuk production
+npm run build
+```
+
+## 👥 Sistem Akun (Role-Based Demo)
+
+Untuk memudahkan *development* dan *testing*, gunakan kredensial bawaan berikut:
+- **Owner**: `owner` / `owner` (Akses Penuh)
+- **Frontline/Kasir**: `frontline` / `frontline` (Akses Order & Pelanggan)
+- **Teknisi**: `teknisi` / `teknisi` (Akses Order & Stok)
+- **Admin Gudang**: `inventory` / `inventory` (Akses Stok)
+- **Keuangan**: `finance` / `finance` (Akses Laporan)
+
+## 🏗️ Pola Desain (Design Patterns) Terapan
+
+1. **Service Layer Pattern**: Semua pemanggilan eksternal (Supabase API) diabstraksi di dalam `src/services/backendServices.ts`. Komponen React tidak pernah memanggil Supabase secara langsung, melainkan melalui *Store* (Zustand).
+2. **Optimistic UI Updates**: Beberapa aksi (seperti pengubahan status) memperbarui antarmuka terlebih dahulu via *Store* sebelum database mengonfirmasi, memberikan ilusi responsif 0ms kepada pengguna.
+3. **Controlled Modals**: Sistem *overlay* dan *modal* dipusatkan pada komponen `Modal.tsx` yang menangani trap *focus* keyboard dan animasi klik luar (backdrop).
+
+## 📄 Standar Dokumentasi Kode (JSDoc)
+Semua fungsi publik, antarmuka (Interface), dan *Store Actions* didokumentasikan menggunakan format standar JSDoc/TSDoc. Ini memudahkan *IntelliSense* IDE modern (seperti VS Code) untuk memunculkan konteks variabel secara *real-time*.
+
+---
+*Dibangun dengan ❤️ untuk efisiensi bisnis reparasi modern.*
