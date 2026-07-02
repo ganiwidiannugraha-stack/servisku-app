@@ -54,64 +54,61 @@ export const NewOrder: React.FC = () => {
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
     
-    setTimeout(async () => {
-      let pelangganId = '';
-      const existingCustomer = customers.find(c => c.noHp === formData.noHpPelanggan);
-      
-      if (existingCustomer) {
-        pelangganId = existingCustomer.id;
-      } else {
-        const { addCustomer } = useStore.getState();
-        pelangganId = await addCustomer({
-          nama: formData.namaPelanggan,
-          noHp: formData.noHpPelanggan,
-          email: formData.emailPelanggan || undefined,
-          alamat: formData.alamat,
-        });
-      }
-
-      const kelengkapanList: string[] = [];
-      if (formData.kelengkapanCharger) kelengkapanList.push('Charger');
-      if (formData.kelengkapanMouse) kelengkapanList.push('Mouse');
-      if (formData.kelengkapanTas) kelengkapanList.push('Tas');
-      if (formData.kelengkapanLainnya) kelengkapanList.push('Lainnya');
-
-      addOrder({
-        pelangganId: pelangganId,
-        jenisPerangkat: formData.jenisPerangkat,
-        merkModel: formData.merkModel,
-        noSeri: formData.noSeri,
-        kelengkapan: kelengkapanList,
-        keluhan: formData.keluhan,
-        pemeriksaanAwal: formData.pemeriksaanAwal,
-        estimasiBiaya: Number(formData.estimasiBiaya) || 0,
-        estimasiSelesai: formData.estimasiSelesai,
-        prioritas: formData.prioritas,
-        teknisiId: formData.teknisiId || undefined,
-        catatanInternal: formData.catatanInternal,
-        status: 'MASUK',
+    let pelangganId = '';
+    const existingCustomer = customers.find(c => c.noHp === formData.noHpPelanggan);
+    
+    if (existingCustomer) {
+      pelangganId = existingCustomer.id;
+    } else {
+      const { addCustomer } = useStore.getState();
+      pelangganId = await addCustomer({
+        nama: formData.namaPelanggan,
+        noHp: formData.noHpPelanggan,
+        email: formData.emailPelanggan || undefined,
+        alamat: formData.alamat,
       });
-      
-      const updatedStore = useStore.getState();
-      // addOrder menaruh data baru di paling atas (index 0), bukan di akhir array
-      const createdOrder = updatedStore.orders[0]; 
-      
-      setIsSubmitting(false);
-      setSuccessData({
-        id: createdOrder.id,
-        noServis: createdOrder.noServis,
-        pelanggan: formData.namaPelanggan,
-        hp: formData.noHpPelanggan,
-        perangkat: `${formData.jenisPerangkat} ${formData.merkModel}`,
-        keluhan: formData.keluhan,
-        biaya: Number(formData.estimasiBiaya) || 0,
-        estimasiSelesai: formData.estimasiSelesai
-      });
-    }, 500);
+    }
+
+    const kelengkapanList: string[] = [];
+    if (formData.kelengkapanCharger) kelengkapanList.push('Charger');
+    if (formData.kelengkapanMouse) kelengkapanList.push('Mouse');
+    if (formData.kelengkapanTas) kelengkapanList.push('Tas');
+    if (formData.kelengkapanLainnya) kelengkapanList.push('Lainnya');
+
+    addOrder({
+      pelangganId: pelangganId,
+      jenisPerangkat: formData.jenisPerangkat,
+      merkModel: formData.merkModel,
+      noSeri: formData.noSeri,
+      kelengkapan: kelengkapanList,
+      keluhan: formData.keluhan,
+      pemeriksaanAwal: formData.pemeriksaanAwal,
+      estimasiBiaya: Number(formData.estimasiBiaya) || 0,
+      estimasiSelesai: formData.estimasiSelesai,
+      prioritas: formData.prioritas,
+      teknisiId: formData.teknisiId || undefined,
+      catatanInternal: formData.catatanInternal,
+      status: 'MASUK',
+    });
+    
+    const updatedStore = useStore.getState();
+    const createdOrder = updatedStore.orders[0]; 
+    
+    setIsSubmitting(false);
+    setSuccessData({
+      id: createdOrder.id,
+      noServis: createdOrder.noServis,
+      pelanggan: formData.namaPelanggan,
+      hp: formData.noHpPelanggan,
+      perangkat: `${formData.jenisPerangkat} ${formData.merkModel}`,
+      keluhan: formData.keluhan,
+      biaya: Number(formData.estimasiBiaya) || 0,
+      estimasiSelesai: formData.estimasiSelesai
+    });
   };
 
   const handleWA = () => {

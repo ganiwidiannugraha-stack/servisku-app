@@ -482,9 +482,16 @@ export const useStore = create<AppState>()(
       addCustomer: async (newCustomerData) => {
         const createdId = await createCustomer(newCustomerData);
 
-        const customers = await getCustomers();
-
-        set({ customers });
+        set((state) => ({
+          customers: [
+            {
+              ...newCustomerData,
+              id: createdId,
+              totalServis: 0,
+            },
+            ...state.customers,
+          ],
+        }));
 
         return createdId;
       },
