@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useStore } from '../store';
 import type { Customer, Order } from '../store';
 import { Search, UserPlus, ChevronDown, Eye, ArrowLeft, Edit2, Save, X } from 'lucide-react';
+import { AreaChart, Area, ResponsiveContainer, Tooltip } from 'recharts';
 import { Breadcrumb } from '../components/ui/Breadcrumb';
 import { Modal } from '../components/ui/Modal';
 import { Button } from '../components/ui/Button';
@@ -97,7 +98,75 @@ export const Pelanggan: React.FC = () => {
   const activeCustomerIds = new Set(orders.filter(o => !['SELESAI', 'DIAMBIL', 'BATAL', 'BATAL_DIAMBIL', 'BATAL_SIAP_DIAMBIL'].includes(o.status)).map(o => o.pelangganId));
   const totalPelanggan = customers.length;
   const pelangganAktif = activeCustomerIds.size;
-  const pelangganBaru = totalPelanggan;
+  
+  // Calculate First Order Dates
+  const customerFirstOrder = useMemo(() => {
+    const map = new Map<string, Date>();
+    // Get first order date for each customer
+    [...orders].sort((a, b) => new Date(a.tanggalMasuk).getTime() - new Date(b.tanggalMasuk).getTime()).forEach(o => {
+      if (!map.has(o.pelangganId)) {
+        map.set(o.pelangganId, new Date(o.tanggalMasuk));
+      }
+    });
+    return map;
+  }, [orders]);
+
+  // Calculate new customers this month
+  const pelangganBaru = useMemo(() => {
+    const now = new Date();
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
+    let count = 0;
+    customers.forEach(c => {
+      // Use first order date, fallback to ID timestamp, fallback to current time
+      const firstOrderDate = customerFirstOrder.get(c.id);
+      let date = firstOrderDate;
+      if (!date && c.id.startsWith('c') && !isNaN(Number(c.id.substring(1)))) {
+        date = new Date(Number(c.id.substring(1)));
+      }
+      if (!date) date = now;
+      
+      if (date.getMonth() === currentMonth && date.getFullYear() === currentYear) {
+        count++;
+      }
+    });
+    return count;
+  }, [customers, customerFirstOrder]);
+
+  // Chart Data: Pertumbuhan Pelanggan (Year to Date)
+  const growthData = useMemo(() => {
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Ags', 'Sep', 'Okt', 'Nov', 'Des'];
+    const currentYear = new Date().getFullYear();
+    const data = months.map(m => ({ name: m, total: 0 }));
+    
+    let cumulative = 0;
+    
+    // Sort customers by their creation date to calculate cumulative sum
+    const customerDates = customers.map(c => {
+      let date = customerFirstOrder.get(c.id);
+      if (!date && c.id.startsWith('c') && !isNaN(Number(c.id.substring(1)))) {
+        date = new Date(Number(c.id.substring(1)));
+      }
+      return date || new Date(currentYear, 0, 1);
+    }).sort((a, b) => a.getTime() - b.getTime());
+
+    // First calculate how many customers existed before this year
+    customerDates.forEach(d => {
+      if (d.getFullYear() < currentYear) {
+        cumulative++;
+      }
+    });
+
+    // Now fill the months of the current year
+    for (let month = 0; month < 12; month++) {
+      const addedThisMonth = customerDates.filter(d => d.getFullYear() === currentYear && d.getMonth() === month).length;
+      cumulative += addedThisMonth;
+      data[month].total = cumulative;
+    }
+    
+    return data;
+  }, [customers, customerFirstOrder]);
+
   const totalServisAll = customers.reduce((sum, c) => sum + (c.totalServis || 0), 0);
   const rataRataServis = totalPelanggan > 0 ? (totalServisAll / totalPelanggan).toFixed(1) : '0';
 
@@ -326,61 +395,22 @@ export const Pelanggan: React.FC = () => {
             {/* Right Chart */}
             <div className="lg:col-span-7 bg-white rounded-2xl p-6 border border-gray-100 shadow-sm flex flex-col relative overflow-hidden">
               <p className="text-sm font-bold text-gray-900 mb-6">Pertumbuhan Pelanggan <span className="text-gray-500 font-normal">(Tahun Ini)</span></p>
-              <div className="flex-1 w-full h-full min-h-[140px] relative mt-2 pl-8 pb-6">
-                {/* Y-Axis Labels */}
-                <div className="absolute left-0 top-0 bottom-6 w-8 flex flex-col justify-between text-[10px] font-medium text-gray-400">
-                  <span>100</span>
-                  <span>75</span>
-                  <span>50</span>
-                  <span>25</span>
-                  <span>0</span>
-                </div>
-                
-                {/* Modern Minimalist SVG Chart */}
-                <svg viewBox="0 0 400 100" className="w-full h-full absolute inset-0 left-8 preserve-3d" style={{ width: 'calc(100% - 2rem)', height: 'calc(100% - 1.5rem)' }} preserveAspectRatio="none">
-                  <defs>
-                    <linearGradient id="modern-gradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                      <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.3" />
-                      <stop offset="100%" stopColor="#3b82f6" stopOpacity="0.0" />
-                    </linearGradient>
-                  </defs>
-                  <path
-                    fill="url(#modern-gradient)"
-                    d="M0,100 L0,95 C33,85 66,70 100,60 C133,50 166,60 200,45 C233,30 266,20 300,25 C333,30 366,15 400,5 L400,100 Z"
-                  />
-                  <path
-                    fill="none"
-                    stroke="#3b82f6"
-                    strokeWidth="2.5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M0,95 C33,85 66,70 100,60 C133,50 166,60 200,45 C233,30 266,20 300,25 C333,30 366,15 400,5"
-                  />
-                  {/* Subtle data points */}
-                  {[
-                    {cx: 0, cy: 95}, {cx: 40, cy: 82}, {cx: 80, cy: 68}, 
-                    {cx: 120, cy: 55}, {cx: 160, cy: 57}, {cx: 200, cy: 45}, 
-                    {cx: 240, cy: 28}, {cx: 280, cy: 21}, {cx: 320, cy: 27}, 
-                    {cx: 360, cy: 19}, {cx: 400, cy: 5}
-                  ].map((pt, i) => (
-                    <circle key={i} cx={pt.cx} cy={pt.cy} r="3.5" fill="white" stroke="#3b82f6" strokeWidth="2" className="hover:r-5 hover:fill-blue-100 transition-all cursor-pointer" />
-                  ))}
-                </svg>
-
-                {/* Minimalist horizontal grid */}
-                <div className="absolute inset-0 left-8 bottom-6 flex flex-col justify-between pointer-events-none opacity-50">
-                  <div className="border-b border-dashed border-gray-200 w-full h-[1px]"></div>
-                  <div className="border-b border-dashed border-gray-200 w-full h-[1px]"></div>
-                  <div className="border-b border-dashed border-gray-200 w-full h-[1px]"></div>
-                  <div className="border-b border-dashed border-gray-200 w-full h-[1px]"></div>
-                  <div className="border-b border-dashed border-gray-200 w-full h-[1px]"></div>
-                </div>
-
-                {/* X-Axis Labels (Months) */}
-                <div className="absolute left-8 right-0 bottom-0 flex justify-between text-[10px] font-medium text-gray-400 pt-2">
-                  <span>Jan</span><span>Feb</span><span>Mar</span><span>Apr</span><span>Mei</span>
-                  <span>Jun</span><span>Jul</span><span>Ags</span><span>Sep</span><span>Okt</span><span>Nov</span>
-                </div>
+              <div className="flex-1 w-full h-full min-h-[140px] relative mt-2">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={growthData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="colorTotal" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
+                        <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
+                      </linearGradient>
+                    </defs>
+                    <Tooltip 
+                      contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                      itemStyle={{ color: '#1f2937', fontWeight: 'bold' }}
+                    />
+                    <Area type="monotone" dataKey="total" stroke="#3b82f6" strokeWidth={3} fillOpacity={1} fill="url(#colorTotal)" />
+                  </AreaChart>
+                </ResponsiveContainer>
               </div>
             </div>
           </div>

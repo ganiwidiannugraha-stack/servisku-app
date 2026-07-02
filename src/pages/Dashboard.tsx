@@ -4,13 +4,8 @@ import { useStore } from '../store';
 import { LineChart, Line, BarChart, Bar, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { AlertTriangle, Calendar, RefreshCcw, PackageCheck, Banknote, Eye } from 'lucide-react';
 
-// Mock data statis untuk grafik (bisa diganti dinamis dari backend di versi produksi)
-const mockLineData = [
-  { value: 10 }, { value: 15 }, { value: 8 }, { value: 20 }, { value: 14 }, { value: 25 }, { value: 18 }, { value: 30 }
-];
-const mockBarData = [
-  { value: 30 }, { value: 45 }, { value: 20 }, { value: 60 }, { value: 40 }, { value: 50 }, { value: 35 }, { value: 70 }, { value: 45 }
-];
+// Helper to format date "DD MMM"
+const formatDateShort = (d: Date) => d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
 
 /**
  * Komponen Halaman Dashboard
@@ -65,7 +60,7 @@ export const Dashboard: React.FC = () => {
       else if (j.includes('printer')) printer++;
     });
     if (laptop === 0 && hp === 0 && printer === 0) {
-      laptop = 1; // fake data if empty so chart doesn't crash
+      return [{ name: 'Belum Ada Data', value: 1, color: '#e5e7eb' }];
     }
     return [
       { name: 'Laptop', value: laptop, color: '#2563eb' },
@@ -73,6 +68,50 @@ export const Dashboard: React.FC = () => {
       { name: 'Printer', value: printer, color: '#bfdbfe' }
     ];
   }, [orders]);
+
+  // Generate 7-day activity and revenue data
+  const { lineData, barData } = useMemo(() => {
+    const lData = [];
+    const bData = [];
+    const today = new Date();
+    
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(today);
+      d.setDate(d.getDate() - i);
+      const dateString = d.toDateString();
+      const label = formatDateShort(d);
+
+      let masuk = 0;
+      let selesai = 0;
+      let revenue = 0;
+
+      orders.forEach(o => {
+        const orderDate = new Date(o.tanggalMasuk).toDateString();
+        // Cek pesanan masuk
+        if (orderDate === dateString) masuk++;
+        
+        // Cek pesanan selesai/diambil dan hitung pendapatan
+        if (o.status === 'SELESAI' || o.status === 'DIAMBIL') {
+          // Asumsikan tanggal update/selesai sama dengan tanggal masuk untuk simplifikasi (karena belum ada field updatedAt)
+          // Idealnya kita menggunakan updatedAt/tanggalSelesai jika ada di database
+          if (orderDate === dateString) {
+            selesai++;
+            revenue += o.biayaJasa || 0;
+            if (o.spareparts) {
+              o.spareparts.forEach(sp => {
+                const detail = spareparts.find(s => s.id === sp.id);
+                if (detail) revenue += (detail.harga * sp.qty);
+              });
+            }
+          }
+        }
+      });
+
+      lData.push({ name: label, masuk, selesai, value: masuk });
+      bData.push({ name: label, value: revenue });
+    }
+    return { lineData: lData, barData: bData };
+  }, [orders, spareparts]);
 
   return (
     <div className="p-8 w-full min-h-screen">
@@ -93,7 +132,7 @@ export const Dashboard: React.FC = () => {
           </div>
           <div className="h-12 w-full mt-2">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={mockLineData}>
+              <LineChart data={lineData} margin={{ top: 20, right: 30, left: 0, bottom: 0 }}>
                 <Line type="monotone" dataKey="value" stroke="#3b82f6" strokeWidth={3} dot={false} />
               </LineChart>
             </ResponsiveContainer>
@@ -112,7 +151,7 @@ export const Dashboard: React.FC = () => {
             </div>
           </div>
           <div className="w-full mt-4 h-2 bg-gray-100 rounded-full overflow-hidden">
-            <div className="bg-blue-600 h-full rounded-full" style={{ width: '60%' }}></div>
+            <div className="bg-blue-600 h-full rounded-full" style={{ width: `${orders.length > 0 ? (ordersProses / orders.length) * 100 : 0}%` }}></div>
           </div>
         </div>
 
@@ -129,7 +168,7 @@ export const Dashboard: React.FC = () => {
           </div>
           <div className="h-12 w-full mt-2">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={mockBarData}>
+              <BarChart data={lineData.map(d => ({ value: d.selesai }))} margin={{ top: 20, right: 30, left: 0, bottom: 0 }}>
                 <Bar dataKey="value" fill="#93c5fd" radius={[2, 2, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
@@ -149,7 +188,7 @@ export const Dashboard: React.FC = () => {
           </div>
           <div className="h-12 w-full mt-2">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={mockBarData}>
+              <BarChart data={barData}>
                 <Bar dataKey="value" fill="#3b82f6" radius={[2, 2, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
