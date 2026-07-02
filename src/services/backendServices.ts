@@ -1,5 +1,5 @@
 import { supabase } from "../lib/supabase";
-import { DEFAULT_SETTINGS, MOCK_CUSTOMERS, MOCK_MUTASISTOK, MOCK_ORDERS, MOCK_SPAREPARTS, MOCK_TECHNICIANS } from "../store/mockData";
+import { DEFAULT_SETTINGS } from "../store/mockData";
 import type { AppUser, Customer, MutasiStok, Order, Settings, Sparepart, Technician } from "../store";
 import type { StatusOrder } from "../components/ui/StatusBadge";
 
@@ -260,16 +260,7 @@ const mapSettings = (row: SettingsRow): Settings => ({
   enableNotifications: row.enable_notifications,
 });
 
-const toSettingsRow = (settings: Settings): SettingsRow => ({
-  id: settingsId,
-  shop_name: settings.shopName,
-  owner_name: settings.ownerName,
-  address: settings.address,
-  phone: settings.phone,
-  printer_width: settings.printerWidth,
-  enable_wa: settings.enableWA,
-  enable_notifications: settings.enableNotifications,
-});
+
 
 /**
  * Mengecek apakah sebuah tabel di Supabase masih kosong.
