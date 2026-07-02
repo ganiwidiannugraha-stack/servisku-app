@@ -189,7 +189,7 @@ export const Pengaturan: React.FC = () => {
               <UserCircle size={18} /> Profil Saya
             </button>
 
-            {['OWNER', 'ADMIN'].includes(userRole || '') && (
+            {['OWNER'].includes(userRole || '') && (
               <>
                 <button
                   onClick={() => setActiveTab('toko')}
@@ -375,7 +375,7 @@ export const Pengaturan: React.FC = () => {
             </motion.div>
             )}
 
-            {activeTab === 'akun' && ['OWNER', 'ADMIN'].includes(userRole || '') && (
+            {activeTab === 'akun' && ['OWNER'].includes(userRole || '') && (
               <motion.div key="akun" variants={tabVariants} initial="hidden" animate="show" exit="exit" className="space-y-6">
               <div className="flex justify-between items-start border-b border-gray-100 pb-4">
                 <div>

@@ -64,7 +64,7 @@ export const Stok: React.FC = () => {
           <p className="mt-1 text-gray-500 font-medium">Kelola ketersediaan barang dan riwayat mutasi.</p>
         </div>
         <div className="flex gap-3">
-          {['OWNER', 'INVENTORY', 'ADMIN'].includes(userRole || '') && (
+          {['OWNER', 'INVENTORY'].includes(userRole || '') && (
             <button 
               onClick={() => setIsModalOpen(true)}
               className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl font-semibold transition-colors flex items-center gap-2 shadow-sm"
@@ -238,7 +238,7 @@ export const Stok: React.FC = () => {
                           </div>
                         </div>
                       </td>
-                      {['OWNER', 'INVENTORY', 'ADMIN'].includes(userRole || '') && (
+                      {['OWNER', 'INVENTORY'].includes(userRole || '') && (
                         <td className="px-6 py-5">
                           <div className="flex items-center justify-center gap-2">
                             <button 

@@ -120,7 +120,7 @@ export interface Technician {
  * Role-Based Access Control (RBAC).
  * Mendefinisikan peran aksesibilitas aplikasi.
  */
-export type Role = "OWNER" | "ADMIN" | "FRONTLINE" | "FINANCE" | "INVENTORY" | "TEKNISI";
+export type Role = "OWNER" | "FRONTLINE" | "FINANCE" | "INVENTORY" | "TEKNISI";
 
 export interface AppUser {
   id: string;
