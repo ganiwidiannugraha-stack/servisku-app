@@ -8,7 +8,6 @@ import {
   getMutasiStok,
   getTechnicians,
   getSettings,
-  seedBackendDataIfEmpty,
   createCustomer,
   createSparepartDB,
   createOrderDB,
@@ -365,8 +364,6 @@ export const useStore = create<AppState>()(
       },
       loadInitialData: async () => {
         try {
-          await seedBackendDataIfEmpty();
-
           const [customers, spareparts, orders, mutasiStok, technicians, settings, users] = await Promise.all([
             getCustomers(),
             getSpareparts(),

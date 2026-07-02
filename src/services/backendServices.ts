@@ -276,73 +276,7 @@ const toSettingsRow = (settings: Settings): SettingsRow => ({
  * Menggunakan count query (HEAD request) agar tidak menarik seluruh data.
  * @param tableName - Nama tabel yang dicek
  */
-async function isTableEmpty(tableName: string) {
-  const { count, error } = await supabase
-    .from(tableName)
-    .select("id", { count: 'exact', head: true });
-  if (error) throw error;
-  return (count ?? 0) === 0;
-}
 
-export async function seedBackendDataIfEmpty() {
-  if (await isTableEmpty("customers")) {
-    const customerRows = MOCK_CUSTOMERS.map((customer) => ({
-      id: customer.id,
-      nama: customer.nama,
-      no_hp: customer.noHp,
-      alamat: customer.alamat || null,
-      total_servis: customer.totalServis,
-      terakhir_servis: customer.terakhirServis,
-    }));
-    const { error } = await supabase.from("customers").insert(customerRows);
-    if (error) throw error;
-  }
-
-  if (await isTableEmpty("spareparts")) {
-    const sparepartRows = MOCK_SPAREPARTS.map((sparepart) => ({
-      id: sparepart.id,
-      nama: sparepart.nama,
-      kategori: sparepart.kategori,
-      stok: sparepart.stok,
-      min_stok: sparepart.minStok,
-      harga_modal: sparepart.hargaModal,
-      harga: sparepart.harga,
-      pajak: sparepart.pajak,
-    }));
-    const { error } = await supabase.from("spareparts").insert(sparepartRows);
-    if (error) throw error;
-  }
-
-  if (await isTableEmpty("technicians")) {
-    const technicianRows = MOCK_TECHNICIANS.map((technician) => ({
-      id: technician.id,
-      name: technician.name,
-      avatar: technician.avatar,
-      rating: technician.rating,
-      jobs: technician.jobs,
-      active: technician.active,
-    }));
-    const { error } = await supabase.from("technicians").insert(technicianRows);
-    if (error) throw error;
-  }
-
-  if (await isTableEmpty("orders")) {
-    const orderRows = MOCK_ORDERS.map((order) => toOrderRow(order));
-    const { error } = await supabase.from("orders").insert(orderRows);
-    if (error) throw error;
-  }
-
-  if (await isTableEmpty("mutasi_stok")) {
-    const mutasiRows = MOCK_MUTASISTOK.map((mutasi) => toMutasiRow(mutasi));
-    const { error } = await supabase.from("mutasi_stok").insert(mutasiRows);
-    if (error) throw error;
-  }
-
-  if (await isTableEmpty("settings")) {
-    const { error } = await supabase.from("settings").insert(toSettingsRow(DEFAULT_SETTINGS));
-    if (error) throw error;
-  }
-}
 
 export async function getCustomers() {
   const { data, error } = await supabase.from("customers").select("*");
