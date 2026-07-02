@@ -141,7 +141,7 @@ export const Dashboard: React.FC = () => {
           <div className="flex justify-between items-start">
             <div>
               <p className="text-gray-500 font-medium text-sm">Pendapatan Hari Ini</p>
-              <h3 className="text-2xl font-bold text-gray-900 mt-1">Rp {todayRevenue > 0 ? todayRevenue.toLocaleString('id-ID') : '2.450.000'}</h3>
+              <h3 className="text-2xl font-bold text-gray-900 mt-1">Rp {todayRevenue.toLocaleString('id-ID')}</h3>
             </div>
             <div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600">
               <Banknote size={20} />

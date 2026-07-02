@@ -97,7 +97,7 @@ export const Pelanggan: React.FC = () => {
   const activeCustomerIds = new Set(orders.filter(o => !['SELESAI', 'DIAMBIL', 'BATAL', 'BATAL_DIAMBIL', 'BATAL_SIAP_DIAMBIL'].includes(o.status)).map(o => o.pelangganId));
   const totalPelanggan = customers.length;
   const pelangganAktif = activeCustomerIds.size;
-  const pelangganBaru = 15; // Mock data for demo
+  const pelangganBaru = totalPelanggan;
   const totalServisAll = customers.reduce((sum, c) => sum + (c.totalServis || 0), 0);
   const rataRataServis = totalPelanggan > 0 ? (totalServisAll / totalPelanggan).toFixed(1) : '0';
 
