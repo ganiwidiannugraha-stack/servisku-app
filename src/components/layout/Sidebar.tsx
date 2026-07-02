@@ -27,11 +27,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ onNavigate }) => {
 
   const menuUtama = useMemo(() => {
     const items = [
-      { name: 'Dashboard', path: '/dashboard', icon: <Home size={20} />, roles: ['OWNER', 'FRONTLINE', 'FINANCE', 'INVENTORY', 'TEKNISI'] },
-      { name: 'Order Servis', path: '/order', icon: <ClipboardList size={20} />, badge: activeOrdersCount > 0 ? activeOrdersCount : undefined, roles: ['OWNER', 'FRONTLINE', 'TEKNISI'] },
-      { name: 'Pelanggan', path: '/pelanggan', icon: <Users size={20} />, roles: ['OWNER', 'FRONTLINE'] },
-      { name: 'Spare Part', path: '/stok', icon: <Box size={20} />, badge: lowStockCount > 0 ? lowStockCount : undefined, danger: true, roles: ['OWNER', 'INVENTORY', 'TEKNISI'] },
-      { name: 'Laporan', path: '/laporan', icon: <BarChart3 size={20} />, roles: ['OWNER', 'FINANCE'] },
+      { name: 'Dashboard', path: '/dashboard', icon: <Home size={20} />, roles: ['OWNER', 'ADMIN', 'FRONTLINE', 'FINANCE', 'INVENTORY', 'TEKNISI'] },
+      { name: 'Order Servis', path: '/order', icon: <ClipboardList size={20} />, badge: activeOrdersCount > 0 ? activeOrdersCount : undefined, roles: ['OWNER', 'ADMIN', 'FRONTLINE', 'TEKNISI'] },
+      { name: 'Pelanggan', path: '/pelanggan', icon: <Users size={20} />, roles: ['OWNER', 'ADMIN', 'FRONTLINE'] },
+      { name: 'Spare Part', path: '/stok', icon: <Box size={20} />, badge: lowStockCount > 0 ? lowStockCount : undefined, danger: true, roles: ['OWNER', 'ADMIN', 'INVENTORY', 'TEKNISI'] },
+      { name: 'Laporan', path: '/laporan', icon: <BarChart3 size={20} />, roles: ['OWNER', 'ADMIN', 'FINANCE'] },
     ];
     return items.filter(item => userRole && item.roles.includes(userRole));
   }, [activeOrdersCount, lowStockCount, userRole]);
