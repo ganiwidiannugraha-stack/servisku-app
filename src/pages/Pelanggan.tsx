@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useStore } from '../store';
 import type { Customer, Order } from '../store';
-import { Search, UserPlus, Trophy, Award, Shield, ChevronDown, Eye, ArrowLeft, Edit2, Save, X } from 'lucide-react';
+import { Search, UserPlus, ChevronDown, Eye, ArrowLeft, Edit2, Save, X } from 'lucide-react';
 import { Breadcrumb } from '../components/ui/Breadcrumb';
 import { Modal } from '../components/ui/Modal';
 import { Button } from '../components/ui/Button';
@@ -60,11 +60,7 @@ export const Pelanggan: React.FC = () => {
     setModalMode('add');
   };
 
-  const getCustomerTier = (total: number) => {
-    if (total >= 10) return { type: 'Gold', color: 'text-yellow-500', icon: Trophy };
-    if (total >= 5) return { type: 'Silver', color: 'text-gray-400', icon: Shield };
-    return { type: 'Bronze', color: 'text-orange-600', icon: Award };
-  };
+
 
   const getActiveOrdersCount = (customerId: string) => {
     return orders.filter(o => o.pelangganId === customerId && !['SELESAI', 'DIAMBIL', 'BATAL', 'BATAL_DIAMBIL', 'BATAL_SIAP_DIAMBIL'].includes(o.status)).length;

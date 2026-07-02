@@ -307,7 +307,7 @@ interface AppState {
 
 export const useStore = create<AppState>()(
   persist(
-    (set, get) => ({
+    (set) => ({
       updateCustomer: async (id, data) => {
         await updateCustomerDB(id, data);
 
