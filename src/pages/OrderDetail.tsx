@@ -125,10 +125,26 @@ const parseRibuan = (val: string) => val.replace(/\./g, '');
  * @returns Array dari status yang diperbolehkan
  */
 const getAvailableStatusOptions = (currentStatus: StatusOrder | undefined): StatusOrder[] => {
-  if (currentStatus === 'SIAP_DIAMBIL') return ['SIAP_DIAMBIL', 'DIAMBIL'];
-  if (currentStatus === 'BATAL_SIAP_DIAMBIL') return ['BATAL_SIAP_DIAMBIL', 'BATAL_DIAMBIL'];
   if (currentStatus === 'DIAMBIL') return ['DIAMBIL'];
   if (currentStatus === 'BATAL_DIAMBIL') return ['BATAL_DIAMBIL'];
+  if (currentStatus === 'SIAP_DIAMBIL') return ['SIAP_DIAMBIL', 'DIAMBIL'];
+  if (currentStatus === 'BATAL_SIAP_DIAMBIL') return ['BATAL_SIAP_DIAMBIL', 'BATAL_DIAMBIL'];
+  
+  if (currentStatus === 'SELESAI') return ['SELESAI', 'SIAP_DIAMBIL'];
+  if (currentStatus === 'BATAL') return ['BATAL', 'BATAL_SIAP_DIAMBIL'];
+
+  if (currentStatus === 'MENUNGGU_KONFIRMASI' || currentStatus === 'PROSES' || currentStatus === 'MENUNGGU_SPAREPART') {
+    return ['MENUNGGU_KONFIRMASI', 'PROSES', 'MENUNGGU_SPAREPART', 'SELESAI', 'BATAL'];
+  }
+
+  if (currentStatus === 'DIAGNOSA') {
+    return ['DIAGNOSA', 'MENUNGGU_KONFIRMASI', 'PROSES', 'MENUNGGU_SPAREPART', 'SELESAI', 'BATAL'];
+  }
+
+  if (currentStatus === 'MASUK') {
+    return ['MASUK', 'DIAGNOSA', 'MENUNGGU_KONFIRMASI', 'PROSES', 'MENUNGGU_SPAREPART', 'SELESAI', 'BATAL'];
+  }
+  
   return ['MASUK', 'DIAGNOSA', 'MENUNGGU_KONFIRMASI', 'PROSES', 'MENUNGGU_SPAREPART', 'SELESAI', 'BATAL'];
 };
 
