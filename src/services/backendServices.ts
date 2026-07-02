@@ -237,7 +237,7 @@ const mapMutasi = (row: MutasiRow): MutasiStok => ({
   qty: row.jumlah,
   hargaBeli: row.harga_beli ?? undefined,
   tanggal: row.tanggal,
-  keterangan: row.keterangan || undefined,
+  keterangan: row.keterangan || "",
 });
 
 const toMutasiRow = (mutasi: MutasiStok): MutasiRow => ({
