@@ -25,36 +25,30 @@ export const Sidebar: React.FC<SidebarProps> = ({ onNavigate }) => {
     return spareparts.filter(s => s.stok <= (s.minStok || 0)).length;
   }, [spareparts]);
 
-  const baseMenuItems = [
-    { name: 'Dashboard', path: '/dashboard', icon: <Home size={20} /> },
-    { name: 'Order Servis', path: '/order', icon: <ClipboardList size={20} />, badge: activeOrdersCount > 0 ? activeOrdersCount : undefined },
-    { name: 'Stok Sparepart', path: '/stok', icon: <Box size={20} />, badge: lowStockCount > 0 ? lowStockCount : undefined, danger: true },
-  ];
-
-  const adminMenuItems = [
-    ...baseMenuItems,
-    { name: 'Pelanggan', path: '/pelanggan', icon: <Users size={20} /> },
-    { name: 'Laporan', path: '/laporan', icon: <BarChart3 size={20} /> },
-  ];
-
-  const menuItems = userRole === 'ADMIN' ? adminMenuItems : baseMenuItems;
+  const menuUtama = useMemo(() => {
+    const items = [
+      { name: 'Dashboard', path: '/dashboard', icon: <Home size={20} />, roles: ['OWNER', 'FRONTLINE', 'FINANCE', 'INVENTORY', 'TEKNISI'] },
+      { name: 'Order Servis', path: '/order', icon: <ClipboardList size={20} />, badge: activeOrdersCount > 0 ? activeOrdersCount : undefined, roles: ['OWNER', 'FRONTLINE', 'TEKNISI'] },
+      { name: 'Pelanggan', path: '/pelanggan', icon: <Users size={20} />, roles: ['OWNER', 'FRONTLINE'] },
+      { name: 'Spare Part', path: '/stok', icon: <Box size={20} />, badge: lowStockCount > 0 ? lowStockCount : undefined, danger: true, roles: ['OWNER', 'INVENTORY', 'TEKNISI'] },
+      { name: 'Laporan', path: '/laporan', icon: <BarChart3 size={20} />, roles: ['OWNER', 'FINANCE'] },
+    ];
+    return items.filter(item => userRole && item.roles.includes(userRole));
+  }, [activeOrdersCount, lowStockCount, userRole]);
 
   return (
     <div className="flex flex-col w-64 h-screen bg-white border-r border-gray-100 shadow-[2px_0_8px_rgba(0,0,0,0.02)]">
-      <div className="flex items-center px-6 h-20">
-        <div className="flex items-center gap-2.5">
-          <div className="bg-blue-600 text-white p-1.5 rounded-lg flex items-center justify-center">
-            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 9.01l-9.15 9.15a2 2 0 0 1-2.82-2.82l9.15-9.15a6 6 0 0 1 9.01-7.94l-3.77 3.77z"></path>
-            </svg>
-          </div>
-          <h1 className="text-xl font-bold text-gray-900 tracking-tight">ServisKu</h1>
+      <div className="flex items-center px-6 h-20 border-b border-gray-100">
+        <div className="flex items-center gap-3">
+          <img src="/logo.png" alt="ServisKu Logo" className="h-10 w-auto object-contain drop-shadow-sm" />
+          <span className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-800 to-blue-600">ServisKu</span>
         </div>
       </div>
       
-      <div className="flex-1 px-4 py-4 overflow-y-auto">
-        <nav className="space-y-1.5">
-          {menuItems.map((item) => (
+      <div className="flex flex-col flex-1 px-4 py-4 overflow-y-auto">
+        <h2 className="px-4 text-xs font-bold text-slate-400 tracking-wider mb-2 uppercase">Menu Utama</h2>
+        <nav className="space-y-1.5 mb-8">
+          {menuUtama.map((item) => (
             <NavLink
               key={item.path}
               to={item.path}
@@ -92,36 +86,42 @@ export const Sidebar: React.FC<SidebarProps> = ({ onNavigate }) => {
             </NavLink>
           ))}
         </nav>
-      </div>
-
-      <div className="p-4 space-y-1">
-        {userRole === 'ADMIN' && (
-          <NavLink 
-            to="/pengaturan" 
+        
+        <div className="mt-auto pt-4 border-t border-gray-100 space-y-4">
+          <NavLink
+            to="/pengaturan"
             onClick={onNavigate}
-            className={({ isActive }) => 
-              `flex items-center w-full px-4 py-2.5 font-medium transition-colors rounded-xl ${
-                isActive ? 'bg-[#eef2ff] text-blue-700 font-bold' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+            className={({ isActive }) =>
+              `relative flex items-center justify-between px-4 py-3 rounded-xl transition-all duration-200 ${
+                isActive
+                  ? 'bg-[#eef2ff] text-blue-700 font-bold overflow-hidden'
+                  : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900 font-medium'
               }`
             }
           >
             {({ isActive }) => (
               <>
-                <Settings size={20} className={`mr-3 ${isActive ? 'text-blue-600' : 'text-gray-400'}`} />
-                Pengaturan
+                {isActive && <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1.5 h-8 bg-blue-600 rounded-r-full"></div>}
+                <div className="flex items-center">
+                  <span className={`mr-3 ${isActive ? 'text-blue-600' : 'text-gray-400'}`}>
+                    <Settings size={20} />
+                  </span>
+                  Pengaturan
+                </div>
               </>
             )}
           </NavLink>
-        )}
-        <button 
-          onClick={() => {
-            useStore.getState().logout();
-          }}
-          className="flex items-center w-full px-4 py-2.5 text-red-600 font-medium transition-colors rounded-xl hover:bg-red-50"
-        >
-          <LogOut size={20} className="mr-3 text-red-400" />
-          Keluar
-        </button>
+
+          <button 
+            onClick={() => {
+              useStore.getState().logout();
+            }}
+            className="flex items-center w-full px-4 py-3 text-red-600 font-medium transition-colors rounded-xl hover:bg-red-50 mt-4"
+          >
+            <LogOut size={20} className="mr-3 text-red-400" />
+            Keluar
+          </button>
+        </div>
       </div>
     </div>
   );

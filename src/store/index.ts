@@ -117,7 +117,30 @@ export interface Technician {
  * Role-Based Access Control (RBAC).
  * Mendefinisikan peran aksesibilitas aplikasi.
  */
-export type Role = "ADMIN" | "TEKNISI";
+export type Role = "OWNER" | "FRONTLINE" | "FINANCE" | "INVENTORY" | "TEKNISI";
+
+export interface AppUser {
+  id: string;
+  username: string;
+  passwordHash: string; // Plaintext untuk demo
+  role: Role;
+  name: string;
+  email: string;
+  phone: string;
+  position: string;
+  avatar: string;
+  isActive: boolean;
+}
+
+export interface AuditLog {
+  id: string;
+  timestamp: string;
+  userId: string;
+  userName: string;
+  role: Role;
+  action: string;
+  details: string;
+}
 
 /**
  * Konfigurasi Global Aplikasi (System Settings).
@@ -224,6 +247,20 @@ interface AppState {
   userId: string | null;
   /** Nama user saat ini */
   userName: string | null;
+  
+  /** Data seluruh pengguna sistem */
+  users: AppUser[];
+  /** Log Aktivitas */
+  auditLogs: AuditLog[];
+  
+  logActivity: (action: string, details: string) => void;
+  clearLogs: () => void;
+  updateProfile: (updates: Partial<AppUser>) => void;
+  changePassword: (oldPass: string, newPass: string) => boolean;
+  resetUserPassword: (id: string, newPass: string) => void;
+  addUser: (user: Omit<AppUser, 'id'>) => void;
+  deleteUser: (id: string) => void;
+  updateUser: (id: string, updates: Partial<AppUser>) => void;
 
   /**
    * Melakukan proses login admin.
@@ -307,7 +344,7 @@ interface AppState {
 
 export const useStore = create<AppState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       updateCustomer: async (id, data) => {
         await updateCustomerDB(id, data);
 
@@ -367,30 +404,109 @@ export const useStore = create<AppState>()(
       userId: null,
       userName: null,
 
+      users: [
+        {
+          id: 'u1', username: 'owner', passwordHash: 'owner', role: 'OWNER', 
+          name: 'Bapak Owner', email: 'owner@servisku.id', phone: '0811111111', position: 'Pemilik Bengkel', avatar: '', isActive: true
+        },
+        {
+          id: 'u2', username: 'frontline', passwordHash: 'frontline', role: 'FRONTLINE', 
+          name: 'Mbak Kasir', email: 'kasir@servisku.id', phone: '0822222222', position: 'Customer Service', avatar: '', isActive: true
+        },
+        {
+          id: 'u3', username: 'finance', passwordHash: 'finance', role: 'FINANCE', 
+          name: 'Mas Keuangan', email: 'finance@servisku.id', phone: '0833333333', position: 'Admin Keuangan', avatar: '', isActive: true
+        },
+        {
+          id: 'u4', username: 'inventory', passwordHash: 'inventory', role: 'INVENTORY', 
+          name: 'Pak Gudang', email: 'gudang@servisku.id', phone: '0844444444', position: 'Admin Gudang', avatar: '', isActive: true
+        },
+        {
+          id: 'u5', username: 'teknisi', passwordHash: 'teknisi', role: 'TEKNISI', 
+          name: 'Deni Setiawan', email: 'teknisi@servisku.id', phone: '0855555555', position: 'Teknisi Senior', avatar: '', isActive: true
+        }
+      ],
+      auditLogs: [],
+
+      clearLogs: () => set({ auditLogs: [] }),
+
+      logActivity: (action, details) => set(state => {
+        if (!state.userId || !state.userName || !state.userRole) return {};
+        const newLog: AuditLog = {
+          id: `log_${Date.now()}`,
+          timestamp: new Date().toISOString(),
+          userId: state.userId,
+          userName: state.userName,
+          role: state.userRole,
+          action,
+          details
+        };
+        
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+        
+        const filteredLogs = state.auditLogs.filter(log => new Date(log.timestamp) >= thirtyDaysAgo);
+
+        return { auditLogs: [newLog, ...filteredLogs] };
+      }),
+      
+      updateProfile: (updates) => set(state => {
+        if (!state.userId) return {};
+        const nextUsers = state.users.map(u => u.id === state.userId ? { ...u, ...updates } : u);
+        // Sync profile name to global userName
+        const newUserName = updates.name !== undefined ? updates.name : state.userName;
+        return { users: nextUsers, userName: newUserName };
+      }),
+      
+      changePassword: (oldPass, newPass) => {
+        let success = false;
+        set(state => {
+          if (!state.userId) return {};
+          const user = state.users.find(u => u.id === state.userId);
+          if (user && user.passwordHash === oldPass) {
+            success = true;
+            const nextUsers = state.users.map(u => u.id === state.userId ? { ...u, passwordHash: newPass } : u);
+            return { users: nextUsers };
+          }
+          return {};
+        });
+        return success;
+      },
+      
+      addUser: (user) => set(state => ({ users: [...state.users, { ...user, id: `u_${Date.now()}` }] })),
+      deleteUser: (id) => set(state => ({ users: state.users.filter(u => u.id !== id) })),
+      updateUser: (id, updates) => set(state => ({
+        users: state.users.map(u => u.id === id ? { ...u, ...updates } : u)
+      })),
+      resetUserPassword: (id, newPass) => set(state => ({
+        users: state.users.map(u => u.id === id ? { ...u, passwordHash: newPass } : u)
+      })),
+
       login: async (username, pass) => {
         // Simulasi delay jaringan
         await new Promise((resolve) => setTimeout(resolve, 800));
 
-        // RBAC Logic
-        if (username === "admin" && pass === "admin") {
-          set({
-            isAuthenticated: true,
-            userRole: "ADMIN",
-            userId: "admin",
-            userName: "Administrator",
-          });
-          return true;
-        } else if (username === "teknisi" && pass === "teknisi") {
-          set({
-            isAuthenticated: true,
-            userRole: "TEKNISI",
-            userId: "t1",
-            userName: "Deni Setiawan",
-          });
-          return true;
+        // RBAC Logic from Users
+        let success = false;
+        set(state => {
+          const user = state.users.find(u => u.username === username && u.passwordHash === pass && u.isActive);
+          if (user) {
+            success = true;
+            return {
+              isAuthenticated: true,
+              userRole: user.role,
+              userId: user.id,
+              userName: user.name,
+            };
+          }
+          return {};
+        });
+        
+        if (success) {
+          get().logActivity("LOGIN", "Pengguna masuk ke sistem");
         }
-
-        return false;
+        
+        return success;
       },
 
       logout: () => {
@@ -402,14 +518,16 @@ export const useStore = create<AppState>()(
         });
       },
 
-      updateOrderStatus: (orderId, status) =>
+      updateOrderStatus: (orderId, status) => {
         set((state) => {
           const nextOrders = state.orders.map((o) =>
             o.id === orderId ? { ...o, status } : o,
           );
           void updateOrderStatusDB(orderId, status);
           return { orders: nextOrders };
-        }),
+        });
+        get().logActivity("UPDATE_ORDER", `Mengubah status order ${orderId} menjadi ${status}`);
+      },
       updateOrder: (orderId, updates) =>
         set((state) => {
           const nextOrders = state.orders.map((o) =>
@@ -426,13 +544,15 @@ export const useStore = create<AppState>()(
           void updateSparepartDB(id, updates);
           return { spareparts: nextSpareparts };
         }),
-      addSparepart: (newSparepartData) =>
+      addSparepart: (newSparepartData) => {
         set((state) => {
           void createSparepartDB(newSparepartData);
           return {
             spareparts: [...state.spareparts, newSparepartData],
           };
-        }),
+        });
+        get().logActivity("ADD_SPAREPART", `Menambahkan sparepart baru: ${newSparepartData.nama}`);
+      },
       tambahMutasiStok: (mutasiData) =>
         set((state) => {
           const newMutasi: MutasiStok = {
@@ -475,6 +595,15 @@ export const useStore = create<AppState>()(
             spareparts,
           };
 
+          // ✅ FIX: Sinkronisasi nilai stok baru ke Supabase setelah mutasi
+          // Tanpa ini, stok di DB tidak pernah berubah walau UI tampak benar
+          const updatedSp = spareparts.find(sp => sp.id === mutasiData.sparepartId);
+          if (updatedSp) {
+            void updateSparepartDB(updatedSp.id, {
+              stok: updatedSp.stok,
+              hargaModal: updatedSp.hargaModal,
+            });
+          }
           void createMutasiStokDB(newMutasi);
 
           return nextState;
@@ -512,10 +641,12 @@ export const useStore = create<AppState>()(
         }),
       addOrder: (newOrderData) =>
         set((state) => {
-          const newId = `o${state.orders.length + 1}`;
+          // ✅ ID unik berbasis timestamp untuk mencegah collision saat data dihapus/di-reload
+          const newId = `o_${Date.now()}`;
           const date = new Date();
           const dateString = date.toISOString().split("T")[0].replace(/-/g, "");
-          const numString = String(state.orders.length + 1).padStart(3, "0");
+          // ✅ Nomor servis unik berbasis timestamp (6 digit terakhir) — bukan length array
+          const numString = String(Date.now()).slice(-6);
           const noServis = `SRV-${dateString}-${numString}`;
 
           const newOrder: Order = {

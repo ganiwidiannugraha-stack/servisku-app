@@ -98,7 +98,7 @@ export const OrderList: React.FC = () => {
           <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Daftar Order Servis</h1>
           <p className="mt-1 text-gray-500 font-medium">Kelola semua perangkat servis pelanggan.</p>
         </div>
-        {userRole === 'ADMIN' && (
+        {['OWNER', 'FRONTLINE'].includes(userRole || '') && (
           <button 
             onClick={() => navigate('/order/baru')} 
             className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl font-semibold transition-colors flex items-center gap-2 shadow-sm"

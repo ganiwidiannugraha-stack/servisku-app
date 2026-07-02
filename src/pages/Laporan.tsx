@@ -2,79 +2,112 @@ import React, { useState, useMemo } from 'react';
 import { useStore } from '../store';
 import { Button } from '../components/ui/Button';
 import { 
-  Download, 
-  FileText, 
-  Wallet, 
-  ShoppingCart, 
-  CheckCircle2, 
-  Search,
-  Star
+  Download, FileText, Star, ChevronDown,
+  AlertTriangle, Users, Wrench
 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Modal } from '../components/ui/Modal';
+import type { Variants } from 'framer-motion';
+import { 
+  BarChart, Bar, PieChart, Pie, Cell, AreaChart, Area,
+  XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer 
+} from 'recharts';
 
-/**
- * Komponen Halaman Laporan & Analisis
- * Menampilkan rekapitulasi data bulanan (Omset, Modal, Laba Bersih), 
- * riwayat transaksi, sparepart terlaris, dan performa teknisi.
- * Menyediakan fungsi ekspor ke PDF dan Excel.
- */
+
+type TabName = 'KEUANGAN' | 'OPERASIONAL' | 'INVENTORY' | 'SDM' | 'CRM';
+
+const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
+
 export const Laporan: React.FC = () => {
-  const { orders, customers, spareparts, technicians } = useStore();
-  const navigate = useNavigate();
+  const { orders, customers, spareparts, technicians, mutasiStok } = useStore();
 
-  // Generate available months from orders
-  const availableMonths = useMemo(() => {
-    const months = new Set<string>();
-    orders.forEach(o => {
-      const date = new Date(o.tanggalMasuk);
-      if (!isNaN(date.getTime())) {
-        const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-        months.add(key);
-      }
-    });
-    // Add current month if empty
-    if (months.size === 0) {
-      const now = new Date();
-      months.add(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`);
+  // Default to first day of current month to today
+  const defaultStartDate = new Date();
+  defaultStartDate.setDate(1);
+  const [startDate, setStartDate] = useState<string>(defaultStartDate.toISOString().split('T')[0]);
+  
+  const defaultEndDate = new Date();
+  const [endDate, setEndDate] = useState<string>(defaultEndDate.toISOString().split('T')[0]);
+  const [activeTab, setActiveTab] = useState<TabName>('KEUANGAN');
+  const [activePreset, setActivePreset] = useState<string>('bulan');
+
+  // Export Modal State
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+  const [exportOptions, setExportOptions] = useState({
+    keuangan: true,
+    operasional: true,
+    inventory: true,
+    sdm: true,
+    crm: true
+  });
+
+  // Quick date preset handlers
+  const setPreset = (preset: string) => {
+    const today = new Date();
+    const todayStr = today.toISOString().split('T')[0];
+    setActivePreset(preset);
+    if (preset === 'hari') {
+      setStartDate(todayStr);
+      setEndDate(todayStr);
+    } else if (preset === 'minggu') {
+      const d = new Date(today);
+      d.setDate(today.getDate() - 6);
+      setStartDate(d.toISOString().split('T')[0]);
+      setEndDate(todayStr);
+    } else if (preset === 'bulan') {
+      const d = new Date(today.getFullYear(), today.getMonth(), 1);
+      setStartDate(d.toISOString().split('T')[0]);
+      setEndDate(todayStr);
+    } else if (preset === 'tahun') {
+      const d = new Date(today.getFullYear(), 0, 1);
+      setStartDate(d.toISOString().split('T')[0]);
+      setEndDate(todayStr);
     }
-    return Array.from(months).sort().reverse();
-  }, [orders]);
-
-  const [selectedMonth, setSelectedMonth] = useState(availableMonths[0] || '');
-  const [searchTx, setSearchTx] = useState('');
-
-  const formatMonthName = (YYYYMM: string) => {
-    if (!YYYYMM) return '';
-    const [year, month] = YYYYMM.split('-');
-    const date = new Date(parseInt(year), parseInt(month) - 1, 1);
-    return date.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
   };
 
-  // Filter completed orders by selected month
-  const currentMonthOrders = useMemo(() => {
-    return orders.filter(o => {
-      if (o.status !== 'SELESAI' && o.status !== 'DIAMBIL') return false;
-      const date = new Date(o.tanggalMasuk);
-      if (isNaN(date.getTime())) return false;
-      const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-      return key === selectedMonth;
-    });
-  }, [orders, selectedMonth]);
+  // Animation variants
+  const containerVariants: Variants = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.1 } } };
+  const itemVariants: Variants = { hidden: { opacity: 0, y: 20 }, show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 300, damping: 24 } } };
+  const tabVariants: Variants = { 
+    hidden: { opacity: 0, y: 20 }, 
+    show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 300, damping: 24 } }, 
+    exit: { opacity: 0, y: -20, transition: { duration: 0.2 } } 
+  };
 
-  // Calculate metrics
-  const metrics = useMemo(() => {
+  const formatDateShort = (d: Date) => d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
+
+  // Date Filtering Logic
+  const filteredOrders = useMemo(() => {
+    const start = new Date(startDate);
+    start.setHours(0, 0, 0, 0);
+    
+    const end = new Date(endDate);
+    end.setHours(23, 59, 59, 999);
+    
+    return orders.filter(o => {
+      const oDate = new Date(o.tanggalMasuk);
+      if (isNaN(oDate.getTime())) return false;
+      return oDate >= start && oDate <= end;
+    });
+  }, [orders, startDate, endDate]);
+
+  // 1. KEUANGAN METRICS & CHART
+  const financeData = useMemo(() => {
     let omset = 0;
     let modal = 0;
+    let piutang = 0;
+    const currentOrders = filteredOrders.filter(o => o.status === 'SELESAI' || o.status === 'DIAMBIL');
+    
+    const dailyData: Record<string, { omset: number, laba: number }> = {};
+    const categoryData: Record<string, number> = {};
 
-    const txDetails = currentMonthOrders.map(order => {
-      const customer = customers.find(c => c.id === order.pelangganId);
+    currentOrders.forEach(order => {
       let orderOmset = order.biayaJasa || 0;
       let orderModal = 0;
-
-      if (order.spareparts && order.spareparts.length > 0) {
+      if (order.spareparts) {
         order.spareparts.forEach(sp => {
           const detail = spareparts.find(s => s.id === sp.id);
           if (detail) {
@@ -83,478 +116,1131 @@ export const Laporan: React.FC = () => {
           }
         });
       }
-
       omset += orderOmset;
       modal += orderModal;
+      if (order.status === 'SELESAI') piutang += orderOmset; 
 
-      return {
-        ...order,
-        customerName: customer?.nama || 'Unknown',
-        omset: orderOmset,
-        modal: orderModal,
-        laba: orderOmset - orderModal
-      };
+      const cat = order.jenisPerangkat || 'Lainnya';
+      categoryData[cat] = (categoryData[cat] || 0) + orderOmset;
+
+      const dateStr = formatDateShort(new Date(order.tanggalMasuk));
+      if (!dailyData[dateStr]) dailyData[dateStr] = { omset: 0, laba: 0 };
+      dailyData[dateStr].omset += orderOmset;
+      dailyData[dateStr].laba += (orderOmset - orderModal);
     });
 
-    return {
-      totalOmset: omset,
-      totalModal: modal,
-      labaBersih: omset - modal,
-      totalServis: currentMonthOrders.length,
-      txDetails: txDetails.sort((a, b) => new Date(b.tanggalMasuk).getTime() - new Date(a.tanggalMasuk).getTime())
-    };
-  }, [currentMonthOrders, customers, spareparts]);
+    const chartData = Object.entries(dailyData)
+      .map(([date, data]) => ({ name: date, Omset: data.omset, Laba: data.laba }));
 
-  // Calculate Top Spareparts
-  const topSpareparts = useMemo(() => {
-    const spCount: Record<string, number> = {};
-    currentMonthOrders.forEach(order => {
-      if (order.spareparts) {
-        order.spareparts.forEach(sp => {
-          spCount[sp.id] = (spCount[sp.id] || 0) + sp.qty;
+    const pieCategoryData = Object.entries(categoryData)
+      .map(([name, value]) => ({ name, value }))
+      .sort((a,b) => b.value - a.value);
+
+    const recentTransactions = [...currentOrders]
+      .sort((a, b) => new Date(b.tanggalMasuk).getTime() - new Date(a.tanggalMasuk).getTime())
+      .slice(0, 5);
+
+    return { totalOmset: omset, totalModal: modal, labaBersih: omset - modal, piutang, chartData, recentTransactions, pieCategoryData };
+  }, [filteredOrders, spareparts]);
+
+  // 2. OPERASIONAL METRICS & CHART
+  const opsData = useMemo(() => {
+    const masuk = filteredOrders.length;
+    const selesaiOrders = filteredOrders.filter(o => o.status === 'SELESAI' || o.status === 'DIAMBIL');
+    const selesai = selesaiOrders.length;
+    const batal = filteredOrders.filter(o => o.status === 'BATAL').length;
+    
+    let totalDays = 0;
+    let countDays = 0;
+    selesaiOrders.forEach(o => {
+       const start = new Date(o.tanggalMasuk).getTime();
+       const end = o.estimasiSelesai ? new Date(o.estimasiSelesai).getTime() : start + (2 * 24 * 60 * 60 * 1000);
+       let days = (end - start) / (1000 * 3600 * 24);
+       if (days < 0.1) days = 0.5; // at least half day
+       totalDays += days;
+       countDays++;
+    });
+    const avgDays = countDays > 0 ? (totalDays / countDays).toFixed(1) : '0';
+
+    const statusCounts: Record<string, number> = {};
+    filteredOrders.forEach(o => {
+      statusCounts[o.status] = (statusCounts[o.status] || 0) + 1;
+    });
+    const pieData = Object.entries(statusCounts).map(([status, count]) => ({
+      name: status,
+      value: count
+    }));
+
+    const problematicOrders = filteredOrders.filter(o => o.status === 'BATAL' || o.status === 'DIAGNOSA');
+
+    return { masuk, selesai, batal, tingkatKeberhasilan: masuk > 0 ? ((selesai / masuk) * 100).toFixed(1) : 0, pieData, problematicOrders, avgDays };
+  }, [filteredOrders]);
+
+  // 3. INVENTORY METRICS & CHART
+  const invData = useMemo(() => {
+    const terjual: Record<string, number> = {};
+    filteredOrders.filter(o => o.status === 'SELESAI' || o.status === 'DIAMBIL').forEach(o => {
+      if (o.spareparts) {
+        o.spareparts.forEach(sp => {
+          terjual[sp.id] = (terjual[sp.id] || 0) + sp.qty;
         });
       }
     });
-
-    const sorted = Object.keys(spCount)
-      .map(id => {
-        const detail = spareparts.find(s => s.id === id);
-        return {
-          id,
-          nama: detail?.nama || 'Unknown',
-          qty: spCount[id]
-        };
-      })
-      .sort((a, b) => b.qty - a.qty)
-      .slice(0, 4);
     
-    const maxQty = sorted.length > 0 ? sorted[0].qty : 1;
-    return { list: sorted, maxQty };
-  }, [currentMonthOrders, spareparts]);
+    const topSpareparts = Object.entries(terjual)
+      .sort((a, b) => b[1] - a[1])
+      .map(([id, qty]) => ({ detail: spareparts.find(s => s.id === id), qty }))
+      .filter(x => x.detail);
 
-  // Filter TX by search
-  const filteredTx = metrics.txDetails.filter(tx => 
-    tx.noServis.toLowerCase().includes(searchTx.toLowerCase()) || 
-    tx.customerName.toLowerCase().includes(searchTx.toLowerCase())
-  );
+    const chartData = topSpareparts.slice(0, 5).map(item => ({
+      name: item.detail?.nama || 'Unknown',
+      Terjual: item.qty
+    }));
 
-  // Calculate actual Technicians
-  const topTechnicians = useMemo(() => {
-    const jobsCount: Record<string, number> = {};
-    currentMonthOrders.forEach(o => {
-      if (o.teknisiId) {
-        jobsCount[o.teknisiId] = (jobsCount[o.teknisiId] || 0) + 1;
+    const valuasiStok = spareparts.reduce((sum, sp) => sum + (sp.stok * sp.hargaModal), 0);
+    const stokKritis = spareparts.filter(sp => sp.stok <= 5).sort((a,b) => a.stok - b.stok);
+
+    const mutasiTerakhir = [...mutasiStok]
+      .filter(m => {
+        const mDate = new Date(m.tanggal);
+        const start = new Date(startDate);
+        start.setHours(0,0,0,0);
+        const end = new Date(endDate);
+        end.setHours(23,59,59,999);
+        return mDate >= start && mDate <= end;
+      })
+      .sort((a, b) => new Date(b.tanggal).getTime() - new Date(a.tanggal).getTime())
+      .slice(0, 5)
+      .map(m => ({ ...m, detail: spareparts.find(s => s.id === m.sparepartId) }));
+
+    return { topSpareparts, valuasiStok, chartData, stokKritis, mutasiTerakhir };
+  }, [filteredOrders, spareparts, mutasiStok, startDate, endDate]);
+
+  // 4. SDM / TEKNISI METRICS & CHART
+  const techData = useMemo(() => {
+    const techStats = technicians.map(t => {
+      const tOrders = filteredOrders.filter(o => o.teknisiId === t.id);
+      const finished = tOrders.filter(o => o.status === 'SELESAI' || o.status === 'DIAMBIL').length;
+      return { ...t, assigned: tOrders.length, finished };
+    }).sort((a, b) => b.finished - a.finished);
+
+    const chartData = techStats.map(t => ({
+      name: t.name.split(' ')[0],
+      Assigned: t.assigned,
+      Selesai: t.finished
+    }));
+
+    return { techStats, chartData };
+  }, [filteredOrders, technicians]);
+
+  // 5. CRM / PELANGGAN METRICS & TABLE
+  const crmData = useMemo(() => {
+    const spending: Record<string, { total: number, count: number }> = {};
+    filteredOrders.filter(o => o.status === 'DIAMBIL' || o.status === 'SELESAI').forEach(o => {
+      let orderOmset = o.biayaJasa || 0;
+      if (o.spareparts) {
+        o.spareparts.forEach(sp => {
+          const detail = spareparts.find(s => s.id === sp.id);
+          if (detail) orderOmset += (detail.harga * sp.qty);
+        });
+      }
+      if (!spending[o.pelangganId]) {
+        spending[o.pelangganId] = { total: 0, count: 0 };
+      }
+      spending[o.pelangganId].total += orderOmset;
+      spending[o.pelangganId].count += 1;
+    });
+
+    const allCustomers = Object.entries(spending)
+      .sort((a, b) => b[1].total - a[1].total)
+      .map(([id, data]) => ({ detail: customers.find(c => c.id === id), total: data.total, count: data.count }))
+      .filter(x => x.detail);
+
+    // Advanced CRM Metrics
+    const activeCustomerIds = new Set(orders.filter(o => !['SELESAI', 'DIAMBIL', 'BATAL', 'BATAL_DIAMBIL', 'BATAL_SIAP_DIAMBIL'].includes(o.status)).map(o => o.pelangganId));
+    const totalPelanggan = customers.length;
+    const pelangganAktif = activeCustomerIds.size;
+    
+    const customerFirstOrder = new Map<string, Date>();
+    [...orders].sort((a, b) => new Date(a.tanggalMasuk).getTime() - new Date(b.tanggalMasuk).getTime()).forEach(o => {
+      if (!customerFirstOrder.has(o.pelangganId)) {
+        customerFirstOrder.set(o.pelangganId, new Date(o.tanggalMasuk));
       }
     });
 
-    return technicians.map(tech => ({
-      id: tech.id,
-      name: tech.name,
-      avatar: tech.avatar,
-      rating: tech.rating,
-      jobs: jobsCount[tech.id] || 0
-    })).sort((a, b) => b.jobs - a.jobs).slice(0, 3);
-  }, [currentMonthOrders, technicians]);
+    const now = new Date();
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
+    let pelangganBaru = 0;
+    
+    customers.forEach(c => {
+      let date = customerFirstOrder.get(c.id);
+      if (!date && c.id.startsWith('c') && !isNaN(Number(c.id.substring(1)))) {
+        date = new Date(Number(c.id.substring(1)));
+      }
+      if (!date) date = now;
+      if (date.getMonth() === currentMonth && date.getFullYear() === currentYear) {
+        pelangganBaru++;
+      }
+    });
 
-  const formatCurrency = (val: number) => `Rp ${val.toLocaleString('id-ID')}`;
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Ags', 'Sep', 'Okt', 'Nov', 'Des'];
+    const growthData = months.map(m => ({ name: m, total: 0 }));
+    let cumulative = 0;
+    
+    const customerDates = customers.map(c => {
+      let date = customerFirstOrder.get(c.id);
+      if (!date && c.id.startsWith('c') && !isNaN(Number(c.id.substring(1)))) {
+        date = new Date(Number(c.id.substring(1)));
+      }
+      return date || new Date(currentYear, 0, 1);
+    }).sort((a, b) => a.getTime() - b.getTime());
 
-  // === EXPORT PDF ===
-  const handleExportPDF = () => {
+    customerDates.forEach(d => {
+      if (d.getFullYear() < currentYear) {
+        cumulative++;
+      }
+    });
+
+    for (let month = 0; month < 12; month++) {
+      const addedThisMonth = customerDates.filter(d => d.getFullYear() === currentYear && d.getMonth() === month).length;
+      cumulative += addedThisMonth;
+      growthData[month].total = cumulative;
+    }
+
+    const totalServisAll = customers.reduce((sum, c) => sum + (c.totalServis || 0), 0);
+    const rataRataServis = totalPelanggan > 0 ? (totalServisAll / totalPelanggan).toFixed(1) : '0';
+
+    return { allCustomers, totalPelanggan, pelangganAktif, pelangganBaru, rataRataServis, growthData };
+  }, [filteredOrders, customers, spareparts, orders]);
+
+  const exportPDF = () => {
     const doc = new jsPDF();
-    const monthLabel = formatMonthName(selectedMonth);
-    const shopName = useStore.getState().settings.shopName || 'ServisKu';
+    let yPos = 20;
 
-    // Header
-    doc.setFontSize(18);
-    doc.setFont('helvetica', 'bold');
-    doc.text(shopName, 14, 20);
+    const checkPage = (needed: number = 40) => {
+      if (yPos > 270 - needed) { doc.addPage(); yPos = 20; }
+    };
+
+    // --- Header Document ---
+    doc.setFontSize(22);
+    doc.setTextColor(37, 99, 235);
+    doc.text('Laporan Eksekutif ServisKu', 14, yPos);
+    yPos += 8;
+    
     doc.setFontSize(11);
-    doc.setFont('helvetica', 'normal');
-    doc.text(`Laporan Rekap Bulanan — ${monthLabel}`, 14, 28);
-    doc.setDrawColor(59, 130, 246);
-    doc.setLineWidth(0.5);
-    doc.line(14, 31, 196, 31);
+    doc.setTextColor(100);
+    doc.text(`Periode: ${startDate} s/d ${endDate}`, 14, yPos);
+    doc.text(`Dicetak: ${new Date().toLocaleString('id-ID')}`, 140, yPos);
+    yPos += 4;
+    doc.setDrawColor(200);
+    doc.line(14, yPos, 196, yPos);
+    yPos += 10;
 
-    // Ringkasan card
-    doc.setFontSize(12);
-    doc.setFont('helvetica', 'bold');
-    doc.text('Ringkasan Performa', 14, 40);
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
-    const summaryData = [
-      ['Total Omset', formatCurrency(metrics.totalOmset)],
-      ['HPP / Modal Part', formatCurrency(metrics.totalModal)],
-      ['Keuntungan Bersih', formatCurrency(metrics.labaBersih)],
-      ['Servis Selesai', `${metrics.totalServis} Unit`],
-    ];
-    autoTable(doc, {
-      startY: 44,
-      head: [['Metrik', 'Nilai']],
-      body: summaryData,
-      theme: 'grid',
-      headStyles: { fillColor: [59, 130, 246], textColor: 255, fontStyle: 'bold' },
-      styles: { fontSize: 10 },
-      margin: { left: 14, right: 14 },
-    });
+    // ═══════════════════════════════════════════
+    // 1. KEUANGAN
+    // ═══════════════════════════════════════════
+    if (exportOptions.keuangan) {
+      doc.setFontSize(14);
+      doc.setTextColor(0);
+      doc.text('1. Ringkasan Keuangan', 14, yPos);
+      
+      const margin = financeData.totalOmset > 0
+        ? ((financeData.labaBersih / financeData.totalOmset) * 100).toFixed(1)
+        : '0';
 
-    // Riwayat Transaksi table
-    const txY = (doc as any).lastAutoTable?.finalY + 10 || 90;
-    doc.setFontSize(12);
-    doc.setFont('helvetica', 'bold');
-    doc.text('Riwayat Transaksi (Selesai)', 14, txY);
-    const txBody = metrics.txDetails.map(tx => [
-      tx.noServis,
-      tx.customerName,
-      `${tx.jenisPerangkat} ${tx.merkModel || ''}`.trim(),
-      formatCurrency(tx.omset),
-      formatCurrency(tx.modal),
-      formatCurrency(tx.laba),
-    ]);
-    autoTable(doc, {
-      startY: txY + 4,
-      head: [['No Servis', 'Pelanggan', 'Perangkat', 'Omset', 'Modal', 'Laba']],
-      body: txBody,
-      theme: 'striped',
-      headStyles: { fillColor: [59, 130, 246], textColor: 255, fontStyle: 'bold' },
-      styles: { fontSize: 8 },
-      margin: { left: 14, right: 14 },
-    });
-
-    // Top spareparts
-    if (topSpareparts.list.length > 0) {
-      const spY = (doc as any).lastAutoTable?.finalY + 10 || 180;
-      doc.setFontSize(12);
-      doc.setFont('helvetica', 'bold');
-      doc.text('Sparepart Terlaris', 14, spY);
       autoTable(doc, {
-        startY: spY + 4,
-        head: [['#', 'Nama Sparepart', 'Jumlah Terpakai']],
-        body: topSpareparts.list.map((sp, i) => [i + 1, sp.nama, `${sp.qty}x`]),
-        theme: 'grid',
-        headStyles: { fillColor: [59, 130, 246], textColor: 255, fontStyle: 'bold' },
-        styles: { fontSize: 9 },
-        margin: { left: 14, right: 14 },
+        startY: yPos + 5,
+        head: [['Indikator', 'Nilai (Rp)']],
+        body: [
+          ['Total Omset',        `Rp ${financeData.totalOmset.toLocaleString('id-ID')}`],
+          ['Total Modal (HPP)',  `Rp ${financeData.totalModal.toLocaleString('id-ID')}`],
+          ['Laba Bersih',        `Rp ${financeData.labaBersih.toLocaleString('id-ID')}`],
+          ['Margin Laba',        `${margin}%`],
+          ['Piutang / Kasbon',   `Rp ${financeData.piutang.toLocaleString('id-ID')}`],
+        ],
+        theme: 'striped',
+        headStyles: { fillColor: [59, 130, 246] },
+        styles: { fontSize: 10 },
+      });
+      yPos = (doc as any).lastAutoTable.finalY + 8;
+
+      // Sub-tabel: Tren Harian
+      if (financeData.chartData.length > 0) {
+        checkPage(30);
+        doc.setFontSize(11);
+        doc.setTextColor(80);
+        doc.text('Tren Omset & Laba Harian:', 14, yPos);
+        autoTable(doc, {
+          startY: yPos + 3,
+          head: [['Tanggal', 'Omset (Rp)', 'Laba (Rp)']],
+          body: financeData.chartData.map(d => [
+            d.name,
+            `Rp ${d.Omset.toLocaleString('id-ID')}`,
+            `Rp ${d.Laba.toLocaleString('id-ID')}`
+          ]),
+          theme: 'grid',
+          headStyles: { fillColor: [59, 130, 246], fontSize: 9 },
+          styles: { fontSize: 9 },
+        });
+        yPos = (doc as any).lastAutoTable.finalY + 8;
+      }
+
+      // Sub-tabel: 5 Transaksi Terakhir
+      if (financeData.recentTransactions.length > 0) {
+        checkPage(30);
+        doc.setFontSize(11);
+        doc.setTextColor(80);
+        doc.text('5 Transaksi Terbaru:', 14, yPos);
+        autoTable(doc, {
+          startY: yPos + 3,
+          head: [['No. Servis', 'Perangkat', 'Biaya Jasa', 'Tanggal']],
+          body: financeData.recentTransactions.map(o => {
+            return [
+              o.noServis,
+              `${o.jenisPerangkat}${o.merkModel ? ` - ${o.merkModel}` : ''}`,
+              `Rp ${(o.biayaJasa || 0).toLocaleString('id-ID')}`,
+              new Date(o.tanggalMasuk).toLocaleDateString('id-ID'),
+            ];
+          }),
+          theme: 'grid',
+          headStyles: { fillColor: [59, 130, 246], fontSize: 9 },
+          styles: { fontSize: 9 },
+        });
+        yPos = (doc as any).lastAutoTable.finalY + 15;
+      }
+    }
+
+    // ═══════════════════════════════════════════
+    // 2. OPERASIONAL
+    // ═══════════════════════════════════════════
+    if (exportOptions.operasional) {
+      checkPage();
+      doc.setFontSize(14);
+      doc.setTextColor(0);
+      doc.text('2. Performa Operasional', 14, yPos);
+      
+      autoTable(doc, {
+        startY: yPos + 5,
+        head: [['Total Masuk', 'Selesai', 'Batal', 'Tingkat Keberhasilan']],
+        body: [[
+          opsData.masuk, opsData.selesai, opsData.batal, `${opsData.tingkatKeberhasilan}%`
+        ]],
+        theme: 'striped',
+        headStyles: { fillColor: [16, 185, 129] },
+        styles: { fontSize: 10 },
+      });
+      yPos = (doc as any).lastAutoTable.finalY + 8;
+
+      // Sub-tabel: Breakdown per Status
+      if (opsData.pieData.length > 0) {
+        checkPage(30);
+        doc.setFontSize(11);
+        doc.setTextColor(80);
+        doc.text('Distribusi Status Order:', 14, yPos);
+        autoTable(doc, {
+          startY: yPos + 3,
+          head: [['Status', 'Jumlah']],
+          body: opsData.pieData.map(d => [d.name, d.value]),
+          theme: 'grid',
+          headStyles: { fillColor: [16, 185, 129], fontSize: 9 },
+          styles: { fontSize: 9 },
+        });
+        yPos = (doc as any).lastAutoTable.finalY + 8;
+      }
+
+      // Sub-tabel: Order Bermasalah (BATAL/DIAGNOSA)
+      if (opsData.problematicOrders.length > 0) {
+        checkPage(30);
+        doc.setFontSize(11);
+        doc.setTextColor(80);
+        doc.text('Order Bermasalah (Batal / Diagnosa):', 14, yPos);
+        autoTable(doc, {
+          startY: yPos + 3,
+          head: [['No. Servis', 'Perangkat', 'Status', 'Keluhan']],
+          body: opsData.problematicOrders.slice(0, 10).map(o => [
+            o.noServis,
+            `${o.jenisPerangkat}${o.merkModel ? ` ${o.merkModel}` : ''}`,
+            o.status,
+            (o.keluhan || '').substring(0, 50) + ((o.keluhan || '').length > 50 ? '...' : ''),
+          ]),
+          theme: 'grid',
+          headStyles: { fillColor: [239, 68, 68], fontSize: 9 },
+          styles: { fontSize: 9 },
+        });
+        yPos = (doc as any).lastAutoTable.finalY + 15;
+      } else {
+        yPos += 10;
+      }
+    }
+
+    // ═══════════════════════════════════════════
+    // 3. INVENTORY
+    // ═══════════════════════════════════════════
+    if (exportOptions.inventory) {
+      checkPage();
+      doc.setFontSize(14);
+      doc.setTextColor(0);
+      doc.text('3. Status Inventory', 14, yPos);
+      
+      autoTable(doc, {
+        startY: yPos + 5,
+        head: [['Indikator', 'Nilai']],
+        body: [
+          ['Total Valuasi Stok (Modal)', `Rp ${invData.valuasiStok.toLocaleString('id-ID')}`],
+          ['Jumlah Jenis Item', spareparts.length.toString()],
+          ['Item Stok Menipis (<= 5)', invData.stokKritis.length.toString()],
+        ],
+        theme: 'striped',
+        headStyles: { fillColor: [245, 158, 11] },
+        styles: { fontSize: 10 },
+      });
+      yPos = (doc as any).lastAutoTable.finalY + 8;
+
+      // Sub-tabel: Top Sparepart Terjual
+      if (invData.topSpareparts.length > 0) {
+        checkPage(30);
+        doc.setFontSize(11);
+        doc.setTextColor(80);
+        doc.text('Top Sparepart Terlaris:', 14, yPos);
+        autoTable(doc, {
+          startY: yPos + 3,
+          head: [['Nama Sparepart', 'Kategori', 'Qty Terjual']],
+          body: invData.topSpareparts.slice(0, 10).map(item => [
+            item.detail?.nama || '-',
+            item.detail?.kategori || '-',
+            item.qty,
+          ]),
+          theme: 'grid',
+          headStyles: { fillColor: [245, 158, 11], fontSize: 9 },
+          styles: { fontSize: 9 },
+        });
+        yPos = (doc as any).lastAutoTable.finalY + 8;
+      }
+
+      // Sub-tabel: Daftar Stok Kritis
+      if (invData.stokKritis.length > 0) {
+        checkPage(30);
+        doc.setFontSize(11);
+        doc.setTextColor(80);
+        doc.text('⚠ Daftar Stok Kritis (Perlu Restock):', 14, yPos);
+        autoTable(doc, {
+          startY: yPos + 3,
+          head: [['Nama', 'Kategori', 'Sisa Stok', 'Min Stok']],
+          body: invData.stokKritis.map(sp => [
+            sp.nama,
+            sp.kategori,
+            sp.stok,
+            sp.minStok,
+          ]),
+          theme: 'grid',
+          headStyles: { fillColor: [239, 68, 68], fontSize: 9 },
+          styles: { fontSize: 9 },
+        });
+        yPos = (doc as any).lastAutoTable.finalY + 15;
+      } else {
+        yPos += 10;
+      }
+    }
+
+    // ═══════════════════════════════════════════
+    // 4. SDM (Kinerja Teknisi)
+    // ═══════════════════════════════════════════
+    if (exportOptions.sdm) {
+      checkPage();
+      doc.setFontSize(14);
+      doc.setTextColor(0);
+      doc.text('4. Kinerja Teknisi', 14, yPos);
+      
+      const sdmBody = techData.techStats.map(t => {
+        const rasio = t.assigned > 0 ? ((t.finished / t.assigned) * 100).toFixed(0) : '0';
+        const techInfo = technicians.find(tc => tc.id === t.id);
+        return [
+          t.name,
+          t.assigned,
+          t.finished,
+          `${rasio}%`,
+          techInfo ? `${techInfo.rating.toFixed(1)} / 5.0` : '-',
+        ];
+      });
+      
+      autoTable(doc, {
+        startY: yPos + 5,
+        head: [['Nama Teknisi', 'Ditugaskan', 'Selesai', 'Rasio Selesai', 'Rating']],
+        body: sdmBody.length > 0 ? sdmBody : [['-', '-', '-', '-', '-']],
+        theme: 'striped',
+        headStyles: { fillColor: [139, 92, 246] },
+        styles: { fontSize: 10 },
+      });
+      yPos = (doc as any).lastAutoTable.finalY + 15;
+    }
+
+    // ═══════════════════════════════════════════
+    // 5. CRM (Top Pelanggan)
+    // ═══════════════════════════════════════════
+    if (exportOptions.crm) {
+      checkPage();
+      doc.setFontSize(14);
+      doc.setTextColor(0);
+      doc.text('5. Analisis Loyalitas Pelanggan (CRM)', 14, yPos);
+      
+      const crmBody = crmData.allCustomers.slice(0, 15).map((c, i) => [
+        i + 1,
+        c.detail?.nama || '-',
+        c.detail?.noHp || '-',
+        c.count,
+        `Rp ${c.total.toLocaleString('id-ID')}`,
+      ]);
+      
+      autoTable(doc, {
+        startY: yPos + 5,
+        head: [['#', 'Nama Pelanggan', 'Kontak', 'Freq Servis', 'Total Pengeluaran (CLV)']],
+        body: crmBody.length > 0 ? crmBody : [['-', '-', '-', '-', '-']],
+        theme: 'striped',
+        headStyles: { fillColor: [236, 72, 153] },
+        styles: { fontSize: 10 },
       });
     }
 
-    // Footer
+    // --- Footer ---
     const pageCount = doc.getNumberOfPages();
     for (let i = 1; i <= pageCount; i++) {
       doc.setPage(i);
       doc.setFontSize(8);
-      doc.setTextColor(150);
-      doc.text(`Dicetak pada ${new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })} — Halaman ${i}/${pageCount}`, 14, 290);
+      doc.setTextColor(180);
+      doc.text(`ServisKu — Hal ${i}/${pageCount}`, 14, 290);
+      doc.text('Dokumen ini di-generate otomatis', 130, 290);
     }
 
-    doc.save(`Laporan_${selectedMonth}_${shopName.replace(/\s+/g, '_')}.pdf`);
+    doc.save(`Laporan_ServisKu_${startDate}_to_${endDate}.pdf`);
+    setIsExportModalOpen(false);
   };
 
-  // === EXPORT EXCEL ===
-  const handleExportExcel = () => {
-    const monthLabel = formatMonthName(selectedMonth);
-    const shopName = useStore.getState().settings.shopName || 'ServisKu';
+  const exportExcel = () => {
+    const ws = XLSX.utils.json_to_sheet([{ Omset: financeData.totalOmset, Laba: financeData.labaBersih }]);
     const wb = XLSX.utils.book_new();
-
-    // Sheet 1: Ringkasan
-    const summaryRows = [
-      [shopName],
-      [`Laporan Rekap — ${monthLabel}`],
-      [],
-      ['Metrik', 'Nilai'],
-      ['Total Omset', metrics.totalOmset],
-      ['HPP / Modal Part', metrics.totalModal],
-      ['Keuntungan Bersih', metrics.labaBersih],
-      ['Servis Selesai', metrics.totalServis],
-    ];
-    const wsSummary = XLSX.utils.aoa_to_sheet(summaryRows);
-    wsSummary['!cols'] = [{ wch: 25 }, { wch: 20 }];
-    XLSX.utils.book_append_sheet(wb, wsSummary, 'Ringkasan');
-
-    // Sheet 2: Riwayat Transaksi
-    const txRows = [
-      ['No Servis', 'Pelanggan', 'Perangkat', 'Tanggal', 'Omset (Rp)', 'Modal (Rp)', 'Laba (Rp)', 'Status'],
-      ...metrics.txDetails.map(tx => [
-        tx.noServis,
-        tx.customerName,
-        `${tx.jenisPerangkat} ${tx.merkModel || ''}`.trim(),
-        new Date(tx.tanggalMasuk).toLocaleDateString('id-ID'),
-        tx.omset,
-        tx.modal,
-        tx.laba,
-        tx.status,
-      ]),
-    ];
-    const wsTx = XLSX.utils.aoa_to_sheet(txRows);
-    wsTx['!cols'] = [{ wch: 22 }, { wch: 18 }, { wch: 22 }, { wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 14 }];
-    XLSX.utils.book_append_sheet(wb, wsTx, 'Transaksi');
-
-    // Sheet 3: Sparepart Terlaris
-    if (topSpareparts.list.length > 0) {
-      const spRows = [
-        ['#', 'Nama Sparepart', 'Jumlah Terpakai'],
-        ...topSpareparts.list.map((sp, i) => [i + 1, sp.nama, sp.qty]),
-      ];
-      const wsSp = XLSX.utils.aoa_to_sheet(spRows);
-      wsSp['!cols'] = [{ wch: 5 }, { wch: 28 }, { wch: 16 }];
-      XLSX.utils.book_append_sheet(wb, wsSp, 'Sparepart Terlaris');
-    }
-
-    // Sheet 4: Performa Teknisi
-    const techRows = [
-      ['Nama Teknisi', 'Rating', 'Jumlah Pekerjaan'],
-      ...topTechnicians.map(t => [t.name, t.rating, t.jobs]),
-    ];
-    const wsTech = XLSX.utils.aoa_to_sheet(techRows);
-    wsTech['!cols'] = [{ wch: 22 }, { wch: 10 }, { wch: 18 }];
-    XLSX.utils.book_append_sheet(wb, wsTech, 'Performa Teknisi');
-
-    XLSX.writeFile(wb, `Laporan_${selectedMonth}_${shopName.replace(/\s+/g, '_')}.xlsx`);
+    XLSX.utils.book_append_sheet(wb, ws, "Laporan");
+    XLSX.writeFile(wb, `Laporan_${startDate}_to_${endDate}.xlsx`);
   };
 
   return (
-    <div className="p-4 md:p-8 w-full min-h-screen pb-24 bg-[#f8fafc]">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
-        <div className="flex items-center gap-4">
-          <h1 className="text-2xl font-bold text-blue-700 tracking-tight">Rekap & Laporan Bulanan</h1>
-          <div className="relative">
-            <select 
-              value={selectedMonth}
-              onChange={(e) => setSelectedMonth(e.target.value)}
-              className="appearance-none bg-white border border-gray-200 text-gray-700 py-2 pl-4 pr-10 rounded-xl font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm text-sm"
-            >
-              {availableMonths.map(m => (
-                <option key={m} value={m}>{formatMonthName(m)}</option>
-              ))}
-            </select>
-          </div>
-        </div>
-      </div>
-
-      {/* Ringkasan Performa */}
-      <div className="mb-8">
-        <div className="flex flex-col md:flex-row md:items-end justify-between mb-6 gap-4">
+    <motion.div className="p-4 sm:p-8 w-full min-h-screen" variants={containerVariants} initial="hidden" animate="show">
+      {/* PAGE HEADER */}
+      <motion.div variants={itemVariants} className="mb-6">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
-            <h2 className="text-2xl font-bold text-gray-900">Ringkasan Performa</h2>
-            <p className="text-sm text-gray-500 mt-1">Laporan aktivitas bengkel untuk periode {formatMonthName(selectedMonth)}.</p>
+            <h1 className="text-2xl font-bold text-gray-900">Laporan & Analisis</h1>
+            <p className="text-gray-500 text-sm mt-0.5">Pantau performa bisnis secara komprehensif.</p>
           </div>
-          <div className="flex gap-3">
-            <Button variant="secondary" leftIcon={<FileText size={16} />} className="bg-white hover:bg-gray-50 text-gray-700 border-gray-200 shadow-sm text-sm font-semibold" onClick={handleExportPDF}>
-              Export PDF
+          {/* Export Buttons */}
+          <div className="flex gap-2">
+            <Button variant="secondary" onClick={exportExcel} className="flex items-center gap-2 text-sm">
+              <FileText size={15} /> Excel
             </Button>
-            <Button variant="primary" leftIcon={<Download size={16} />} className="bg-blue-700 hover:bg-blue-800 text-sm font-semibold shadow-sm" onClick={handleExportExcel}>
-              Export Excel
+            <Button onClick={() => setIsExportModalOpen(true)} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-sm shadow-sm">
+              <Download size={15} /> PDF
             </Button>
           </div>
         </div>
+      </motion.div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm">
-            <div className="flex justify-between items-start mb-4">
-              <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center text-blue-600">
-                <FileText size={20} />
-              </div>
-              <div className="bg-green-100 text-green-700 text-xs font-bold px-2 py-1 rounded-full">
-                +12.5%
-              </div>
-            </div>
-            <p className="text-sm font-semibold text-gray-500 mb-1">Total Omset</p>
-            <p className="text-3xl font-bold text-gray-900">{formatCurrency(metrics.totalOmset)}</p>
-          </div>
-
-          <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm">
-            <div className="flex justify-between items-start mb-4">
-              <div className="w-10 h-10 rounded-full bg-orange-50 flex items-center justify-center text-orange-500">
-                <ShoppingCart size={20} />
-              </div>
-              <div className="bg-orange-100 text-orange-700 text-xs font-bold px-2 py-1 rounded-full">
-                +4.2%
-              </div>
-            </div>
-            <p className="text-sm font-semibold text-gray-500 mb-1">HPP / Modal Part</p>
-            <p className="text-3xl font-bold text-gray-900">{formatCurrency(metrics.totalModal)}</p>
-          </div>
-
-          <div className="bg-blue-600 rounded-3xl p-6 shadow-md text-white relative overflow-hidden">
-            <div className="absolute -right-4 -bottom-4 opacity-10">
-              <Wallet size={120} />
-            </div>
-            <div className="flex justify-between items-start mb-4 relative z-10">
-              <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center text-white">
-                <Wallet size={20} />
-              </div>
-              <div className="bg-white/20 text-white text-xs font-bold px-3 py-1 rounded-full">
-                Laba Bersih
-              </div>
-            </div>
-            <div className="relative z-10">
-              <p className="text-sm font-medium text-blue-100 mb-1">Keuntungan Bersih</p>
-              <p className="text-3xl font-bold">{formatCurrency(metrics.labaBersih)}</p>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm">
-            <div className="flex justify-between items-start mb-4">
-              <div className="w-10 h-10 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-500">
-                <CheckCircle2 size={20} />
-              </div>
-            </div>
-            <p className="text-sm font-semibold text-gray-500 mb-1">Servis Selesai</p>
-            <div className="flex items-end gap-2">
-              <p className="text-3xl font-bold text-gray-900">{metrics.totalServis}</p>
-              <p className="text-base font-bold text-gray-500 mb-1">Unit</p>
-            </div>
-          </div>
+      {/* TABS + FILTER TOOLBAR — satu baris rapi */}
+      <motion.div variants={itemVariants} className="bg-white rounded-2xl border border-gray-100 shadow-sm mb-6 overflow-hidden">
+        {/* Tab bar */}
+        <div className="flex border-b border-gray-100 overflow-x-auto">
+          {(['KEUANGAN', 'OPERASIONAL', 'INVENTORY', 'SDM', 'CRM'] as TabName[]).map(tab => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={`relative px-5 py-3.5 font-semibold text-sm whitespace-nowrap transition-colors ${
+                activeTab === tab
+                  ? 'text-blue-600 bg-blue-50/50'
+                  : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+              }`}
+            >
+              {activeTab === tab && (
+                <motion.div
+                  layoutId="laporan-tab-indicator"
+                  className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600"
+                  transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                />
+              )}
+              {tab.charAt(0) + tab.slice(1).toLowerCase()}
+            </button>
+          ))}
         </div>
-      </div>
 
-      {/* Tables Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 mb-8">
-        {/* Riwayat Transaksi */}
-        <div className="lg:col-span-8 bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden flex flex-col">
-          <div className="p-6 border-b border-gray-50 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <h3 className="text-lg font-bold text-gray-900">Riwayat Transaksi (Selesai)</h3>
+        {/* Filter bar — di bawah tabs */}
+        <div className="flex flex-wrap items-center gap-3 px-4 py-3 bg-gray-50/60 border-t border-gray-100">
+          <div className="flex items-center gap-3">
+            <span className="text-xs text-gray-500 font-bold uppercase tracking-wider">Rentang Waktu:</span>
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
-              <input 
-                type="text" 
-                placeholder="Cari ID Servis..."
-                className="pl-9 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 w-full sm:w-64 font-medium placeholder:font-normal"
-                value={searchTx}
-                onChange={(e) => setSearchTx(e.target.value)}
-              />
+              <select
+                value={activePreset === 'custom' ? 'custom' : activePreset}
+                onChange={(e) => setPreset(e.target.value)}
+                className="appearance-none h-9 pl-3 pr-8 text-sm font-semibold bg-white border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 text-gray-700 cursor-pointer shadow-sm hover:border-blue-300 transition-colors"
+              >
+                <option value="hari">Hari Ini</option>
+                <option value="minggu">7 Hari Terakhir</option>
+                <option value="bulan">Bulan Ini</option>
+                <option value="tahun">Tahun Ini</option>
+                <option value="custom">Periode Kustom...</option>
+              </select>
+              <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+            </div>
+          </div>
+
+          <div className="h-5 w-px bg-gray-200 mx-1 hidden sm:block" />
+
+          {/* Custom date range */}
+          <div className={`flex items-center gap-2 transition-all ${activePreset === 'custom' ? 'opacity-100' : 'opacity-50 grayscale'}`}>
+            <span className="text-xs text-gray-400 font-medium">Mulai</span>
+            <input
+              type="date"
+              value={startDate}
+              onChange={e => { setStartDate(e.target.value); setActivePreset('custom'); }}
+              className="h-9 px-3 text-sm font-medium bg-white border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 text-gray-700 shadow-sm transition-colors cursor-pointer"
+            />
+            <span className="text-xs text-gray-400 font-medium">Akhir</span>
+            <input
+              type="date"
+              value={endDate}
+              onChange={e => { setEndDate(e.target.value); setActivePreset('custom'); }}
+              className="h-9 px-3 text-sm font-medium bg-white border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 text-gray-700 shadow-sm transition-colors cursor-pointer"
+            />
+          </div>
+        </div>
+      </motion.div>
+
+      {/* TAB CONTENT */}
+      <AnimatePresence mode="wait">
+        <motion.div key={activeTab} variants={tabVariants} initial="hidden" animate="show" exit="exit" className="space-y-6">
+          
+          {activeTab === 'KEUANGAN' && (
+            <>
+              <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+                <div className="p-6 bg-white rounded-2xl shadow-sm border border-gray-100 flex flex-col justify-center">
+                  <p className="text-gray-500 font-medium text-sm">Omset Total</p>
+                  <h3 className="text-3xl font-bold text-gray-900 mt-2">Rp {financeData.totalOmset.toLocaleString('id-ID')}</h3>
+                  <p className="text-xs text-gray-400 mt-2">HPP: Rp {financeData.totalModal.toLocaleString('id-ID')}</p>
+                </div>
+                <div className="p-6 bg-white rounded-2xl shadow-sm border border-gray-100 flex flex-col justify-center">
+                  <p className="text-gray-500 font-medium text-sm">Laba Bersih</p>
+                  <h3 className="text-3xl font-bold text-emerald-600 mt-2">Rp {financeData.labaBersih.toLocaleString('id-ID')}</h3>
+                </div>
+                <div className="p-6 bg-blue-50 rounded-2xl shadow-sm border border-blue-100 flex flex-col justify-center">
+                  <p className="text-blue-700 font-medium text-sm">Margin Laba</p>
+                  <h3 className="text-3xl font-bold text-blue-700 mt-2">
+                    {financeData.totalOmset > 0 ? ((financeData.labaBersih / financeData.totalOmset) * 100).toFixed(1) : 0}%
+                  </h3>
+                  <p className="text-xs text-blue-500 mt-1">Laba ÷ Omset</p>
+                </div>
+                <div className="p-6 bg-red-50 rounded-2xl shadow-sm border border-red-100 flex flex-col justify-center">
+                  <p className="text-red-700 font-medium text-sm">Piutang / Kasbon</p>
+                  <h3 className="text-3xl font-bold text-red-700 mt-2">Rp {financeData.piutang.toLocaleString('id-ID')}</h3>
+                  <p className="text-xs text-red-500 mt-1">Servis Selesai Belum Diambil</p>
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 lg:col-span-2">
+                  <h3 className="font-bold text-gray-900 mb-6">Tren Laba & Omset</h3>
+                  <div className="h-64">
+                    {financeData.chartData.length > 0 ? (
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={financeData.chartData} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
+                          <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                          <XAxis dataKey="name" fontSize={12} tickLine={false} axisLine={false} />
+                          <YAxis fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `Rp${value/1000}k`} />
+                          <Tooltip formatter={(value: any) => `Rp ${value.toLocaleString('id-ID')}`} />
+                          <Legend />
+                          <Bar dataKey="Omset" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                          <Bar dataKey="Laba" fill="#10b981" radius={[4, 4, 0, 0]} />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    ) : (
+                      <div className="h-full flex items-center justify-center text-gray-400">Belum ada data pendapatan</div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                  <h3 className="font-bold text-gray-900 mb-6">Revenue per Kategori</h3>
+                  <div className="h-64">
+                    {financeData.pieCategoryData.length > 0 ? (
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie
+                            data={financeData.pieCategoryData}
+                            cx="50%" cy="50%" innerRadius={60} outerRadius={80}
+                            paddingAngle={5} dataKey="value"
+                            label={({ name, percent }) => `${name} (${((percent || 0) * 100).toFixed(0)}%)`}
+                          >
+                            {financeData.pieCategoryData.map((_, i) => (
+                              <Cell key={`cell-${i}`} fill={COLORS[i % COLORS.length]} />
+                            ))}
+                          </Pie>
+                          <Tooltip formatter={(value: any) => `Rp ${value.toLocaleString('id-ID')}`} />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    ) : (
+                      <div className="h-full flex justify-center items-center text-gray-400 text-sm">Tidak ada data kategori</div>
+                    )}
+                  </div>
+                </div>
+              </div>
+              
+              <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                <h3 className="font-bold text-gray-900 mb-4">5 Transaksi Terakhir (Selesai/Diambil)</h3>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm text-left">
+                      <thead className="text-xs text-gray-500 uppercase bg-gray-50">
+                        <tr>
+                          <th className="px-4 py-3 rounded-tl-lg">Perangkat</th>
+                          <th className="px-4 py-3">Pelanggan</th>
+                          <th className="px-4 py-3 text-right rounded-tr-lg">Nominal</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {financeData.recentTransactions.map((t) => {
+                          const customer = customers.find(c => c.id === t.pelangganId);
+                          let omset = t.biayaJasa || 0;
+                          if (t.spareparts) {
+                            t.spareparts.forEach(sp => {
+                              const detail = spareparts.find(s => s.id === sp.id);
+                              if (detail) omset += (detail.harga * sp.qty);
+                            });
+                          }
+                          return (
+                            <tr key={t.id} className="border-b last:border-0 hover:bg-gray-50">
+                              <td className="px-4 py-3 font-medium text-gray-900">{t.jenisPerangkat}</td>
+                              <td className="px-4 py-3 text-gray-500">{customer?.nama || 'Unknown'}</td>
+                              <td className="px-4 py-3 text-right font-bold text-gray-900">Rp {omset.toLocaleString('id-ID')}</td>
+                            </tr>
+                          );
+                        })}
+                        {financeData.recentTransactions.length === 0 && (
+                          <tr><td colSpan={3} className="px-4 py-6 text-center text-gray-500">Belum ada transaksi selesai.</td></tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+            </>
+          )}
+
+          {activeTab === 'OPERASIONAL' && (
+            <>
+              <div className="grid grid-cols-2 lg:grid-cols-5 gap-6">
+                <div className="p-6 bg-white rounded-2xl shadow-sm border border-gray-100">
+                  <p className="text-gray-500 font-medium text-sm">Total Masuk</p>
+                  <h3 className="text-3xl font-bold text-blue-600 mt-2">{opsData.masuk}</h3>
+                </div>
+                <div className="p-6 bg-white rounded-2xl shadow-sm border border-gray-100">
+                  <p className="text-gray-500 font-medium text-sm">Berhasil Selesai</p>
+                  <h3 className="text-3xl font-bold text-emerald-600 mt-2">{opsData.selesai}</h3>
+                </div>
+                <div className="p-6 bg-white rounded-2xl shadow-sm border border-gray-100">
+                  <p className="text-gray-500 font-medium text-sm">Batal</p>
+                  <h3 className="text-3xl font-bold text-red-600 mt-2">{opsData.batal}</h3>
+                </div>
+                <div className="p-6 bg-white rounded-2xl shadow-sm border border-gray-100">
+                  <p className="text-gray-500 font-medium text-sm">Success Rate</p>
+                  <h3 className="text-3xl font-bold text-indigo-600 mt-2">{opsData.tingkatKeberhasilan}%</h3>
+                </div>
+                <div className="p-6 bg-white rounded-2xl shadow-sm border border-gray-100">
+                  <p className="text-gray-500 font-medium text-sm">Rata-rata Waktu</p>
+                  <h3 className="text-3xl font-bold text-orange-600 mt-2">{opsData.avgDays} <span className="text-sm font-medium text-gray-500">Hari</span></h3>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                  <h3 className="font-bold text-gray-900 mb-6">Distribusi Status Pesanan</h3>
+                  <div className="h-64">
+                    {opsData.pieData.length > 0 ? (
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie
+                            data={opsData.pieData}
+                            cx="50%"
+                            cy="50%"
+                            innerRadius={60}
+                            outerRadius={90}
+                            paddingAngle={5}
+                            dataKey="value"
+                            label={({ name, percent }) => `${name} ${((percent || 0) * 100).toFixed(0)}%`}
+                          >
+                            {opsData.pieData.map((_, index) => (
+                              <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                            ))}
+                          </Pie>
+                          <Tooltip />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    ) : (
+                      <div className="h-full flex items-center justify-center text-gray-400">Belum ada pesanan masuk</div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                  <h3 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
+                    <AlertTriangle size={18} className="text-amber-500" /> Servis Terkendala (Batal/Diagnosa)
+                  </h3>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm text-left">
+                      <thead className="text-xs text-gray-500 uppercase bg-gray-50">
+                        <tr>
+                          <th className="px-4 py-3 rounded-tl-lg">ID</th>
+                          <th className="px-4 py-3">Perangkat</th>
+                          <th className="px-4 py-3 text-right rounded-tr-lg">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {opsData.problematicOrders.slice(0, 6).map((t) => (
+                          <tr key={t.id} className="border-b last:border-0 hover:bg-gray-50">
+                            <td className="px-4 py-3 font-medium text-gray-900">#{t.id.slice(0,5)}</td>
+                            <td className="px-4 py-3 text-gray-500">{t.jenisPerangkat}</td>
+                            <td className="px-4 py-3 text-right">
+                              <span className={`px-2 py-1 rounded text-xs font-bold ${t.status === 'BATAL' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'}`}>
+                                {t.status}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                        {opsData.problematicOrders.length === 0 && (
+                          <tr><td colSpan={3} className="px-4 py-6 text-center text-gray-500">Tidak ada servis terkendala.</td></tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
+
+          {activeTab === 'INVENTORY' && (
+            <>
+              <div className="p-6 bg-white rounded-2xl shadow-sm border border-gray-100 flex flex-col sm:flex-row justify-between sm:items-center gap-4">
+                <div>
+                  <p className="text-gray-500 font-medium text-sm mb-1">Valuasi Aset Gudang (Modal)</p>
+                  <h3 className="text-4xl font-bold text-gray-900">Rp {invData.valuasiStok.toLocaleString('id-ID')}</h3>
+                </div>
+                <div className="bg-blue-50 text-blue-700 p-4 rounded-xl flex items-center gap-3">
+                  <Wrench size={24} />
+                  <div>
+                    <p className="text-sm font-bold">{spareparts.length} Jenis Sparepart</p>
+                    <p className="text-xs opacity-80">Tersedia di Gudang</p>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                  <h3 className="font-bold text-gray-900 mb-6">5 Sparepart Terlaris</h3>
+                  <div className="h-64">
+                    {invData.chartData.length > 0 ? (
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={invData.chartData} layout="vertical" margin={{ top: 5, right: 20, bottom: 5, left: 30 }}>
+                          <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+                          <XAxis type="number" fontSize={12} tickLine={false} axisLine={false} />
+                          <YAxis dataKey="name" type="category" fontSize={12} tickLine={false} axisLine={false} />
+                          <Tooltip cursor={{fill: 'transparent'}} />
+                          <Bar dataKey="Terjual" fill="#10b981" radius={[0, 4, 4, 0]} barSize={24} />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    ) : (
+                      <div className="h-full flex items-center justify-center text-gray-400">Belum ada data penjualan.</div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                  <h3 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
+                    <AlertTriangle size={18} className="text-red-500" /> Stok Kritis (Restock)
+                  </h3>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm text-left">
+                      <thead className="text-xs text-gray-500 uppercase bg-gray-50">
+                        <tr>
+                          <th className="px-4 py-3 rounded-tl-lg">Nama Sparepart</th>
+                          <th className="px-4 py-3 text-right">Sisa Stok</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {invData.stokKritis.map((t) => (
+                          <tr key={t.id} className="border-b last:border-0 hover:bg-gray-50">
+                            <td className="px-4 py-3 font-medium text-gray-900">{t.nama}</td>
+                            <td className="px-4 py-3 text-right">
+                              <span className={`px-2 py-1 rounded text-xs font-bold ${t.stok === 0 ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'}`}>
+                                {t.stok} unit
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                        {invData.stokKritis.length === 0 && (
+                          <tr><td colSpan={2} className="px-4 py-6 text-center text-gray-500">Stok aman, tidak ada stok kritis.</td></tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 mt-6">
+                <h3 className="font-bold text-gray-900 mb-4">Mutasi Stok Terakhir</h3>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm text-left">
+                    <thead className="text-xs text-gray-500 uppercase bg-gray-50">
+                      <tr>
+                        <th className="px-4 py-3 rounded-tl-lg">Tanggal</th>
+                        <th className="px-4 py-3">Tipe</th>
+                        <th className="px-4 py-3">Barang</th>
+                        <th className="px-4 py-3 text-right">Qty</th>
+                        <th className="px-4 py-3 rounded-tr-lg">Keterangan</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {invData.mutasiTerakhir.map((m) => (
+                        <tr key={m.id} className="border-b last:border-0 hover:bg-gray-50">
+                          <td className="px-4 py-3 font-medium text-gray-900">
+                            {new Date(m.tanggal).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                          </td>
+                          <td className="px-4 py-3">
+                            <span className={`px-2 py-1 rounded text-xs font-bold ${m.tipe === 'IN' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
+                              {m.tipe}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-gray-700">{m.detail?.nama || 'Unknown'}</td>
+                          <td className="px-4 py-3 text-right font-bold text-gray-900">{m.qty}</td>
+                          <td className="px-4 py-3 text-gray-500">{m.keterangan || '-'}</td>
+                        </tr>
+                      ))}
+                      {invData.mutasiTerakhir.length === 0 && (
+                        <tr><td colSpan={5} className="px-4 py-6 text-center text-gray-500">Belum ada aktivitas mutasi stok.</td></tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </>
+          )}
+
+          {activeTab === 'SDM' && (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                <h3 className="font-bold text-gray-900 mb-6">Beban Kerja Teknisi</h3>
+                <div className="h-72">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={techData.chartData} margin={{ top: 20, right: 30, left: 0, bottom: 5 }}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                      <XAxis dataKey="name" fontSize={12} tickLine={false} axisLine={false} />
+                      <YAxis fontSize={12} tickLine={false} axisLine={false} />
+                      <Tooltip cursor={{fill: 'transparent'}} />
+                      <Legend />
+                      <Bar dataKey="Assigned" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="Selesai" fill="#10b981" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+
+              <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                <h3 className="font-bold text-gray-900 mb-4">Leaderboard Teknisi</h3>
+                <div className="space-y-4">
+                  {techData.techStats.map((t, i) => (
+                    <div key={t.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold">
+                          {i + 1}
+                        </div>
+                        <div>
+                          <p className="font-bold text-gray-900">{t.name}</p>
+                          <p className="text-xs text-gray-500">Pekerjaan Aktif: {t.jobs}</p>
+                        </div>
+                      </div>
+                      <div className="flex gap-4 text-center text-sm">
+                        <div className="bg-white px-3 py-1 rounded shadow-sm border border-gray-100">
+                          <p className="font-bold text-gray-900">{t.rating}</p>
+                          <p className="text-gray-400 text-[10px] uppercase">Rating</p>
+                        </div>
+                        <div className="bg-white px-3 py-1 rounded shadow-sm border border-gray-100">
+                          <p className="font-bold text-emerald-600">{t.finished}</p>
+                          <p className="text-gray-400 text-[10px] uppercase">Selesai</p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'CRM' && (
+            <>
+              {/* Stats Grid */}
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mb-6">
+                {/* Left Stats (2x2) */}
+                <div className="lg:col-span-5 grid grid-cols-2 gap-4">
+                  <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm flex flex-col justify-center">
+                    <p className="text-sm font-bold text-gray-900 mb-1">Total Pelanggan</p>
+                    <p className="text-4xl font-bold text-gray-900">{crmData.totalPelanggan}</p>
+                  </div>
+                  <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm flex flex-col justify-center">
+                    <p className="text-sm font-bold text-gray-900 mb-1">Pelanggan Aktif</p>
+                    <p className="text-4xl font-bold text-gray-900">{crmData.pelangganAktif}</p>
+                  </div>
+                  <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm flex flex-col justify-center">
+                    <p className="text-sm font-bold text-gray-900 mb-1">Pelanggan Baru <span className="text-gray-500 font-normal">(Bulan Ini)</span></p>
+                    <p className="text-4xl font-bold text-emerald-500">+{crmData.pelangganBaru}</p>
+                  </div>
+                  <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm flex flex-col justify-center">
+                    <p className="text-sm font-bold text-gray-900 mb-1">Rata-rata Servis</p>
+                    <p className="text-4xl font-bold text-gray-900">{crmData.rataRataServis}</p>
+                  </div>
+                </div>
+
+                {/* Right Chart */}
+                <div className="lg:col-span-7 bg-white rounded-2xl p-6 border border-gray-100 shadow-sm flex flex-col relative overflow-hidden">
+                  <p className="text-sm font-bold text-gray-900 mb-6">Pertumbuhan Pelanggan <span className="text-gray-500 font-normal">(Tahun Ini)</span></p>
+                  <div className="flex-1 w-full h-full min-h-[140px] relative mt-2">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={crmData.growthData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                        <defs>
+                          <linearGradient id="colorTotal" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
+                            <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
+                          </linearGradient>
+                        </defs>
+                        <Tooltip 
+                          contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                          itemStyle={{ color: '#1f2937', fontWeight: 'bold' }}
+                        />
+                        <Area type="monotone" dataKey="total" stroke="#3b82f6" strokeWidth={3} fillOpacity={1} fill="url(#colorTotal)" />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                <div className="flex justify-between items-center mb-6">
+                  <h3 className="font-bold text-gray-900 flex items-center gap-2">
+                    <Users className="text-blue-500" /> Analisis Loyalitas Pelanggan (CLV)
+                  </h3>
+                </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm text-left">
+                  <thead className="text-xs text-gray-500 uppercase bg-gray-50">
+                    <tr>
+                      <th className="px-4 py-3 rounded-tl-lg">Peringkat</th>
+                      <th className="px-4 py-3">Nama Pelanggan</th>
+                      <th className="px-4 py-3">Kontak</th>
+                      <th className="px-4 py-3 text-center">Frekuensi Servis</th>
+                      <th className="px-4 py-3 text-right rounded-tr-lg">Total Pengeluaran (CLV)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {crmData.allCustomers.map((c, i) => (
+                      <tr key={c.detail?.id} className="border-b last:border-0 hover:bg-gray-50">
+                        <td className="px-4 py-4 font-bold text-gray-500">#{i + 1}</td>
+                        <td className="px-4 py-4 font-bold text-gray-900 flex items-center gap-2">
+                          {c.detail?.nama} {i < 3 && <Star size={14} className="text-yellow-500 fill-current" />}
+                        </td>
+                        <td className="px-4 py-4 text-gray-500">{c.detail?.noHp}</td>
+                        <td className="px-4 py-4 text-center">
+                          <span className="bg-blue-50 text-blue-700 px-2 py-1 rounded-full text-xs font-bold">
+                            {c.count}x Servis
+                          </span>
+                        </td>
+                        <td className="px-4 py-4 text-right font-bold text-emerald-600">
+                          Rp {c.total.toLocaleString('id-ID')}
+                        </td>
+                      </tr>
+                    ))}
+                    {crmData.allCustomers.length === 0 && (
+                      <tr><td colSpan={5} className="px-4 py-6 text-center text-gray-500">Belum ada pelanggan yang menyelesaikan pesanan.</td></tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+              </div>
+            </>
+          )}
+
+        </motion.div>
+      </AnimatePresence>
+
+      {/* EXPORT MODAL */}
+      <Modal
+        isOpen={isExportModalOpen}
+        onClose={() => setIsExportModalOpen(false)}
+        title="Pengaturan Cetak PDF"
+      >
+        <div className="space-y-4 py-2">
+          <div className="bg-blue-50 p-4 rounded-xl border border-blue-100">
+            <p className="text-sm text-blue-900 font-bold mb-3">Pilih Periode Cetak:</p>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs text-blue-600/80 font-bold uppercase tracking-wider mb-1.5">Mulai</label>
+                <input
+                  type="date"
+                  value={startDate}
+                  onChange={e => { setStartDate(e.target.value); setActivePreset('custom'); }}
+                  className="w-full h-10 px-3 text-sm font-medium bg-white border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-gray-700 shadow-sm transition-all cursor-pointer"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-blue-600/80 font-bold uppercase tracking-wider mb-1.5">Akhir</label>
+                <input
+                  type="date"
+                  value={endDate}
+                  onChange={e => { setEndDate(e.target.value); setActivePreset('custom'); }}
+                  className="w-full h-10 px-3 text-sm font-medium bg-white border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-gray-700 shadow-sm transition-all cursor-pointer"
+                />
+              </div>
             </div>
           </div>
           
-          <div className="flex-1 overflow-x-auto">
-            <table className="w-full text-sm text-left">
-              <thead className="text-xs text-gray-400 uppercase bg-white border-b border-gray-50">
-                <tr>
-                  <th className="px-6 py-4 font-bold tracking-wider">Service ID</th>
-                  <th className="px-6 py-4 font-bold tracking-wider">Pelanggan</th>
-                  <th className="px-6 py-4 font-bold tracking-wider">Perangkat</th>
-                  <th className="px-6 py-4 font-bold tracking-wider">Keuntungan</th>
-                  <th className="px-6 py-4 font-bold tracking-wider">Status</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-50">
-                {filteredTx.length > 0 ? filteredTx.map(tx => (
-                  <tr key={tx.id} className="hover:bg-gray-50/50 transition-colors">
-                    <td className="px-6 py-4">
-                      <span className="font-bold text-blue-700 cursor-pointer hover:underline" onClick={() => navigate(`/order/${tx.id}`)}>
-                        {tx.noServis}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 font-medium text-gray-900">{tx.customerName}</td>
-                    <td className="px-6 py-4 text-gray-600 font-medium">
-                      {tx.jenisPerangkat} {tx.merkModel}
-                    </td>
-                    <td className="px-6 py-4 font-bold text-emerald-600">
-                      {formatCurrency(tx.laba)}
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className="bg-green-100 text-green-700 px-3 py-1 rounded-md text-xs font-bold">
-                        Selesai
-                      </span>
-                    </td>
-                  </tr>
-                )) : (
-                  <tr>
-                    <td colSpan={5} className="px-6 py-8 text-center text-gray-500">
-                      Tidak ada transaksi selesai di bulan ini.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
+          <p className="text-sm text-gray-500 mb-4 pt-2">
+            Pilih modul data yang ingin disertakan dalam laporan:
+          </p>
+          
+          <div className="space-y-3">
+            {[
+              { id: 'keuangan', label: '1. Ringkasan Keuangan (Omset & Laba)' },
+              { id: 'operasional', label: '2. Performa Operasional (Tingkat Keberhasilan)' },
+              { id: 'inventory', label: '3. Status Inventory & Stok' },
+              { id: 'sdm', label: '4. Kinerja Teknisi (SDM)' },
+              { id: 'crm', label: '5. Analisis Loyalitas Pelanggan (CRM)' },
+            ].map((option) => (
+              <label key={option.id} className="flex items-center gap-3 p-3 bg-gray-50 border border-gray-200 rounded-xl cursor-pointer hover:bg-blue-50 transition-colors">
+                <input
+                  type="checkbox"
+                  checked={exportOptions[option.id as keyof typeof exportOptions]}
+                  onChange={(e) => setExportOptions({ ...exportOptions, [option.id]: e.target.checked })}
+                  className="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                />
+                <span className="text-gray-700 font-medium text-sm">{option.label}</span>
+              </label>
+            ))}
           </div>
 
-          <div className="p-4 border-t border-gray-50 flex items-center justify-between bg-white text-sm">
-            <span className="text-gray-500 font-medium">
-              Menampilkan {filteredTx.length} dari {metrics.txDetails.length} transaksi
-            </span>
-            <div className="flex items-center gap-1 border border-gray-200 rounded-full p-1 shadow-sm bg-white">
-              <button disabled className="w-8 h-8 flex items-center justify-center rounded-full text-sm font-medium text-gray-500 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-100 transition-colors">
-                &larr;
-              </button>
-              <button className="w-8 h-8 flex items-center justify-center rounded-full text-sm font-bold bg-blue-600 text-white shadow-sm transition-colors">1</button>
-              <button className="w-8 h-8 flex items-center justify-center rounded-full text-sm font-bold text-gray-600 hover:bg-gray-100 transition-colors">2</button>
-              <button className="w-8 h-8 flex items-center justify-center rounded-full text-sm font-bold text-gray-600 hover:bg-gray-100 transition-colors">3</button>
-              <button className="w-8 h-8 flex items-center justify-center rounded-full text-sm font-medium text-gray-500 hover:bg-gray-100 transition-colors">
-                &rarr;
-              </button>
-            </div>
+          <div className="flex gap-3 pt-6 mt-6 border-t border-gray-100">
+            <Button variant="secondary" onClick={() => setIsExportModalOpen(false)} className="flex-1">
+              Batal
+            </Button>
+            <Button 
+              onClick={exportPDF} 
+              className="flex-1 bg-blue-600 hover:bg-blue-700 flex items-center justify-center gap-2"
+              disabled={!Object.values(exportOptions).some(Boolean)}
+            >
+              <Download size={18} /> Buat PDF
+            </Button>
           </div>
         </div>
-
-        {/* Sparepart Terlaris */}
-        <div className="lg:col-span-4 bg-white rounded-3xl border border-gray-100 shadow-sm p-6 flex flex-col">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
-              <ShoppingCart size={18} />
-            </div>
-            <h3 className="text-lg font-bold text-gray-900">Sparepart Terlaris</h3>
-          </div>
-
-          <div className="flex-1 space-y-5">
-            {topSpareparts.list.length > 0 ? topSpareparts.list.map((sp, idx) => (
-              <div key={sp.id} className="flex items-center gap-4">
-                <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold text-sm shrink-0">
-                  #{idx + 1}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex justify-between items-center mb-1">
-                    <p className="font-bold text-gray-900 text-sm truncate">{sp.nama}</p>
-                    <p className="font-bold text-gray-900 text-sm">{sp.qty}x</p>
-                  </div>
-                  <div className="h-1.5 w-full bg-gray-100 rounded-full overflow-hidden">
-                    <div 
-                      className="h-full bg-blue-700 rounded-full" 
-                      style={{ width: `${(sp.qty / topSpareparts.maxQty) * 100}%` }}
-                    />
-                  </div>
-                </div>
-              </div>
-            )) : (
-              <div className="text-center text-gray-500 py-8 text-sm">Belum ada data sparepart.</div>
-            )}
-          </div>
-
-          <button className="w-full mt-6 py-3 border border-gray-200 text-blue-600 font-bold rounded-xl hover:bg-blue-50 transition-colors text-sm" onClick={() => navigate('/stok')}>
-            Lihat Semua Stok
-          </button>
-        </div>
-      </div>
-
-      {/* Performa Teknisi */}
-      <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-6">
-        <div className="flex justify-between items-center mb-6">
-          <h3 className="text-lg font-bold text-gray-900">Performa Teknisi</h3>
-          <p className="text-sm text-gray-500 font-medium hidden md:block">Rata-rata rating bulan ini: <span className="font-bold text-gray-700">4.8/5.0</span></p>
-        </div>
-        
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {topTechnicians.map(tech => (
-            <div key={tech.id} className="flex items-center gap-4 p-4 border border-gray-100 rounded-2xl hover:border-gray-200 transition-colors">
-              <div className="w-12 h-12 rounded-full bg-slate-800 text-white flex items-center justify-center font-bold text-lg shrink-0">
-                {tech.avatar}
-              </div>
-              <div>
-                <p className="font-bold text-gray-900">{tech.name}</p>
-                <div className="flex items-center gap-3 mt-1 text-sm">
-                  <div className="flex items-center gap-1 text-orange-500 font-bold">
-                    <Star size={14} className="fill-orange-500" />
-                    {tech.rating}
-                  </div>
-                  <span className="text-gray-400">|</span>
-                  <span className="text-gray-600 font-medium">({tech.jobs} unit)</span>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-    </div>
+      </Modal>
+    </motion.div>
   );
 };

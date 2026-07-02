@@ -229,10 +229,17 @@ const toSettingsRow = (settings: Settings): SettingsRow => ({
   enable_notifications: settings.enableNotifications,
 });
 
+/**
+ * Mengecek apakah sebuah tabel di Supabase masih kosong.
+ * Menggunakan count query (HEAD request) agar tidak menarik seluruh data.
+ * @param tableName - Nama tabel yang dicek
+ */
 async function isTableEmpty(tableName: string) {
-  const { data, error } = await supabase.from(tableName).select("id");
+  const { count, error } = await supabase
+    .from(tableName)
+    .select("id", { count: 'exact', head: true });
   if (error) throw error;
-  return !data || data.length === 0;
+  return (count ?? 0) === 0;
 }
 
 export async function seedBackendDataIfEmpty() {

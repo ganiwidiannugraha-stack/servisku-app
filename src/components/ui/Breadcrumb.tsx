@@ -29,7 +29,7 @@ export const Breadcrumb: React.FC<BreadcrumbProps> = ({ items }) => {
           <span className="hidden sm:inline">Dashboard</span>
         </Link>
         
-        {items.map((item, index) => {
+        {items.filter(item => !(item.label === 'Dashboard' && (item.href === '/dashboard' || item.path === '/dashboard'))).map((item, index) => {
           const target = item.href || item.path;
           return (
             <React.Fragment key={index}>

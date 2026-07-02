@@ -2,34 +2,143 @@ import React, { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useStore } from '../store';
 import { LineChart, Line, BarChart, Bar, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
-import { AlertTriangle, Calendar, RefreshCcw, PackageCheck, Banknote, Eye } from 'lucide-react';
+import { AlertTriangle, Calendar, RefreshCcw, PackageCheck, Banknote, Eye, Wrench, CheckCircle } from 'lucide-react';
+import { motion } from 'framer-motion';
+import type { Variants } from 'framer-motion';
 
-// Helper to format date "DD MMM"
 const formatDateShort = (d: Date) => d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
 
-/**
- * Komponen Halaman Dashboard
- * Menampilkan ringkasan metrik bengkel, antrean servis yang aktif, dan stok barang menipis.
- * Terdiri dari Kartu Statistik (Omset, Job Aktif, dll), Visualisasi Grafik, dan Live Queue.
- */
 export const Dashboard: React.FC = () => {
   const navigate = useNavigate();
-  // Mengambil state global menggunakan custom hook Zustand
-  const { orders, spareparts, customers } = useStore();
+  const { orders, spareparts, customers, userRole, userId, users } = useStore();
+  const currentUser = users.find(u => u.id === userId);
 
-  // Menghitung jumlah order berdasarkan klasifikasi status
+  const containerVariants: Variants = {
+    hidden: { opacity: 0 },
+    show: {
+      opacity: 1,
+      transition: { staggerChildren: 0.1 }
+    }
+  };
+
+  const itemVariants: Variants = {
+    hidden: { opacity: 0, y: 20 },
+    show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 300, damping: 24 } }
+  };
+
+  // ---------------------------------------------------------
+  // TEKNISI DASHBOARD LOGIC
+  // ---------------------------------------------------------
+  if (userRole === 'TEKNISI') {
+    const myTasks = orders.filter(o => o.teknisiId === userId && (o.status === 'PROSES' || o.status === 'DIAGNOSA'));
+    const myDoneTasks = orders.filter(o => o.teknisiId === userId && o.status === 'SELESAI');
+    
+    return (
+      <motion.div 
+        className="p-8 w-full min-h-screen"
+        variants={containerVariants}
+        initial="hidden"
+        animate="show"
+      >
+        <motion.div variants={itemVariants} className="mb-8">
+          <h1 className="text-2xl font-bold text-gray-900">Halo, {currentUser?.name || 'Teknisi'}! 👋</h1>
+          <p className="text-gray-500">Selamat datang kembali. Berikut daftar tugas servis Anda hari ini.</p>
+        </motion.div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+          <motion.div variants={itemVariants} className="p-6 bg-white rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between hover:shadow-md transition-shadow">
+            <div>
+              <p className="text-gray-500 font-medium text-sm">Tugas Aktif</p>
+              <h3 className="text-3xl font-bold text-blue-600 mt-1">{myTasks.length}</h3>
+            </div>
+            <div className="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600">
+              <Wrench size={24} />
+            </div>
+          </motion.div>
+
+          <motion.div variants={itemVariants} className="p-6 bg-white rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between hover:shadow-md transition-shadow">
+            <div>
+              <p className="text-gray-500 font-medium text-sm">Tugas Selesai (Bulan Ini)</p>
+              <h3 className="text-3xl font-bold text-emerald-600 mt-1">{myDoneTasks.length}</h3>
+            </div>
+            <div className="w-12 h-12 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600">
+              <CheckCircle size={24} />
+            </div>
+          </motion.div>
+
+          <motion.div variants={itemVariants} className="p-6 bg-white rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between hover:shadow-md transition-shadow">
+            <div>
+              <p className="text-gray-500 font-medium text-sm">Tugas Urgent</p>
+              <h3 className="text-3xl font-bold text-orange-600 mt-1">{myTasks.filter(t => t.prioritas === 'URGENT').length}</h3>
+            </div>
+            <div className="w-12 h-12 rounded-xl bg-orange-50 flex items-center justify-center text-orange-600">
+              <AlertTriangle size={24} />
+            </div>
+          </motion.div>
+        </div>
+
+        <motion.div variants={itemVariants} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+          <div className="px-6 py-5 border-b border-gray-100">
+            <h2 className="font-bold text-gray-900">Daftar Antrean Servis Anda</h2>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm text-left">
+              <thead className="text-xs text-gray-500 uppercase bg-gray-50 border-b border-gray-100">
+                <tr>
+                  <th className="px-6 py-4 font-semibold">NO. SERVIS</th>
+                  <th className="px-6 py-4 font-semibold">PERANGKAT</th>
+                  <th className="px-6 py-4 font-semibold">KELUHAN</th>
+                  <th className="px-6 py-4 font-semibold text-center">AKSI</th>
+                </tr>
+              </thead>
+              <motion.tbody>
+                {myTasks.length === 0 ? (
+                  <tr>
+                    <td colSpan={4} className="px-6 py-8 text-center text-gray-500">Tidak ada tugas aktif saat ini. Bagus!</td>
+                  </tr>
+                ) : (
+                  myTasks.map((order, i) => (
+                    <motion.tr 
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: i * 0.1 }}
+                      key={order.id} 
+                      className="border-b border-gray-50 hover:bg-gray-50 transition-colors"
+                    >
+                      <td className="px-6 py-4 font-bold text-gray-900">{order.noServis}</td>
+                      <td className="px-6 py-4">{order.jenisPerangkat} - {order.merkModel}</td>
+                      <td className="px-6 py-4 max-w-[200px] truncate text-gray-600">{order.keluhan}</td>
+                      <td className="px-6 py-4 text-center">
+                        <button 
+                          onClick={() => navigate(`/order/${order.id}`)}
+                          className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-1.5 px-4 rounded-lg transition-colors shadow-sm inline-flex items-center gap-2 text-xs"
+                        >
+                          <Wrench size={14} /> Kerjakan
+                        </button>
+                      </td>
+                    </motion.tr>
+                  ))
+                )}
+              </motion.tbody>
+            </table>
+          </div>
+        </motion.div>
+      </motion.div>
+    );
+  }
+
+  // ---------------------------------------------------------
+  // ADMIN DASHBOARD LOGIC
+  // ---------------------------------------------------------
   const ordersMasuk = orders.filter(o => o.status === 'MASUK').length;
   const ordersProses = orders.filter(o => o.status === 'PROSES' || o.status === 'DIAGNOSA' || o.status === 'MENUNGGU_SPAREPART').length;
   const ordersSelesai = orders.filter(o => o.status === 'SELESAI').length;
 
-  /** Helper untuk mencari nama pelanggan dari ID pelanggan */
   const getCustomerName = (id: string) => customers.find(c => c.id === id)?.nama || 'Unknown';
   
-  // Mencari sparepart yang jumlah stoknya di bawah batas aman minimum
   const stokMenipis = spareparts.filter(s => s.stok <= (s.minStok || 0));
   const perangkatBelumDiambil = orders.filter(o => o.status === 'SELESAI');
 
-  // Calculate Today's Revenue dynamically
   const todayRevenue = useMemo(() => {
     const today = new Date().toDateString();
     let rev = 0;
@@ -50,57 +159,37 @@ export const Dashboard: React.FC = () => {
     return rev;
   }, [orders, spareparts]);
 
-  // Pie chart data based on devices
   const pieData = useMemo(() => {
-    if (orders.length === 0) {
-      return [{ name: 'Belum Ada Data', value: 1, color: '#e5e7eb' }];
-    }
-
+    if (orders.length === 0) return [{ name: 'Belum Ada Data', value: 1, color: '#e5e7eb' }];
     const counts: Record<string, number> = {};
     orders.forEach(o => {
-      // Normalize string: Trim whitespace and Capitalize first letter
       const raw = o.jenisPerangkat?.trim() || 'Lainnya';
       const category = raw.charAt(0).toUpperCase() + raw.slice(1).toLowerCase();
       counts[category] = (counts[category] || 0) + 1;
     });
-
-    // Preset colors for nice gradient/variety
     const colors = ['#2563eb', '#3b82f6', '#60a5fa', '#93c5fd', '#bfdbfe', '#8b5cf6', '#a78bfa', '#c4b5fd'];
-    
     return Object.entries(counts)
-      .sort((a, b) => b[1] - a[1]) // Sort descending by count
-      .map(([name, value], index) => ({
-        name,
-        value,
-        color: colors[index % colors.length]
-      }));
+      .sort((a, b) => b[1] - a[1])
+      .map(([name, value], index) => ({ name, value, color: colors[index % colors.length] }));
   }, [orders]);
 
-  // Generate 7-day activity and revenue data
   const { lineData, barData } = useMemo(() => {
     const lData = [];
     const bData = [];
     const today = new Date();
-    
     for (let i = 6; i >= 0; i--) {
       const d = new Date(today);
       d.setDate(d.getDate() - i);
       const dateString = d.toDateString();
       const label = formatDateShort(d);
-
       let masuk = 0;
       let selesai = 0;
       let revenue = 0;
 
       orders.forEach(o => {
         const orderDate = new Date(o.tanggalMasuk).toDateString();
-        // Cek pesanan masuk
         if (orderDate === dateString) masuk++;
-        
-        // Cek pesanan selesai/diambil dan hitung pendapatan
         if (o.status === 'SELESAI' || o.status === 'DIAMBIL') {
-          // Asumsikan tanggal update/selesai sama dengan tanggal masuk untuk simplifikasi (karena belum ada field updatedAt)
-          // Idealnya kita menggunakan updatedAt/tanggalSelesai jika ada di database
           if (orderDate === dateString) {
             selesai++;
             revenue += o.biayaJasa || 0;
@@ -113,7 +202,6 @@ export const Dashboard: React.FC = () => {
           }
         }
       });
-
       lData.push({ name: label, masuk, selesai, value: masuk });
       bData.push({ name: label, value: revenue });
     }
@@ -121,13 +209,25 @@ export const Dashboard: React.FC = () => {
   }, [orders, spareparts]);
 
   return (
-    <div className="p-8 w-full min-h-screen">
-      
-      {/* Top 4 Cards */}
+    <motion.div 
+      className="p-8 w-full min-h-screen"
+      variants={containerVariants}
+      initial="hidden"
+      animate="show"
+    >
+      <motion.div variants={itemVariants} className="mb-8">
+        <h1 className="text-2xl font-bold text-gray-900">Halo, {currentUser?.name || (userRole === 'OWNER' ? 'Owner' : 'Admin')}! 👋</h1>
+        <p className="text-gray-500">Selamat datang di Ringkasan {userRole === 'OWNER' ? 'Bisnis' : 'Operasional'} ServisKu hari ini.</p>
+      </motion.div>
+
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         
         {/* Card 1: Incoming Orders */}
-        <div className="p-6 bg-white rounded-2xl shadow-sm border border-gray-100 flex flex-col justify-between h-40">
+        <motion.div 
+          variants={itemVariants} 
+          whileHover={{ y: -4, transition: { duration: 0.2 } }}
+          className="p-6 bg-white rounded-2xl shadow-sm border border-gray-100 flex flex-col justify-between h-40 cursor-pointer"
+        >
           <div className="flex justify-between items-start">
             <div>
               <p className="text-gray-500 font-medium text-sm">Pesanan Masuk</p>
@@ -144,10 +244,14 @@ export const Dashboard: React.FC = () => {
               </LineChart>
             </ResponsiveContainer>
           </div>
-        </div>
+        </motion.div>
 
         {/* Card 2: In Progress */}
-        <div className="p-6 bg-white rounded-2xl shadow-sm border border-gray-100 flex flex-col justify-between h-40">
+        <motion.div 
+          variants={itemVariants} 
+          whileHover={{ y: -4, transition: { duration: 0.2 } }}
+          className="p-6 bg-white rounded-2xl shadow-sm border border-gray-100 flex flex-col justify-between h-40 cursor-pointer"
+        >
           <div className="flex justify-between items-start">
             <div>
               <p className="text-gray-500 font-medium text-sm">Sedang Diproses</p>
@@ -158,12 +262,21 @@ export const Dashboard: React.FC = () => {
             </div>
           </div>
           <div className="w-full mt-4 h-2 bg-gray-100 rounded-full overflow-hidden">
-            <div className="bg-blue-600 h-full rounded-full" style={{ width: `${orders.length > 0 ? (ordersProses / orders.length) * 100 : 0}%` }}></div>
+            <motion.div 
+              initial={{ width: 0 }}
+              animate={{ width: `${orders.length > 0 ? (ordersProses / orders.length) * 100 : 0}%` }}
+              transition={{ duration: 1, ease: "easeOut" }}
+              className="bg-blue-600 h-full rounded-full" 
+            />
           </div>
-        </div>
+        </motion.div>
 
         {/* Card 3: Ready for Pickup */}
-        <div className="p-6 bg-white rounded-2xl shadow-sm border border-gray-100 flex flex-col justify-between h-40">
+        <motion.div 
+          variants={itemVariants} 
+          whileHover={{ y: -4, transition: { duration: 0.2 } }}
+          className="p-6 bg-white rounded-2xl shadow-sm border border-gray-100 flex flex-col justify-between h-40 cursor-pointer"
+        >
           <div className="flex justify-between items-start">
             <div>
               <p className="text-gray-500 font-medium text-sm">Siap Diambil</p>
@@ -180,10 +293,14 @@ export const Dashboard: React.FC = () => {
               </BarChart>
             </ResponsiveContainer>
           </div>
-        </div>
+        </motion.div>
 
         {/* Card 4: Revenue */}
-        <div className="p-6 bg-white rounded-2xl shadow-sm border border-gray-100 flex flex-col justify-between h-40">
+        <motion.div 
+          variants={itemVariants} 
+          whileHover={{ y: -4, transition: { duration: 0.2 } }}
+          className="p-6 bg-white rounded-2xl shadow-sm border border-gray-100 flex flex-col justify-between h-40 cursor-pointer"
+        >
           <div className="flex justify-between items-start">
             <div>
               <p className="text-gray-500 font-medium text-sm">Pendapatan Hari Ini</p>
@@ -200,7 +317,7 @@ export const Dashboard: React.FC = () => {
               </BarChart>
             </ResponsiveContainer>
           </div>
-        </div>
+        </motion.div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
@@ -209,14 +326,14 @@ export const Dashboard: React.FC = () => {
         <div className="lg:col-span-2 flex flex-col gap-6">
           
           {/* Urgent Notifications */}
-          <div className="bg-[#eef2ff] p-6 rounded-2xl border border-blue-100">
+          <motion.div variants={itemVariants} className="bg-[#eef2ff] p-6 rounded-2xl border border-blue-100">
             <div className="flex items-center gap-2 mb-4">
               <AlertTriangle size={20} className="text-orange-500" />
               <h2 className="font-bold text-gray-900">Notifikasi Mendesak</h2>
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm flex flex-col justify-between">
+              <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow">
                 <div>
                   <h3 className="font-semibold text-gray-900 text-sm mb-3">
                     {perangkatBelumDiambil.length} Perangkat Selesai Belum Diambil
@@ -236,7 +353,7 @@ export const Dashboard: React.FC = () => {
                 </button>
               </div>
 
-              <div className="bg-red-50 p-4 rounded-xl border-l-4 border-red-500 shadow-sm flex flex-col justify-between">
+              <div className="bg-red-50 p-4 rounded-xl border-l-4 border-red-500 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow">
                 <div>
                   <h3 className="font-semibold text-red-900 text-sm mb-3">
                     Peringatan Stok Tipis
@@ -256,10 +373,10 @@ export const Dashboard: React.FC = () => {
                 </button>
               </div>
             </div>
-          </div>
+          </motion.div>
 
           {/* Latest Orders Table */}
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex-1">
+          <motion.div variants={itemVariants} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex-1">
             <div className="px-6 py-5 border-b border-gray-100 flex justify-between items-center">
               <h2 className="font-bold text-gray-900">Pesanan Terbaru</h2>
               <button 
@@ -276,14 +393,12 @@ export const Dashboard: React.FC = () => {
                     <th className="px-6 py-4 font-semibold">NO. SERVIS</th>
                     <th className="px-6 py-4 font-semibold">PELANGGAN</th>
                     <th className="px-6 py-4 font-semibold">PERANGKAT</th>
-                    <th className="px-6 py-4 font-semibold">KELUHAN</th>
                     <th className="px-6 py-4 font-semibold text-center">STATUS</th>
-                    <th className="px-6 py-4 font-semibold text-center">MASUK</th>
                     <th className="px-6 py-4 font-semibold text-center">AKSI</th>
                   </tr>
                 </thead>
-                <tbody>
-                  {orders.slice(0, 4).map((order) => {
+                <motion.tbody>
+                  {orders.slice(0, 5).map((order, index) => {
                     const statusColors: any = {
                       'MASUK': 'bg-blue-50 text-blue-600 border-blue-200',
                       'PROSES': 'bg-yellow-50 text-yellow-600 border-yellow-200',
@@ -291,50 +406,24 @@ export const Dashboard: React.FC = () => {
                       'SELESAI': 'bg-green-50 text-green-600 border-green-200',
                       'BATAL': 'bg-red-50 text-red-600 border-red-200',
                       'DIAMBIL': 'bg-gray-100 text-gray-600 border-gray-300',
-                      'MENUNGGU_SPAREPART': 'bg-orange-50 text-orange-600 border-orange-200',
-                      'MENUNGGU_KONFIRMASI': 'bg-orange-50 text-orange-600 border-orange-200'
                     };
-                    const getStatusLabel = (status: string) => {
-                      switch(status) {
-                        case 'MENUNGGU_SPAREPART': return 'Menunggu Sparepart';
-                        case 'MENUNGGU_KONFIRMASI': return 'Menunggu Konfirmasi';
-                        default: return status.charAt(0) + status.slice(1).toLowerCase();
-                      }
-                    };
-                    const getRelativeTime = (dateString: string) => {
-                      const diffDays = Math.floor((new Date().getTime() - new Date(dateString).getTime()) / (1000 * 3600 * 24));
-                      if (diffDays <= 0) return 'Hari ini';
-                      if (diffDays === 1) return 'Kemarin';
-                      return `${diffDays} hari lalu`;
-                    };
-                    const customer = getCustomerName(order.pelangganId);
-                    
                     return (
-                      <tr key={order.id} className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors">
-                        <td className="px-6 py-5">
-                          <span className="font-bold text-gray-900">{order.noServis}</span>
-                        </td>
-                        <td className="px-6 py-5">
-                          <p className="font-bold text-gray-900">{customer}</p>
-                        </td>
-                        <td className="px-6 py-5 text-gray-700 font-medium">
-                          {order.jenisPerangkat} - {order.merkModel}
-                        </td>
-                        <td className="px-6 py-5 text-gray-600 max-w-[200px] truncate">
-                          {order.keluhan}
-                        </td>
-                        <td className="px-6 py-5 text-center">
-                          <span className={`inline-block px-3 py-1 rounded-full text-xs font-bold border ${statusColors[order.status] || 'bg-gray-100 text-gray-600 border-gray-300'}`}>
-                            {getStatusLabel(order.status)}
+                      <motion.tr 
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.1 * index }}
+                        key={order.id} 
+                        className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors"
+                      >
+                        <td className="px-6 py-4 font-bold text-gray-900">{order.noServis}</td>
+                        <td className="px-6 py-4 font-bold text-gray-900">{getCustomerName(order.pelangganId)}</td>
+                        <td className="px-6 py-4 text-gray-700 font-medium">{order.jenisPerangkat}</td>
+                        <td className="px-6 py-4 text-center">
+                          <span className={`inline-block px-3 py-1 rounded-full text-xs font-bold border ${statusColors[order.status] || 'bg-gray-100 text-gray-600'}`}>
+                            {order.status}
                           </span>
                         </td>
-                        <td className="px-6 py-5 text-center">
-                          <div className="flex flex-col items-center">
-                            <span className="text-gray-900 font-medium">{getRelativeTime(order.tanggalMasuk)}</span>
-                            <span className="text-xs text-gray-500 mt-0.5">{new Date(order.tanggalMasuk).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
-                          </div>
-                        </td>
-                        <td className="px-6 py-5">
+                        <td className="px-6 py-4">
                           <button 
                             onClick={() => navigate(`/order/${order.id}`)}
                             className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-1.5 px-3.5 rounded-lg flex items-center justify-center gap-1.5 text-xs transition-colors shadow-sm mx-auto"
@@ -342,40 +431,28 @@ export const Dashboard: React.FC = () => {
                             <Eye size={14} /> Detail
                           </button>
                         </td>
-                      </tr>
+                      </motion.tr>
                     );
                   })}
-                </tbody>
+                </motion.tbody>
               </table>
             </div>
-          </div>
+          </motion.div>
         </div>
 
-        {/* Right Column (Spans 1 column) */}
-        <div className="flex flex-col gap-6">
-          
-          {/* Service Distribution Pie */}
+        {/* Right Column */}
+        <motion.div variants={itemVariants} className="flex flex-col gap-6">
           <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 h-[280px] flex flex-col">
             <h2 className="font-bold text-gray-900 mb-4">Distribusi Servis</h2>
             <div className="flex-1 flex items-center relative">
               <div className="w-1/2 h-full">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
-                    <Pie
-                      data={pieData}
-                      innerRadius={40}
-                      outerRadius={70}
-                      paddingAngle={5}
-                      dataKey="value"
-                      stroke="none"
-                    >
-                      {pieData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
+                    <Pie data={pieData} innerRadius={40} outerRadius={70} paddingAngle={5} dataKey="value" stroke="none">
+                      {pieData.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.color} />)}
                     </Pie>
                   </PieChart>
                 </ResponsiveContainer>
-                {/* Center text for Pie chart */}
                 <div className="absolute top-1/2 left-1/4 transform -translate-x-1/2 -translate-y-1/2 text-center">
                   <span className="text-xl font-bold text-gray-900">{orders.length}</span>
                 </div>
@@ -391,14 +468,10 @@ export const Dashboard: React.FC = () => {
             </div>
           </div>
 
-          {/* Inventory Alerts List */}
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 flex-1 flex flex-col">
             <div className="px-6 py-5 border-b border-gray-100 flex justify-between items-center">
               <h2 className="font-bold text-gray-900">Peringatan Inventaris</h2>
-              <button 
-                onClick={() => navigate('/stok')}
-                className="text-sm font-semibold text-blue-600 hover:text-blue-700 transition-colors flex items-center gap-1"
-              >
+              <button onClick={() => navigate('/stok')} className="text-sm font-semibold text-blue-600 hover:text-blue-700 transition-colors flex items-center gap-1">
                 Lihat Semua &rsaquo;
               </button>
             </div>
@@ -413,9 +486,8 @@ export const Dashboard: React.FC = () => {
               ))}
             </div>
           </div>
-
-        </div>
+        </motion.div>
       </div>
-    </div>
+    </motion.div>
   );
 };

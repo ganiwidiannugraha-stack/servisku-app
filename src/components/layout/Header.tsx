@@ -72,7 +72,7 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
   const hasResults = results && (results.matchedOrders.length > 0 || results.matchedCustomers.length > 0 || results.matchedSpareparts.length > 0);
 
   return (
-    <header className="relative z-20 flex items-center justify-between h-20 px-8 bg-white border-b border-gray-200 shadow-sm">
+    <header className="relative z-50 flex items-center justify-between h-20 px-8 bg-white border-b border-gray-200 shadow-sm">
       <div className="flex items-center flex-1">
         <button 
           onClick={onMenuClick}
@@ -226,15 +226,15 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
           )}
         </div>
         <div 
-          className={`flex items-center space-x-3 group ${userRole === 'ADMIN' ? 'cursor-pointer' : 'cursor-default'}`} 
-          onClick={() => userRole === 'ADMIN' && navigate('/pengaturan')}
+          className="flex items-center space-x-3 group cursor-pointer" 
+          onClick={() => navigate('/pengaturan')}
         >
-          <div className={`w-9 h-9 rounded-full flex items-center justify-center font-bold shadow-sm group-hover:shadow transition-shadow ${userRole === 'ADMIN' ? 'bg-purple-100 text-purple-700' : 'bg-emerald-100 text-emerald-700'}`}>
+          <div className="w-9 h-9 rounded-full flex items-center justify-center font-bold shadow-sm group-hover:shadow transition-shadow bg-blue-100 text-blue-700">
             {userName ? userName.charAt(0).toUpperCase() : 'U'}
           </div>
           <div className="hidden md:flex flex-col items-start justify-center">
             <p className="text-sm font-bold text-gray-900 leading-tight">{userName || 'User'}</p>
-            <p className="text-xs text-gray-500 font-medium leading-tight">{userRole === 'ADMIN' ? 'Administrator' : 'Teknisi Servis'}</p>
+            <p className="text-xs text-gray-500 font-medium leading-tight capitalize">{userRole?.toLowerCase() || 'Teknisi Servis'}</p>
           </div>
           <ChevronDown size={16} className="text-gray-400 ml-1 hidden md:block group-hover:text-gray-600 transition-colors" />
         </div>

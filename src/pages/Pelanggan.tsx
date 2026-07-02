@@ -1,9 +1,8 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useStore } from '../store';
 import type { Customer, Order } from '../store';
 import { Search, UserPlus, ChevronDown, Eye, ArrowLeft, Edit2, Save, X } from 'lucide-react';
-import { AreaChart, Area, ResponsiveContainer, Tooltip } from 'recharts';
 import { Breadcrumb } from '../components/ui/Breadcrumb';
 import { Modal } from '../components/ui/Modal';
 import { Button } from '../components/ui/Button';
@@ -95,80 +94,6 @@ export const Pelanggan: React.FC = () => {
     return matchesSearch && matchesDate && matchesStatus;
   });
 
-  const activeCustomerIds = new Set(orders.filter(o => !['SELESAI', 'DIAMBIL', 'BATAL', 'BATAL_DIAMBIL', 'BATAL_SIAP_DIAMBIL'].includes(o.status)).map(o => o.pelangganId));
-  const totalPelanggan = customers.length;
-  const pelangganAktif = activeCustomerIds.size;
-  
-  // Calculate First Order Dates
-  const customerFirstOrder = useMemo(() => {
-    const map = new Map<string, Date>();
-    // Get first order date for each customer
-    [...orders].sort((a, b) => new Date(a.tanggalMasuk).getTime() - new Date(b.tanggalMasuk).getTime()).forEach(o => {
-      if (!map.has(o.pelangganId)) {
-        map.set(o.pelangganId, new Date(o.tanggalMasuk));
-      }
-    });
-    return map;
-  }, [orders]);
-
-  // Calculate new customers this month
-  const pelangganBaru = useMemo(() => {
-    const now = new Date();
-    const currentMonth = now.getMonth();
-    const currentYear = now.getFullYear();
-    let count = 0;
-    customers.forEach(c => {
-      // Use first order date, fallback to ID timestamp, fallback to current time
-      const firstOrderDate = customerFirstOrder.get(c.id);
-      let date = firstOrderDate;
-      if (!date && c.id.startsWith('c') && !isNaN(Number(c.id.substring(1)))) {
-        date = new Date(Number(c.id.substring(1)));
-      }
-      if (!date) date = now;
-      
-      if (date.getMonth() === currentMonth && date.getFullYear() === currentYear) {
-        count++;
-      }
-    });
-    return count;
-  }, [customers, customerFirstOrder]);
-
-  // Chart Data: Pertumbuhan Pelanggan (Year to Date)
-  const growthData = useMemo(() => {
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Ags', 'Sep', 'Okt', 'Nov', 'Des'];
-    const currentYear = new Date().getFullYear();
-    const data = months.map(m => ({ name: m, total: 0 }));
-    
-    let cumulative = 0;
-    
-    // Sort customers by their creation date to calculate cumulative sum
-    const customerDates = customers.map(c => {
-      let date = customerFirstOrder.get(c.id);
-      if (!date && c.id.startsWith('c') && !isNaN(Number(c.id.substring(1)))) {
-        date = new Date(Number(c.id.substring(1)));
-      }
-      return date || new Date(currentYear, 0, 1);
-    }).sort((a, b) => a.getTime() - b.getTime());
-
-    // First calculate how many customers existed before this year
-    customerDates.forEach(d => {
-      if (d.getFullYear() < currentYear) {
-        cumulative++;
-      }
-    });
-
-    // Now fill the months of the current year
-    for (let month = 0; month < 12; month++) {
-      const addedThisMonth = customerDates.filter(d => d.getFullYear() === currentYear && d.getMonth() === month).length;
-      cumulative += addedThisMonth;
-      data[month].total = cumulative;
-    }
-    
-    return data;
-  }, [customers, customerFirstOrder]);
-
-  const totalServisAll = customers.reduce((sum, c) => sum + (c.totalServis || 0), 0);
-  const rataRataServis = totalPelanggan > 0 ? (totalServisAll / totalPelanggan).toFixed(1) : '0';
 
   const totalPages = Math.ceil(filteredCustomers.length / ITEMS_PER_PAGE);
   const paginatedCustomers = filteredCustomers.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
@@ -369,52 +294,6 @@ export const Pelanggan: React.FC = () => {
               Tambah Pelanggan Baru
             </button>
           </div>
-
-          {/* Stats Grid */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mb-10">
-            {/* Left Stats (2x2) */}
-            <div className="lg:col-span-5 grid grid-cols-2 gap-4">
-              <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm flex flex-col justify-center">
-                <p className="text-sm font-bold text-gray-900 mb-1">Total Pelanggan</p>
-                <p className="text-4xl font-bold text-gray-900">{totalPelanggan}</p>
-              </div>
-              <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm flex flex-col justify-center">
-                <p className="text-sm font-bold text-gray-900 mb-1">Pelanggan Aktif</p>
-                <p className="text-4xl font-bold text-gray-900">{pelangganAktif}</p>
-              </div>
-              <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm flex flex-col justify-center">
-                <p className="text-sm font-bold text-gray-900 mb-1">Pelanggan Baru <span className="text-gray-500 font-normal">(Bulan Ini)</span></p>
-                <p className="text-4xl font-bold text-emerald-500">+{pelangganBaru}</p>
-              </div>
-              <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm flex flex-col justify-center">
-                <p className="text-sm font-bold text-gray-900 mb-1">Rata-rata Servis</p>
-                <p className="text-4xl font-bold text-gray-900">{rataRataServis}</p>
-              </div>
-            </div>
-
-            {/* Right Chart */}
-            <div className="lg:col-span-7 bg-white rounded-2xl p-6 border border-gray-100 shadow-sm flex flex-col relative overflow-hidden">
-              <p className="text-sm font-bold text-gray-900 mb-6">Pertumbuhan Pelanggan <span className="text-gray-500 font-normal">(Tahun Ini)</span></p>
-              <div className="flex-1 w-full h-full min-h-[140px] relative mt-2">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={growthData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                    <defs>
-                      <linearGradient id="colorTotal" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
-                        <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
-                      </linearGradient>
-                    </defs>
-                    <Tooltip 
-                      contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                      itemStyle={{ color: '#1f2937', fontWeight: 'bold' }}
-                    />
-                    <Area type="monotone" dataKey="total" stroke="#3b82f6" strokeWidth={3} fillOpacity={1} fill="url(#colorTotal)" />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-          </div>
-
           {/* Filters and Search */}
           <h3 className="text-sm font-bold text-gray-900 mb-3">Quick Search</h3>
           <div className="flex flex-col md:flex-row gap-4 mb-6">

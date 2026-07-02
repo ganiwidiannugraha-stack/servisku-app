@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, Navigate } from 'react-router-dom';
 import { useStore } from '../store';
-import { Eye, EyeOff, Wrench } from 'lucide-react';
+import { Eye, EyeOff } from 'lucide-react';
 
 /**
  * Komponen Login Authentication (Split-Screen Modern)
@@ -30,7 +30,6 @@ export const Login: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
-  const [rememberMe, setRememberMe] = useState(false);
 
   // Referensi ke input untuk melakukan auto-focus saat pertama render
   const usernameRef = useRef<HTMLInputElement>(null);
@@ -46,7 +45,6 @@ export const Login: React.FC = () => {
     if (savedUser && savedPass) {
       setUsername(savedUser);
       setPassword(savedPass);
-      setRememberMe(true);
     }
     usernameRef.current?.focus();
   }, []);
@@ -73,13 +71,6 @@ export const Login: React.FC = () => {
     const success = await login(username, password);
     
     if (success) {
-      if (rememberMe) {
-        localStorage.setItem('servisku_saved_username', username);
-        localStorage.setItem('servisku_saved_password', password);
-      } else {
-        localStorage.removeItem('servisku_saved_username');
-        localStorage.removeItem('servisku_saved_password');
-      }
       navigate('/dashboard', { replace: true });
     } else {
       setError('Username atau kata sandi tidak sesuai. Silakan coba lagi.');
@@ -109,12 +100,8 @@ export const Login: React.FC = () => {
           
           {/* LOGO */}
           <div className="mb-14 flex items-center justify-center lg:justify-start gap-3">
-            <div className="bg-primary text-white p-2.5 rounded-xl flex items-center justify-center shadow-lg shadow-primary/20">
-              <Wrench size={30} strokeWidth={2.5} />
-            </div>
-            <h1 className="text-4xl font-extrabold tracking-tight text-gray-900">
-              ServisKu<span className="text-primary">.</span>
-            </h1>
+            <img src="/logo.png" alt="ServisKu Logo" className="h-16 w-auto object-contain drop-shadow-sm" />
+            <span className="text-3xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-blue-800 to-blue-600 tracking-tight">ServisKu</span>
           </div>
 
           <form className="space-y-6" onSubmit={handleLogin}>
@@ -179,27 +166,7 @@ export const Login: React.FC = () => {
               </p>
             )}
 
-            {/* Remember Me & Forgot Password (Standard Position) */}
-            <div className="flex items-center justify-between mt-2 mb-2">
-              <div className="flex items-center">
-                <input
-                  id="remember-me"
-                  type="checkbox"
-                  className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded-sm cursor-pointer"
-                  checked={rememberMe}
-                  onChange={(e) => setRememberMe(e.target.checked)}
-                />
-                <label htmlFor="remember-me" className="ml-2 block text-xs text-gray-600 cursor-pointer select-none">
-                  Ingat saya
-                </label>
-              </div>
 
-              <div className="text-xs">
-                <a href="#" className="font-semibold text-primary hover:text-primary-dark transition-colors">
-                  Lupa kata sandi?
-                </a>
-              </div>
-            </div>
 
             {/* Solid Primary Button */}
             <div className="pt-2">
@@ -217,7 +184,10 @@ export const Login: React.FC = () => {
               <div className="text-center">
                 <p className="text-[10px] text-gray-400 mb-1">Akses Demo (Role-Based):</p>
                 <div className="flex gap-4 justify-center text-xs font-mono text-gray-500">
-                  <span className="bg-gray-100 px-2 py-0.5 rounded cursor-pointer hover:bg-gray-200" onClick={() => {setUsername('admin'); setPassword('admin');}}>admin:admin</span>
+                  <span className="bg-gray-100 px-2 py-0.5 rounded cursor-pointer hover:bg-gray-200" onClick={() => {setUsername('owner'); setPassword('owner');}}>owner:owner</span>
+                  <span className="bg-gray-100 px-2 py-0.5 rounded cursor-pointer hover:bg-gray-200" onClick={() => {setUsername('frontline'); setPassword('frontline');}}>frontline:frontline</span>
+                  <span className="bg-gray-100 px-2 py-0.5 rounded cursor-pointer hover:bg-gray-200" onClick={() => {setUsername('finance'); setPassword('finance');}}>finance:finance</span>
+                  <span className="bg-gray-100 px-2 py-0.5 rounded cursor-pointer hover:bg-gray-200" onClick={() => {setUsername('inventory'); setPassword('inventory');}}>inventory:inventory</span>
                   <span className="bg-gray-100 px-2 py-0.5 rounded cursor-pointer hover:bg-gray-200" onClick={() => {setUsername('teknisi'); setPassword('teknisi');}}>teknisi:teknisi</span>
                 </div>
               </div>

@@ -532,7 +532,7 @@ export const OrderDetail: React.FC = () => {
             </div>
           </div>
           <div className="flex flex-wrap gap-2">
-            {userRole === 'ADMIN' && (
+            {userRole === 'OWNER' && (
               <Button variant="secondary" onClick={() => setIsPrintVisible(true)} leftIcon={<Printer size={16} />} className="bg-white hover:bg-gray-50 text-gray-700 border-gray-200">
                 Cetak Label
               </Button>
@@ -543,7 +543,7 @@ export const OrderDetail: React.FC = () => {
             {!['DIAMBIL', 'BATAL_DIAMBIL'].includes(order.status) && (
               <Button variant="primary" onClick={handleOpenUpdate} className="bg-blue-600 hover:bg-blue-700">Update Status</Button>
             )}
-            {userRole === 'ADMIN' && ['SELESAI', 'BATAL'].includes(order.status) && (
+            {userRole === 'OWNER' && ['SELESAI', 'BATAL'].includes(order.status) && (
               <Button variant="primary" onClick={() => navigate(`/order/${order.id}/bayar`)} leftIcon={<Wallet size={16} />} className="bg-emerald-600 hover:bg-emerald-700 border-none">
                 Pembayaran
               </Button>
@@ -821,7 +821,7 @@ export const OrderDetail: React.FC = () => {
             <div className="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden">
               <div className="px-6 py-5 border-b border-gray-50 flex justify-between items-center">
                 <h2 className="text-sm font-semibold text-gray-900">Teknisi Utama</h2>
-                {userRole === 'ADMIN' && order.status !== 'DIAMBIL' && (
+                {userRole === 'OWNER' && order.status !== 'DIAMBIL' && (
                   <button onClick={() => {
                     setEditTeknisiValue(order.teknisiId || '');
                     setIsEditTeknisiOpen(true);
