@@ -74,11 +74,11 @@ type OrderRow = {
 type MutasiRow = {
   id: string;
   sparepart_id: string;
-  tipe: "IN" | "OUT";
-  qty: number;
+  jenis: "MASUK" | "KELUAR";
+  jumlah: number;
   harga_beli?: number | null;
   tanggal: string;
-  keterangan: string;
+  keterangan?: string | null;
 };
 
 type SettingsRow = {
@@ -233,21 +233,21 @@ const toOrderRow = (order: Order): OrderRow => ({
 const mapMutasi = (row: MutasiRow): MutasiStok => ({
   id: row.id,
   sparepartId: row.sparepart_id,
-  tipe: row.tipe,
-  qty: row.qty,
+  tipe: row.jenis === "MASUK" ? "IN" : "OUT",
+  qty: row.jumlah,
   hargaBeli: row.harga_beli ?? undefined,
   tanggal: row.tanggal,
-  keterangan: row.keterangan,
+  keterangan: row.keterangan || undefined,
 });
 
 const toMutasiRow = (mutasi: MutasiStok): MutasiRow => ({
   id: mutasi.id,
   sparepart_id: mutasi.sparepartId,
-  tipe: mutasi.tipe,
-  qty: mutasi.qty,
+  jenis: mutasi.tipe === "IN" ? "MASUK" : "KELUAR",
+  jumlah: mutasi.qty,
   harga_beli: mutasi.hargaBeli ?? null,
   tanggal: mutasi.tanggal,
-  keterangan: mutasi.keterangan,
+  keterangan: mutasi.keterangan || null,
 });
 
 const mapSettings = (row: SettingsRow): Settings => ({
