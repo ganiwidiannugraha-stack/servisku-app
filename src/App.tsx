@@ -33,19 +33,7 @@ function App() {
     state => state.loadInitialData
   );
   useEffect(() => {
-    // Auto-inject 15 mock data if not present (Dev Only)
-    const storeData = localStorage.getItem('servisku-storage');
-    if (storeData) {
-      try {
-        const parsed = JSON.parse(storeData);
-        if (parsed.state && parsed.state.orders && parsed.state.orders.length < 10) {
-          localStorage.removeItem('servisku-storage');
-          window.location.reload();
-        }
-      } catch {
-        // Abaikan error parse
-      }
-    }
+
     loadInitialData()
       // testConnection()
       // seedCostumers()
