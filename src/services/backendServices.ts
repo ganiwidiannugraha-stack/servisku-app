@@ -7,6 +7,7 @@ type CustomerRow = {
   id: string;
   nama: string;
   no_hp: string;
+  email?: string | null;
   alamat?: string | null;
   total_servis: number;
   terakhir_servis: string;
@@ -16,6 +17,8 @@ type SparepartRow = {
   id: string;
   nama: string;
   kategori: string;
+  merek?: string | null;
+  rak?: string | null;
   stok: number;
   min_stok: number;
   harga_modal: number;
@@ -47,6 +50,7 @@ type OrderRow = {
   biaya_jasa?: number | null;
   estimasi_selesai?: string | null;
   catatan_internal?: string | null;
+  prioritas?: 'NORMAL' | 'HIGH' | 'URGENT' | null;
   status: StatusOrder;
   tanggal_masuk: string;
   teknisi_id?: string | null;
@@ -81,6 +85,7 @@ const mapCustomer = (row: CustomerRow): Customer => ({
   id: row.id,
   nama: row.nama,
   noHp: row.no_hp,
+  email: row.email || undefined,
   alamat: row.alamat || undefined,
   totalServis: row.total_servis,
   terakhirServis: row.terakhir_servis,
@@ -93,6 +98,7 @@ const toCustomerRow = (
   id,
   nama: customer.nama,
   no_hp: customer.noHp,
+  email: customer.email || null,
   alamat: customer.alamat || null,
   total_servis: 0,
   terakhir_servis: new Date().toISOString(),
@@ -102,6 +108,8 @@ const mapSparepart = (row: SparepartRow): Sparepart => ({
   id: row.id,
   nama: row.nama,
   kategori: row.kategori,
+  merek: row.merek || undefined,
+  rak: row.rak || undefined,
   stok: row.stok,
   minStok: row.min_stok,
   hargaModal: row.harga_modal,
@@ -109,10 +117,15 @@ const mapSparepart = (row: SparepartRow): Sparepart => ({
   pajak: row.pajak,
 });
 
-const toSparepartRow = (sparepart: Omit<Sparepart, "id"> & { id: string }): SparepartRow => ({
-  id: sparepart.id,
+const toSparepartRow = (
+  sparepart: Omit<Sparepart, "id">,
+  id: string,
+): SparepartRow => ({
+  id,
   nama: sparepart.nama,
   kategori: sparepart.kategori,
+  merek: sparepart.merek || null,
+  rak: sparepart.rak || null,
   stok: sparepart.stok,
   min_stok: sparepart.minStok,
   harga_modal: sparepart.hargaModal,
@@ -144,6 +157,7 @@ const mapOrder = (row: OrderRow): Order => ({
   biayaJasa: row.biaya_jasa ?? undefined,
   estimasiSelesai: row.estimasi_selesai || undefined,
   catatanInternal: row.catatan_internal || undefined,
+  prioritas: row.prioritas || undefined,
   status: row.status,
   tanggalMasuk: row.tanggal_masuk,
   teknisiId: row.teknisi_id || undefined,
@@ -166,6 +180,7 @@ const toOrderRow = (order: Order): OrderRow => ({
   biaya_jasa: order.biayaJasa ?? null,
   estimasi_selesai: order.estimasiSelesai || null,
   catatan_internal: order.catatanInternal || null,
+  prioritas: order.prioritas || null,
   status: order.status,
   tanggal_masuk: order.tanggalMasuk,
   teknisi_id: order.teknisiId || null,
@@ -324,7 +339,7 @@ export async function getSpareparts() {
 }
 
 export async function createSparepartDB(sparepart: Omit<Sparepart, "id"> & { id: string }) {
-  const { error } = await supabase.from("spareparts").insert(toSparepartRow(sparepart));
+  const { error } = await supabase.from("spareparts").insert(toSparepartRow(sparepart, sparepart.id));
   if (error) throw error;
 }
 
