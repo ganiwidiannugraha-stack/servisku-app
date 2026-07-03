@@ -282,15 +282,11 @@ export const Pengaturan: React.FC = () => {
                   <form onSubmit={handleChangePassword} className="space-y-4">
                     <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wide flex items-center gap-2"><Key size={16} className="text-gray-400"/> Ubah Kata Sandi</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-4">
-                      {/* Note: In Supabase, you don't necessarily need old password to update if you have a valid session, 
-                          but typically we should re-authenticate or just rely on the active session. */}
                       <Input label="Kata Sandi Baru" type="password" value={passData.new} onChange={e => setPassData({...passData, new: e.target.value})} required/>
                       <Input label="Konfirmasi Kata Sandi" type="password" value={passData.confirm} onChange={e => setPassData({...passData, confirm: e.target.value})} required/>
                     </div>
                     <div className="flex justify-end">
-                      <Button type="submit" variant="secondary" className="border-gray-200 text-gray-700 hover:bg-gray-50">Perbarui Sandi</Button>
-                    </div>
+                      <Button type="submit" className="bg-blue-600 hover:bg-blue-700">Perbarui Sandi</Button>
                     </div>
                   </form>
                 </div>
