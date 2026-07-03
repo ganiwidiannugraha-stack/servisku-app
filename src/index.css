@@ -16,6 +16,16 @@
   }
 }
 
+@layer utilities {
+  .hide-scrollbar {
+    -ms-overflow-style: none;  /* IE and Edge */
+    scrollbar-width: none;  /* Firefox */
+  }
+  .hide-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+}
+
 /* ── Skeleton shimmer sweep ───────────────────────────────── */
 @keyframes shimmer {
   0%   { transform: translateX(-100%); }

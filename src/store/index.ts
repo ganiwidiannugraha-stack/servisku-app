@@ -552,6 +552,13 @@ export const useStore = create<AppState>()(
           const nextOrders = state.orders.map((o) => {
             if (o.id === orderId) {
               const currentHistory = o.history || [];
+              const lastStatus = currentHistory.length > 0 ? currentHistory[currentHistory.length - 1].status : null;
+              
+              // Mencegah status yang sama masuk dua kali berturut-turut
+              if (lastStatus === status) {
+                return o;
+              }
+              
               return { ...o, status, history: [...currentHistory, newHistoryItem] };
             }
             return o;

@@ -26,8 +26,9 @@ const getStepIndex = (status: StatusOrder): number => {
   if (['DIAGNOSA', 'MENUNGGU_KONFIRMASI'].includes(status)) return 1;
   if (status === 'MENUNGGU_SPAREPART') return 2;
   if (status === 'PROSES') return 3;
-  if (['SELESAI', 'SIAP_DIAMBIL'].includes(status)) return 4;
-  if (status === 'DIAMBIL') return 5;
+  if (status === 'SELESAI') return 4;
+  if (status === 'SIAP_DIAMBIL') return 5;
+  if (status === 'DIAMBIL') return 6;
   return 0;
 };
 
@@ -38,6 +39,7 @@ const OrderStepper: React.FC<{ currentStatus: StatusOrder; orderDate: string }> 
     { label: 'Tunggu Part' },
     { label: 'Perbaikan' },
     { label: 'Selesai' },
+    { label: 'Siap Diambil' },
     { label: 'Diambil' }
   ];
   
@@ -53,7 +55,7 @@ const OrderStepper: React.FC<{ currentStatus: StatusOrder; orderDate: string }> 
           Pesanan Dibatalkan
         </div>
       ) : (
-        <div className="flex w-full max-w-4xl mx-auto pb-10 px-0 sm:px-6">
+        <div className="flex w-full max-w-4xl mx-auto pb-10 px-0 sm:px-6 overflow-x-auto hide-scrollbar">
           {steps.map((step, index) => {
             const isCompleted = index <= currentIndex;
             const isCurrent = index === currentIndex;
@@ -587,7 +589,9 @@ export const OrderDetail: React.FC = () => {
                 
                 {/* Current Status & History */}
                 {(order.history || []).length > 0 ? (
-                  [...(order.history || [])].reverse().map((h, i) => (
+                  [...(order.history || [])]
+                    .filter((h, index, arr) => index === 0 || h.status !== arr[index - 1].status)
+                    .reverse().map((h, i) => (
                     <div key={i} className="relative pl-6">
                       <div className={`absolute w-3 h-3 rounded-full -left-[7px] top-1 ring-4 ring-white shadow-sm ${i === 0 ? 'bg-blue-600' : 'bg-gray-400'}`}></div>
                       <h3 className={`text-sm font-bold ${i === 0 ? 'text-gray-900' : 'text-gray-600'}`}>{h.status}</h3>
