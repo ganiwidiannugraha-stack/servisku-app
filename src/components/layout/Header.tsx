@@ -80,7 +80,6 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
         >
           <Menu size={20} />
         </button>
-        {/* Toggle Sidebar Desktop dipindah ke dalam Sidebar.tsx */}
         <div className="w-full max-w-xl relative" ref={dropdownRef}>
           <div className="relative flex items-center">
             <Search className="absolute left-3.5 text-gray-400" size={18} />
