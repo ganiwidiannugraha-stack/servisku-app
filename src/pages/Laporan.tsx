@@ -286,7 +286,25 @@ export const Laporan: React.FC = () => {
       .slice(0, 5)
       .map(m => ({ ...m, detail: spareparts.find(s => s.id === m.sparepartId) }));
 
-    return { topSpareparts, valuasiStok, chartData, stokKritis, mutasiTerakhir };
+    const deadStock = spareparts.filter(sp => !terjual[sp.id] && sp.stok > 0);
+
+    const startD = new Date(startDate);
+    const endD = new Date(endDate);
+    const diffTime = Math.abs(endD.getTime() - startD.getTime());
+    let diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    if (diffDays === 0) diffDays = 1;
+
+    const prediksiRestock = spareparts.map(sp => {
+      const sold = terjual[sp.id] || 0;
+      const avgDailySold = sold / diffDays;
+      const projected30Days = Math.ceil(avgDailySold * 30);
+      // Asumsikan safety stock = 10% dari projected atau minStok
+      const safetyStock = Math.max(sp.minStok, Math.ceil(projected30Days * 0.1));
+      const restockSuggestion = Math.max(0, (projected30Days + safetyStock) - sp.stok);
+      return { detail: sp, avgDailySold, projected30Days, restockSuggestion };
+    }).filter(p => p.restockSuggestion > 0).sort((a,b) => b.restockSuggestion - a.restockSuggestion);
+
+    return { topSpareparts, valuasiStok, chartData, stokKritis, mutasiTerakhir, deadStock, prediksiRestock };
   }, [filteredOrders, spareparts, mutasiStok, startDate, endDate]);
 
   // 4. SDM / TEKNISI METRICS & CHART
@@ -1160,6 +1178,70 @@ export const Laporan: React.FC = () => {
                         ))}
                         {invData.stokKritis.length === 0 && (
                           <tr><td colSpan={2} className="px-4 py-6 text-center text-gray-500">Stok aman, tidak ada stok kritis.</td></tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+                <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                  <h3 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
+                    <AlertTriangle size={18} className="text-gray-400" /> Dead Stock / Slow Moving
+                  </h3>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm text-left">
+                      <thead className="text-xs text-gray-500 uppercase bg-gray-50">
+                        <tr>
+                          <th className="px-4 py-3 rounded-tl-lg">Nama Sparepart</th>
+                          <th className="px-4 py-3">Kategori</th>
+                          <th className="px-4 py-3 text-right rounded-tr-lg">Stok Menganggur</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {invData.deadStock.slice(0, 5).map((t) => (
+                          <tr key={t.id} className="border-b last:border-0 hover:bg-gray-50">
+                            <td className="px-4 py-3 font-medium text-gray-900">{t.nama}</td>
+                            <td className="px-4 py-3 text-gray-500">{t.kategori}</td>
+                            <td className="px-4 py-3 text-right font-bold text-gray-500">
+                              {t.stok} unit
+                            </td>
+                          </tr>
+                        ))}
+                        {invData.deadStock.length === 0 && (
+                          <tr><td colSpan={3} className="px-4 py-6 text-center text-gray-500">Bagus! Tidak ada dead stock.</td></tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                <div className="bg-white p-6 rounded-2xl shadow-sm border border-blue-100">
+                  <h3 className="font-bold text-blue-900 mb-4 flex items-center gap-2">
+                    <Wrench size={18} className="text-blue-500" /> Prediksi Restock (30 Hari)
+                  </h3>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm text-left">
+                      <thead className="text-xs text-blue-700 uppercase bg-blue-50">
+                        <tr>
+                          <th className="px-4 py-3 rounded-tl-lg">Nama Sparepart</th>
+                          <th className="px-4 py-3 text-right">Rata-rata/Hari</th>
+                          <th className="px-4 py-3 text-right rounded-tr-lg">Saran Beli</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {invData.prediksiRestock.slice(0, 5).map((p) => (
+                          <tr key={p.detail.id} className="border-b border-blue-50 hover:bg-blue-50/50">
+                            <td className="px-4 py-3 font-medium text-gray-900">{p.detail.nama}</td>
+                            <td className="px-4 py-3 text-right text-gray-600">{p.avgDailySold.toFixed(1)} unit</td>
+                            <td className="px-4 py-3 text-right font-bold text-blue-700">
+                              +{p.restockSuggestion} unit
+                            </td>
+                          </tr>
+                        ))}
+                        {invData.prediksiRestock.length === 0 && (
+                          <tr><td colSpan={3} className="px-4 py-6 text-center text-gray-500">Stok saat ini sudah mencukupi prediksi.</td></tr>
                         )}
                       </tbody>
                     </table>
