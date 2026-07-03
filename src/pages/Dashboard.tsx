@@ -5,6 +5,8 @@ import { LineChart, Line, BarChart, Bar, ResponsiveContainer, PieChart, Pie, Cel
 import { AlertTriangle, Calendar, RefreshCcw, PackageCheck, Banknote, Eye, Wrench, CheckCircle, Search, Clock, Users, Phone, MessageCircle, Plus, Package, Wallet } from 'lucide-react';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
+import { Modal } from '../components/ui/Modal';
+import { Button } from '../components/ui/Button';
 import type { Variants } from 'framer-motion';
 
 const formatDateShort = (d: Date) => d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
@@ -251,6 +253,10 @@ export const Dashboard: React.FC = () => {
     const ordersSiapDiambil = orders.filter(o => o.status === 'SIAP_DIAMBIL');
     const ordersMasukFrontline = orders.filter(o => o.status === 'MASUK').length;
     
+    // UI States
+    const [isReleaseModalOpen, setIsReleaseModalOpen] = useState(false);
+    const [selectedOrderIdForRelease, setSelectedOrderIdForRelease] = useState<string | null>(null);
+    
     return (
       <motion.div 
         className="p-8 w-full min-h-screen pb-24"
@@ -476,10 +482,8 @@ export const Dashboard: React.FC = () => {
                                 </button>
                                 <button 
                                   onClick={() => {
-                                    if(window.confirm('Tandai perangkat ini sudah diserahkan ke pelanggan?')) {
-                                      updateOrderStatus(order.id, 'DIAMBIL');
-                                      toast.success('Perangkat berhasil diserahkan!');
-                                    }
+                                    setSelectedOrderIdForRelease(order.id);
+                                    setIsReleaseModalOpen(true);
                                   }}
                                   className="bg-emerald-500 hover:bg-emerald-600 text-white py-1 px-2 rounded transition-colors inline-flex items-center justify-center gap-1 text-[10px] w-full"
                                 >
@@ -496,6 +500,50 @@ export const Dashboard: React.FC = () => {
             </div>
           </motion.div>
         </div>
+
+        {/* Release Modal */}
+        <Modal
+          isOpen={isReleaseModalOpen}
+          onClose={() => {
+            setIsReleaseModalOpen(false);
+            setSelectedOrderIdForRelease(null);
+          }}
+          title="Konfirmasi Penyerahan"
+          maxWidth="max-w-md"
+          footer={
+            <>
+              <Button variant="secondary" onClick={() => {
+                setIsReleaseModalOpen(false);
+                setSelectedOrderIdForRelease(null);
+              }}>
+                Batal
+              </Button>
+              <Button variant="primary" className="bg-emerald-600 hover:bg-emerald-700 border-none" onClick={() => {
+                if (selectedOrderIdForRelease) {
+                  updateOrderStatus(selectedOrderIdForRelease, 'DIAMBIL');
+                  toast.success('Perangkat berhasil diserahkan!');
+                }
+                setIsReleaseModalOpen(false);
+                setSelectedOrderIdForRelease(null);
+              }}>
+                Ya, Serahkan
+              </Button>
+            </>
+          }
+        >
+          <div className="flex items-start gap-4">
+            <div className="w-10 h-10 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center flex-shrink-0 mt-1">
+              <CheckCircle size={20} />
+            </div>
+            <div>
+              <h4 className="text-gray-900 font-semibold text-base mb-1">Serahkan ke Pelanggan?</h4>
+              <p className="text-gray-600 text-sm">
+                Tindakan ini akan menandai status order menjadi <b>"Diambil"</b> yang berarti transaksi telah selesai sepenuhnya. Pastikan perangkat dan dokumen sudah diserahkan dengan benar.
+              </p>
+            </div>
+          </div>
+        </Modal>
+
       </motion.div>
     );
   }
