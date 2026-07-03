@@ -87,29 +87,31 @@ export const Stok: React.FC = () => {
       </div>
 
       {/* Top Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-        <div className="bg-white border border-gray-200 rounded-2xl p-6 flex gap-5 items-center shadow-sm">
-          <div className="w-14 h-14 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center">
-            <Wallet size={28} />
+      {['OWNER', 'INVENTORY'].includes(userRole || '') && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+          <div className="bg-white border border-gray-200 rounded-2xl p-6 flex gap-5 items-center shadow-sm">
+            <div className="w-14 h-14 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center">
+              <Wallet size={28} />
+            </div>
+            <div>
+              <p className="text-gray-500 font-medium text-sm">Total Nilai Stok</p>
+              <h2 className="text-3xl font-bold text-gray-900 mt-1">Rp {totalNilaiStok.toLocaleString('id-ID')}</h2>
+              <p className="text-xs text-gray-400 mt-1">Total nilai semua stok saat ini</p>
+            </div>
           </div>
-          <div>
-            <p className="text-gray-500 font-medium text-sm">Total Nilai Stok</p>
-            <h2 className="text-3xl font-bold text-gray-900 mt-1">Rp {totalNilaiStok.toLocaleString('id-ID')}</h2>
-            <p className="text-xs text-gray-400 mt-1">Total nilai semua stok saat ini</p>
-          </div>
-        </div>
 
-        <div className="bg-red-50/50 border border-red-100 rounded-2xl p-6 flex gap-5 items-center shadow-sm">
-          <div className="w-14 h-14 bg-red-100 text-red-600 rounded-xl flex items-center justify-center">
-            <AlertTriangle size={28} />
-          </div>
-          <div>
-            <p className="text-gray-700 font-medium text-sm">Item Perlu Di-restock</p>
-            <h2 className="text-3xl font-bold text-red-600 mt-1">{itemsToRestock} Item</h2>
-            <p className="text-xs text-red-400 mt-1">Perlu di-restock segera</p>
+          <div className="bg-red-50/50 border border-red-100 rounded-2xl p-6 flex gap-5 items-center shadow-sm">
+            <div className="w-14 h-14 bg-red-100 text-red-600 rounded-xl flex items-center justify-center">
+              <AlertTriangle size={28} />
+            </div>
+            <div>
+              <p className="text-gray-700 font-medium text-sm">Item Perlu Di-restock</p>
+              <h2 className="text-3xl font-bold text-red-600 mt-1">{itemsToRestock} Item</h2>
+              <p className="text-xs text-red-400 mt-1">Perlu di-restock segera</p>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Search and Filters */}
       <div className="flex flex-col md:flex-row gap-4 mb-6">
@@ -177,20 +179,6 @@ export const Stok: React.FC = () => {
 
         {activeTab === 'STOK' && (
           <div className="overflow-x-auto">
-            <div className="px-6 py-4 bg-blue-50/50 border-b border-gray-100 flex items-center justify-between">
-              <div>
-                <p className="text-xs font-semibold text-gray-500 uppercase">Total Nilai Aset Gudang</p>
-                <p className="text-xl font-bold text-blue-700 mt-1">Rp {totalNilaiStok.toLocaleString('id-ID')}</p>
-              </div>
-              <div className="text-right">
-                <p className="text-xs font-semibold text-gray-500 uppercase">Status Stok</p>
-                {itemsToRestock > 0 ? (
-                  <p className="text-sm font-bold text-red-600 mt-1">⚠️ {itemsToRestock} barang hampir habis</p>
-                ) : (
-                  <p className="text-sm font-bold text-emerald-600 mt-1">✨ Semua stok aman</p>
-                )}
-              </div>
-            </div>
             <table className="w-full text-sm text-left">
               <thead className="text-gray-500 font-medium bg-gray-50/50 border-b border-gray-100">
                 <tr>
