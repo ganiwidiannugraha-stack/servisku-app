@@ -523,8 +523,28 @@ export const Dashboard: React.FC = () => {
               </Button>
               <Button variant="primary" className="bg-emerald-600 hover:bg-emerald-700 border-none" onClick={() => {
                 if (selectedOrderIdForRelease) {
+                  const targetOrder = orders.find(o => o.id === selectedOrderIdForRelease);
+                  const oldStatus = targetOrder?.status || 'SELESAI';
+                  
                   updateOrderStatus(selectedOrderIdForRelease, 'DIAMBIL');
-                  toast.success('Perangkat berhasil diserahkan!');
+                  
+                  toast((t) => (
+                    <div className="flex items-center gap-3">
+                      <div>
+                        <p className="text-sm font-medium text-gray-900">Perangkat berhasil diserahkan!</p>
+                      </div>
+                      <button
+                        onClick={() => {
+                          updateOrderStatus(selectedOrderIdForRelease, oldStatus);
+                          toast.dismiss(t.id);
+                          toast.success(`Dibatalkan! Kembali ke ${oldStatus}`);
+                        }}
+                        className="text-xs bg-gray-100 hover:bg-gray-200 text-gray-800 px-3 py-1.5 rounded-lg font-medium transition-colors border border-gray-200"
+                      >
+                        Undo
+                      </button>
+                    </div>
+                  ), { duration: 5000 });
                 }
                 setIsReleaseModalOpen(false);
                 setSelectedOrderIdForRelease(null);

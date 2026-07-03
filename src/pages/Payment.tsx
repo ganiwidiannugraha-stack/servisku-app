@@ -57,13 +57,32 @@ export const Payment: React.FC = () => {
 
     setIsSubmitting(true);
     setTimeout(() => {
+      const oldStatus = order.status;
       if (order.status === 'BATAL') {
         updateOrderStatus(order.id, 'BATAL_SIAP_DIAMBIL');
       } else {
         updateOrderStatus(order.id, 'SIAP_DIAMBIL');
       }
       setIsNotaVisible(true);
-      toast.success('Pembayaran berhasil diproses!');
+      
+      toast((t) => (
+        <div className="flex items-center gap-3">
+          <div>
+            <p className="text-sm font-medium text-gray-900">Pembayaran berhasil diproses!</p>
+          </div>
+          <button
+            onClick={() => {
+              updateOrderStatus(order.id, oldStatus);
+              setIsNotaVisible(false);
+              toast.dismiss(t.id);
+              toast.success(`Dibatalkan! Kembali ke ${oldStatus}`);
+            }}
+            className="text-xs bg-gray-100 hover:bg-gray-200 text-gray-800 px-3 py-1.5 rounded-lg font-medium transition-colors border border-gray-200"
+          >
+            Undo
+          </button>
+        </div>
+      ), { duration: 5000 });
       setIsSubmitting(false);
     }, 1000);
   };

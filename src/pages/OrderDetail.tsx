@@ -238,7 +238,23 @@ export const OrderDetail: React.FC = () => {
   const handleClaimJob = () => {
     if (order && technicianId) {
       updateOrder(order.id, { teknisiId: technicianId });
-      toast.success('Pekerjaan berhasil diambil. Selamat bekerja!');
+      toast((t) => (
+        <div className="flex items-center gap-3">
+          <div>
+            <p className="text-sm font-medium text-gray-900">Pekerjaan berhasil diambil.</p>
+          </div>
+          <button
+            onClick={() => {
+              updateOrder(order.id, { teknisiId: '' });
+              toast.dismiss(t.id);
+              toast.success(`Dibatalkan! Pekerjaan dilepas.`);
+            }}
+            className="text-xs bg-gray-100 hover:bg-gray-200 text-gray-800 px-3 py-1.5 rounded-lg font-medium transition-colors border border-gray-200"
+          >
+            Undo
+          </button>
+        </div>
+      ), { duration: 5000 });
     }
   };
 
@@ -250,11 +266,28 @@ export const OrderDetail: React.FC = () => {
   const confirmReleaseJob = () => {
     if (releaseReason && releaseReason.trim() !== '') {
       if (order) {
+        const oldCatatan = order.catatanInternal;
         updateOrder(order.id, { 
           teknisiId: '', // kosongkan
           catatanInternal: order.catatanInternal ? `${order.catatanInternal}\n[LEPAS TUGAS]: ${releaseReason}` : `[LEPAS TUGAS]: ${releaseReason}` 
         });
-        toast.success('Pekerjaan berhasil dilepas.');
+        toast((t) => (
+          <div className="flex items-center gap-3">
+            <div>
+              <p className="text-sm font-medium text-gray-900">Pekerjaan berhasil dilepas.</p>
+            </div>
+            <button
+              onClick={() => {
+                updateOrder(order.id, { teknisiId: technicianId, catatanInternal: oldCatatan });
+                toast.dismiss(t.id);
+                toast.success(`Dibatalkan! Pekerjaan kembali diambil.`);
+              }}
+              className="text-xs bg-gray-100 hover:bg-gray-200 text-gray-800 px-3 py-1.5 rounded-lg font-medium transition-colors border border-gray-200"
+            >
+              Undo
+            </button>
+          </div>
+        ), { duration: 5000 });
         setIsReleaseModalOpen(false);
       }
     } else {

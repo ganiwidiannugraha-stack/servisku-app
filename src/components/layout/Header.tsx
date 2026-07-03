@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Bell, Search, Menu, ChevronDown, Package, User, Wrench, X } from 'lucide-react';
+import { Bell, Search, Menu, ChevronDown, Package, User, Wrench, X, HelpCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useStore } from '../../store';
+import { HelpCenter } from '../ui/HelpCenter';
 
 interface HeaderProps {
   /** Callback untuk membuka/menutup sidebar di tampilan mobile */
@@ -18,6 +19,7 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
   const [query, setQuery] = useState('');
   const [isOpen, setIsOpen] = useState(false);
   const [isNotifOpen, setIsNotifOpen] = useState(false);
+  const [isHelpOpen, setIsHelpOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const notifRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
@@ -181,6 +183,15 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
         </div>
       </div>
       <div className="flex items-center space-x-6">
+        {/* Help Center Button */}
+        <button 
+          onClick={() => setIsHelpOpen(true)}
+          className="p-2.5 text-gray-500 rounded-full hover:bg-gray-50 transition-colors"
+          title="Pusat Bantuan & Panduan"
+        >
+          <HelpCircle size={20} />
+        </button>
+
         <div className="relative" ref={notifRef}>
           <button 
             onClick={() => setIsNotifOpen(!isNotifOpen)}
@@ -256,6 +267,9 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
           <ChevronDown size={16} className="text-gray-400 ml-1 hidden md:block group-hover:text-gray-600 transition-colors" />
         </div>
       </div>
+      
+      {/* Help Center Modal */}
+      <HelpCenter isOpen={isHelpOpen} onClose={() => setIsHelpOpen(false)} />
     </header>
   );
 };
