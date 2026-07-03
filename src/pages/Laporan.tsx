@@ -238,7 +238,11 @@ export const Laporan: React.FC = () => {
 
     const deviceFailures: Record<string, { total: number, batal: number }> = {};
     filteredOrders.forEach(o => {
-      const type = o.jenisPerangkat || 'Lainnya';
+      const baseType = o.jenisPerangkat || 'Lainnya';
+      // Ambil kata pertama dari merkModel sebagai merk utama
+      const brand = o.merkModel ? o.merkModel.split(' ')[0] : 'Umum';
+      const type = `${baseType} ${brand}`.trim();
+      
       if (!deviceFailures[type]) deviceFailures[type] = { total: 0, batal: 0 };
       deviceFailures[type].total++;
       if (o.status === 'BATAL' || o.status === 'BATAL_DIAMBIL' || o.status === 'BATAL_SIAP_DIAMBIL') {
