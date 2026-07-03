@@ -562,7 +562,7 @@ export const Dashboard: React.FC = () => {
       <motion.div 
         className="p-8 w-full min-h-screen"
         initial="hidden"
-        animate="visible"
+        animate="show"
         variants={containerVariants}
       >
         <Breadcrumb items={[{ label: 'Dashboard' }]} />
