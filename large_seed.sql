@@ -2,7 +2,7 @@
 -- LOG DATA SEED SINKRONISASI REALISTIS (3 BULAN)
 -- ==========================================
 BEGIN;
-TRUNCATE orders, mutasi_stok, customers RESTART IDENTITY CASCADE;
+TRUNCATE spareparts, orders, mutasi_stok, customers RESTART IDENTITY CASCADE;
 INSERT INTO customers (id, nama, no_hp, email, alamat) VALUES ('c0000000-0000-0000-0000-000000000000', 'Faisal Rahman', '081287654321', 'faisalrahman@gmail.com', 'Pancoran, Jakarta Selatan');
 INSERT INTO customers (id, nama, no_hp, email, alamat) VALUES ('c0000000-0000-0000-0000-000000000001', 'Dimas Dwi Putra', '085711223344', 'dimasdwiputra@gmail.com', 'Cipete, Jakarta Selatan');
 INSERT INTO customers (id, nama, no_hp, email, alamat) VALUES ('c0000000-0000-0000-0000-000000000002', 'Rizky Ramadhan', '081399887766', 'rizkyramadhan@gmail.com', 'Duren Sawit, Jakarta Timur');

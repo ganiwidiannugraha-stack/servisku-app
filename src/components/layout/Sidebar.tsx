@@ -42,10 +42,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ onNavigate }) => {
       {/* Tombol Toggle Sidebar (Desktop only) */}
       <button 
         onClick={toggleSidebar}
-        className="hidden md:flex absolute -right-3 top-7 items-center justify-center w-6 h-6 bg-white border border-gray-200 rounded-full shadow-sm text-gray-400 hover:text-blue-600 hover:border-blue-500 transition-all z-50"
+        className="hidden md:flex absolute -right-5 top-7 items-center justify-center w-10 h-10 bg-white border border-gray-200 rounded-full shadow-md text-gray-400 hover:text-blue-600 hover:border-blue-500 transition-all z-50 hover:scale-110 cursor-pointer"
         title={isSidebarCollapsed ? "Perbesar Sidebar" : "Perkecil Sidebar"}
       >
-        {isSidebarCollapsed ? <ChevronRight size={14} strokeWidth={3} /> : <ChevronLeft size={14} strokeWidth={3} />}
+        {isSidebarCollapsed ? <ChevronRight size={20} strokeWidth={3} /> : <ChevronLeft size={20} strokeWidth={3} />}
       </button>
 
       <div 
