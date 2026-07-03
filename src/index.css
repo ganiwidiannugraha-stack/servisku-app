@@ -8,6 +8,12 @@
   body {
     @apply font-sans antialiased text-gray-900 bg-[#f0f4f9];
   }
+
+  /* Sembunyikan icon mata default dari Microsoft Edge/IE agar tidak tumpang tindih */
+  input::-ms-reveal,
+  input::-ms-clear {
+    display: none;
+  }
 }
 
 /* ── Skeleton shimmer sweep ───────────────────────────────── */
