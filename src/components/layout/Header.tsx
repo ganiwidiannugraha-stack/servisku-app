@@ -41,7 +41,7 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const unpaidOrdersCount = orders.filter(o => o.status === 'SIAP_DIAMBIL' || o.status === 'SELESAI').length;
+  const unpaidOrdersCount = orders.filter(o => o.status === 'SELESAI').length;
   const lowStockCount = spareparts.filter(s => s.stok <= (s.minStok || 5)).length;
   const totalNotifications = unpaidOrdersCount + lowStockCount;
 
