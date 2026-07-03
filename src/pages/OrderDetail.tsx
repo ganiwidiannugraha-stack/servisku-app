@@ -47,7 +47,7 @@ const OrderStepper: React.FC<{ currentStatus: StatusOrder; orderDate: string }> 
   const isCanceled = currentIndex === -1;
   
   return (
-    <div className="bg-white border border-gray-100 rounded-2xl shadow-sm p-6 h-full flex flex-col justify-center overflow-hidden">
+    <div className="bg-white border border-gray-100 rounded-2xl shadow-sm p-6 flex flex-col overflow-hidden">
       <h2 className="text-sm font-semibold text-gray-900 mb-6">Riwayat Perbaikan</h2>
       
       {isCanceled ? (
@@ -577,15 +577,15 @@ export const OrderDetail: React.FC = () => {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 mb-6">
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 mb-6 items-start">
           <div className="xl:col-span-2">
             <OrderStepper currentStatus={order.status} orderDate={order.tanggalMasuk} />
           </div>
           <div className="xl:col-span-1">
             {/* Timeline Status */}
-            <div className="bg-white border border-gray-100 rounded-2xl shadow-sm p-6 h-full flex flex-col justify-center">
+            <div className="bg-white border border-gray-100 rounded-2xl shadow-sm p-6 flex flex-col">
               <h2 className="text-sm font-semibold text-gray-900 mb-6">Status Timeline</h2>
-              <div className="relative border-l-2 border-gray-100 ml-2.5 space-y-7">
+              <div className="relative border-l-2 border-gray-100 ml-2.5 space-y-7 max-h-[300px] overflow-y-auto pr-2 hide-scrollbar">
                 
                 {/* Current Status & History */}
                 {(order.history || []).length > 0 ? (
