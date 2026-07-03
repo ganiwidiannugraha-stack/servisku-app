@@ -1,12 +1,19 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useStore } from '../store';
 import { LineChart, Line, BarChart, Bar, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
-import { AlertTriangle, Calendar, RefreshCcw, PackageCheck, Banknote, Eye, Wrench, CheckCircle } from 'lucide-react';
+import { AlertTriangle, Calendar, RefreshCcw, PackageCheck, Banknote, Eye, Wrench, CheckCircle, Search, Clock } from 'lucide-react';
 import { motion } from 'framer-motion';
 import type { Variants } from 'framer-motion';
 
 const formatDateShort = (d: Date) => d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
+const formatRibuan = (val: number) => {
+  return val.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+};
+const calculateDays = (dateStr: string) => {
+  const days = Math.floor((new Date().getTime() - new Date(dateStr).getTime()) / (1000 * 3600 * 24));
+  return days === 0 ? 'Baru saja' : `${days} hari`;
+};
 
 export const Dashboard: React.FC = () => {
   const navigate = useNavigate();
@@ -32,9 +39,22 @@ export const Dashboard: React.FC = () => {
   // TEKNISI DASHBOARD LOGIC
   // ---------------------------------------------------------
   if (userRole === 'TEKNISI') {
+    const [searchTerm, setSearchTerm] = useState('');
+    
     const myTasks = orders.filter(o => o.teknisiId === technicianId && (o.status === 'PROSES' || o.status === 'DIAGNOSA'));
     const myDoneTasks = orders.filter(o => o.teknisiId === technicianId && o.status === 'SELESAI');
     const unassignedTasks = orders.filter(o => !o.teknisiId && !['SELESAI', 'SIAP_DIAMBIL', 'DIAMBIL', 'BATAL', 'BATAL_SIAP_DIAMBIL', 'BATAL_DIAMBIL'].includes(o.status));
+    
+    const filteredTasks = myTasks.filter(t => t.noServis.toLowerCase().includes(searchTerm.toLowerCase()) || t.jenisPerangkat.toLowerCase().includes(searchTerm.toLowerCase()));
+    
+    const myCommission = useMemo(() => {
+      let total = 0;
+      myDoneTasks.forEach(t => {
+        const jasaPrice = (t.jasa || []).reduce((sum, j) => sum + j.harga, 0) + (t.biayaJasa || 0);
+        total += (jasaPrice * 0.3); // Asumsi komisi 30% dari total jasa
+      });
+      return total;
+    }, [myDoneTasks]);
     
     return (
       <motion.div 
@@ -78,29 +98,54 @@ export const Dashboard: React.FC = () => {
               <AlertTriangle size={24} />
             </div>
           </motion.div>
+
+          <motion.div variants={itemVariants} className="p-6 bg-white rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between hover:shadow-md transition-shadow">
+            <div>
+              <p className="text-gray-500 font-medium text-sm">Est. Komisi Jasa (30%)</p>
+              <h3 className="text-2xl font-bold text-green-600 mt-1 text-nowrap">Rp {formatRibuan(myCommission)}</h3>
+            </div>
+            <div className="w-12 h-12 rounded-xl bg-green-50 flex items-center justify-center text-green-600">
+              <Banknote size={24} />
+            </div>
+          </motion.div>
         </div>
 
         <motion.div variants={itemVariants} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-          <div className="px-6 py-5 border-b border-gray-100">
+          <div className="px-6 py-5 border-b border-gray-100 flex flex-col sm:flex-row justify-between sm:items-center gap-4">
             <h2 className="font-bold text-gray-900">Daftar Antrean Servis Anda</h2>
+            <div className="relative max-w-sm">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <Search size={16} className="text-gray-400" />
+              </div>
+              <input
+                type="text"
+                placeholder="Cari no. servis atau perangkat..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10 pr-4 py-2 w-full border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all bg-gray-50 hover:bg-white"
+              />
+            </div>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm text-left">
               <thead className="text-xs text-gray-500 uppercase bg-gray-50 border-b border-gray-100">
                 <tr>
                   <th className="px-6 py-4 font-semibold">NO. SERVIS</th>
+                  <th className="px-6 py-4 font-semibold">UMUR SERVIS</th>
                   <th className="px-6 py-4 font-semibold">PERANGKAT</th>
                   <th className="px-6 py-4 font-semibold">KELUHAN</th>
                   <th className="px-6 py-4 font-semibold text-center">AKSI</th>
                 </tr>
               </thead>
               <motion.tbody>
-                {myTasks.length === 0 ? (
+                {filteredTasks.length === 0 ? (
                   <tr>
-                    <td colSpan={4} className="px-6 py-8 text-center text-gray-500">Tidak ada tugas aktif saat ini. Bagus!</td>
+                    <td colSpan={5} className="px-6 py-8 text-center text-gray-500">
+                      {searchTerm ? 'Tidak ada hasil pencarian.' : 'Tidak ada tugas aktif saat ini. Bagus!'}
+                    </td>
                   </tr>
                 ) : (
-                  myTasks.map((order, i) => (
+                  filteredTasks.map((order, i) => (
                     <motion.tr 
                       initial={{ opacity: 0, x: -20 }}
                       animate={{ opacity: 1, x: 0 }}
@@ -108,7 +153,11 @@ export const Dashboard: React.FC = () => {
                       key={order.id} 
                       className="border-b border-gray-50 hover:bg-gray-50 transition-colors"
                     >
-                      <td className="px-6 py-4 font-bold text-gray-900">{order.noServis}</td>
+                      <td className="px-6 py-4 font-bold text-gray-900">
+                        {order.noServis}
+                        {order.prioritas === 'URGENT' && <span className="ml-2 inline-block w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>}
+                      </td>
+                      <td className="px-6 py-4 text-gray-600 flex items-center gap-1.5"><Clock size={14}/> {calculateDays(order.tanggalMasuk)}</td>
                       <td className="px-6 py-4">{order.jenisPerangkat} - {order.merkModel}</td>
                       <td className="px-6 py-4 max-w-[200px] truncate text-gray-600">{order.keluhan}</td>
                       <td className="px-6 py-4 text-center">
@@ -140,6 +189,7 @@ export const Dashboard: React.FC = () => {
               <thead className="text-xs text-gray-500 uppercase bg-gray-50 border-b border-gray-100">
                 <tr>
                   <th className="px-6 py-4 font-semibold">NO. SERVIS</th>
+                  <th className="px-6 py-4 font-semibold">UMUR SERVIS</th>
                   <th className="px-6 py-4 font-semibold">PERANGKAT</th>
                   <th className="px-6 py-4 font-semibold">KELUHAN</th>
                   <th className="px-6 py-4 font-semibold text-center">AKSI</th>
@@ -148,7 +198,7 @@ export const Dashboard: React.FC = () => {
               <motion.tbody>
                 {unassignedTasks.length === 0 ? (
                   <tr>
-                    <td colSpan={4} className="px-6 py-8 text-center text-gray-500">Semua tugas sudah ada teknisinya.</td>
+                    <td colSpan={5} className="px-6 py-8 text-center text-gray-500">Semua tugas sudah ada teknisinya.</td>
                   </tr>
                 ) : (
                   unassignedTasks.map((order, i) => (
@@ -159,7 +209,11 @@ export const Dashboard: React.FC = () => {
                       key={order.id} 
                       className="border-b border-gray-50 hover:bg-yellow-50/50 transition-colors"
                     >
-                      <td className="px-6 py-4 font-bold text-gray-900">{order.noServis}</td>
+                      <td className="px-6 py-4 font-bold text-gray-900">
+                        {order.noServis}
+                        {order.prioritas === 'URGENT' && <span className="ml-2 inline-block w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>}
+                      </td>
+                      <td className="px-6 py-4 text-gray-600 flex items-center gap-1.5"><Clock size={14}/> {calculateDays(order.tanggalMasuk)}</td>
                       <td className="px-6 py-4">{order.jenisPerangkat} - {order.merkModel}</td>
                       <td className="px-6 py-4 max-w-[200px] truncate text-gray-600">{order.keluhan}</td>
                       <td className="px-6 py-4 text-center">
