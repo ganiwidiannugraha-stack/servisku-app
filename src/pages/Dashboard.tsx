@@ -557,6 +557,21 @@ export const Dashboard: React.FC = () => {
     const totalStockQty = spareparts.reduce((sum, sp) => sum + sp.stok, 0);
     const totalAssetValue = spareparts.reduce((sum, sp) => sum + (sp.stok * sp.harga), 0);
     const lowStockSpareparts = spareparts.filter(s => s.stok <= (s.minStok || 5));
+    const topSpareparts = [...spareparts].sort((a, b) => (b.stok * b.harga) - (a.stok * a.harga)).slice(0, 8);
+
+    const inventoryPieData = useMemo(() => {
+      if (spareparts.length === 0) return [{ name: 'Belum Ada Data', value: 1, color: '#e5e7eb' }];
+      const counts: Record<string, number> = {};
+      spareparts.forEach(sp => {
+        const cat = sp.kategori || 'Lainnya';
+        counts[cat] = (counts[cat] || 0) + (sp.stok * sp.harga);
+      });
+      const colors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#6366f1', '#ec4899'];
+      return Object.entries(counts)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 5) // Top 5 categories
+        .map(([name, value], index) => ({ name, value, color: colors[index % colors.length] }));
+    }, [spareparts]);
 
     return (
       <motion.div 
@@ -645,10 +660,12 @@ export const Dashboard: React.FC = () => {
               )}
             </div>
           </motion.div>
+        </div>
 
-          <motion.div variants={itemVariants} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex flex-col">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <motion.div variants={itemVariants} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex flex-col lg:col-span-2">
             <div className="px-6 py-5 border-b border-gray-100 flex justify-between items-center">
-              <h2 className="font-bold text-gray-900">Daftar Sparepart Teratas</h2>
+              <h2 className="font-bold text-gray-900">Daftar Sparepart Teratas (Aset Terbesar)</h2>
               <button onClick={() => navigate('/stok')} className="text-sm font-semibold text-blue-600 hover:text-blue-700 transition-colors">Lihat Semua &rsaquo;</button>
             </div>
             <div className="p-0 flex-1 overflow-x-auto">
@@ -657,19 +674,57 @@ export const Dashboard: React.FC = () => {
                   <tr>
                     <th className="px-6 py-4 font-semibold">NAMA SPAREPART</th>
                     <th className="px-6 py-4 font-semibold">KATEGORI</th>
-                    <th className="px-6 py-4 font-semibold text-right">STOK</th>
+                    <th className="px-6 py-4 font-semibold text-right">NILAI ASET</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {spareparts.slice(-8).reverse().map(sp => (
+                  {topSpareparts.map(sp => (
                     <tr key={sp.id} className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors">
                       <td className="px-6 py-4 font-bold text-gray-900 truncate max-w-[200px]">{sp.nama}</td>
                       <td className="px-6 py-4 text-gray-600">{sp.kategori}</td>
-                      <td className="px-6 py-4 text-right font-medium">{sp.stok} unit</td>
+                      <td className="px-6 py-4 text-right font-medium">Rp {formatRibuan(sp.stok * sp.harga)}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
+            </div>
+            </div>
+          </motion.div>
+
+          {/* Asset Distribution Chart */}
+          <motion.div variants={itemVariants} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex flex-col h-full min-h-[400px]">
+            <h2 className="font-bold text-gray-900 mb-6">Distribusi Nilai Aset</h2>
+            <div className="flex-1 flex flex-col justify-center relative">
+              <ResponsiveContainer width="100%" height={220}>
+                <PieChart>
+                  <Pie
+                    data={inventoryPieData}
+                    innerRadius={60}
+                    outerRadius={80}
+                    paddingAngle={5}
+                    dataKey="value"
+                    stroke="none"
+                  >
+                    {inventoryPieData.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.color} />)}
+                  </Pie>
+                </PieChart>
+              </ResponsiveContainer>
+              <div className="absolute top-[110px] left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center">
+                <span className="text-xl font-bold text-gray-900">Aset</span>
+              </div>
+            </div>
+            <div className="mt-6 flex flex-col gap-3">
+              {inventoryPieData.map(entry => (
+                <div key={entry.name} className="flex justify-between items-center text-sm">
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: entry.color }}></div>
+                    <span className="text-gray-600 truncate max-w-[120px]">{entry.name}</span>
+                  </div>
+                  <span className="font-semibold text-gray-900">
+                    {entry.name === 'Belum Ada Data' ? '' : `Rp ${formatRibuan(entry.value)}`}
+                  </span>
+                </div>
+              ))}
             </div>
           </motion.div>
         </div>
