@@ -119,6 +119,11 @@ export const Laporan: React.FC = () => {
       }
       omset += orderOmset;
       modal += orderModal;
+      
+      (order as any).reportOmset = orderOmset;
+      (order as any).reportModal = orderModal;
+      (order as any).reportLaba = orderOmset - orderModal;
+
       if (order.status === 'SELESAI') {
          piutang += orderOmset;
          piutangDetails.push({ ...order, totalBiaya: orderOmset });
@@ -140,6 +145,9 @@ export const Laporan: React.FC = () => {
       .map(([name, value]) => ({ name, value }))
       .sort((a,b) => b.value - a.value);
 
+    const allTransactions = [...currentOrders]
+      .sort((a, b) => new Date(a.tanggalMasuk).getTime() - new Date(b.tanggalMasuk).getTime());
+      
     const recentTransactions = [...currentOrders]
       .sort((a, b) => new Date(b.tanggalMasuk).getTime() - new Date(a.tanggalMasuk).getTime())
       .slice(0, 5);
@@ -163,6 +171,7 @@ export const Laporan: React.FC = () => {
       piutang, 
       chartData, 
       recentTransactions, 
+      allTransactions,
       pieCategoryData, 
       orderMengendap,
       aov,
@@ -493,19 +502,23 @@ export const Laporan: React.FC = () => {
     };
 
     // --- Header Document ---
-    doc.setFontSize(22);
+    doc.setFontSize(24);
     doc.setTextColor(37, 99, 235);
+    doc.setFont('helvetica', 'bold');
     doc.text('Laporan Eksekutif ServisKu', 14, yPos);
-    yPos += 8;
     
+    yPos += 8;
     doc.setFontSize(11);
     doc.setTextColor(100);
-    doc.text(`Periode: ${startDate} s/d ${endDate}`, 14, yPos);
-    doc.text(`Dicetak: ${new Date().toLocaleString('id-ID')}`, 140, yPos);
-    yPos += 4;
-    doc.setDrawColor(200);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Periode Laporan: ${new Date(startDate).toLocaleDateString('id-ID')} s/d ${new Date(endDate).toLocaleDateString('id-ID')}`, 14, yPos);
+    doc.text(`Tanggal Cetak: ${new Date().toLocaleString('id-ID')}`, 130, yPos);
+    yPos += 6;
+    
+    doc.setDrawColor(37, 99, 235);
+    doc.setLineWidth(1);
     doc.line(14, yPos, 196, yPos);
-    yPos += 10;
+    yPos += 12;
 
     // ═══════════════════════════════════════════
     // 1. KEUANGAN
@@ -513,7 +526,9 @@ export const Laporan: React.FC = () => {
     if (exportOptions.keuangan) {
       doc.setFontSize(14);
       doc.setTextColor(0);
+      doc.setFont('helvetica', 'bold');
       doc.text('1. Ringkasan Keuangan', 14, yPos);
+      doc.setFont('helvetica', 'normal');
       
       const margin = financeData.totalOmset > 0
         ? ((financeData.labaBersih / financeData.totalOmset) * 100).toFixed(1)
@@ -557,26 +572,32 @@ export const Laporan: React.FC = () => {
         yPos = (doc as any).lastAutoTable.finalY + 8;
       }
 
-      // Sub-tabel: 5 Transaksi Terakhir
-      if (financeData.recentTransactions.length > 0) {
+      // Sub-tabel: Daftar Semua Transaksi
+      if (financeData.allTransactions.length > 0) {
         checkPage(30);
-        doc.setFontSize(11);
-        doc.setTextColor(80);
-        doc.text('5 Transaksi Terbaru:', 14, yPos);
+        doc.setFontSize(12);
+        doc.setTextColor(0);
+        doc.setFont('helvetica', 'bold');
+        doc.text('Daftar Transaksi (Lunas/Piutang):', 14, yPos);
+        doc.setFont('helvetica', 'normal');
         autoTable(doc, {
-          startY: yPos + 3,
-          head: [['No. Servis', 'Perangkat', 'Biaya Jasa', 'Tanggal']],
-          body: financeData.recentTransactions.map(o => {
+          startY: yPos + 4,
+          head: [['No. Servis', 'Pelanggan', 'Omset (Rp)', 'HPP/Modal (Rp)', 'Laba (Rp)', 'Status']],
+          body: financeData.allTransactions.map(o => {
+            const customerName = customers.find(c => c.id === o.pelangganId)?.nama || '-';
             return [
               o.noServis,
-              `${o.jenisPerangkat}${o.merkModel ? ` - ${o.merkModel}` : ''}`,
-              `Rp ${(o.biayaJasa || 0).toLocaleString('id-ID')}`,
-              new Date(o.tanggalMasuk).toLocaleDateString('id-ID'),
+              customerName,
+              `Rp ${((o as any).reportOmset || 0).toLocaleString('id-ID')}`,
+              `Rp ${((o as any).reportModal || 0).toLocaleString('id-ID')}`,
+              `Rp ${((o as any).reportLaba || 0).toLocaleString('id-ID')}`,
+              o.status === 'SELESAI' ? 'Piutang' : 'Lunas',
             ];
           }),
           theme: 'grid',
           headStyles: { fillColor: [59, 130, 246], fontSize: 9 },
           styles: { fontSize: 9 },
+          alternateRowStyles: { fillColor: [248, 250, 252] }
         });
         yPos = (doc as any).lastAutoTable.finalY + 15;
       }
@@ -589,7 +610,9 @@ export const Laporan: React.FC = () => {
       checkPage();
       doc.setFontSize(14);
       doc.setTextColor(0);
+      doc.setFont('helvetica', 'bold');
       doc.text('2. Performa Operasional', 14, yPos);
+      doc.setFont('helvetica', 'normal');
       
       autoTable(doc, {
         startY: yPos + 5,
@@ -693,7 +716,9 @@ export const Laporan: React.FC = () => {
       checkPage();
       doc.setFontSize(14);
       doc.setTextColor(0);
+      doc.setFont('helvetica', 'bold');
       doc.text('3. Status Inventory', 14, yPos);
+      doc.setFont('helvetica', 'normal');
       
       autoTable(doc, {
         startY: yPos + 5,

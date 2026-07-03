@@ -417,14 +417,14 @@ export const useStore = create<AppState>()(
       userId: null,
       userName: null,
       isSidebarCollapsed: false,
-      toggleSidebar: () => set(state => ({ isSidebarCollapsed: !state.isSidebarCollapsed })),
+      toggleSidebar: () => set((state: AppState) => ({ isSidebarCollapsed: !state.isSidebarCollapsed })),
 
       users: [],
       auditLogs: [],
 
       clearLogs: () => set({ auditLogs: [] }),
 
-      logActivity: (action, details) => set(state => {
+      logActivity: (action, details) => set((state: AppState) => {
         if (!state.userId || !state.userName || !state.userRole) return {};
         const newLog: AuditLog = {
           id: `log_${Date.now()}`,
@@ -439,7 +439,7 @@ export const useStore = create<AppState>()(
         const thirtyDaysAgo = new Date();
         thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
         
-        const filteredLogs = state.auditLogs.filter(log => new Date(log.timestamp) >= thirtyDaysAgo);
+        const filteredLogs = state.auditLogs.filter((log: AuditLog) => new Date(log.timestamp) >= thirtyDaysAgo);
 
         return { auditLogs: [newLog, ...filteredLogs] };
       }),
@@ -546,10 +546,10 @@ export const useStore = create<AppState>()(
       },
 
       updateOrderStatus: (orderId, status) => {
-        set((state) => {
+        set((state: AppState) => {
           const userName = state.userName || 'Sistem';
           const newHistoryItem = { status, date: new Date().toISOString(), by: userName };
-          const nextOrders = state.orders.map((o) => {
+          const nextOrders = state.orders.map((o: Order) => {
             if (o.id === orderId) {
               const currentHistory = o.history || [];
               const lastStatus = currentHistory.length > 0 ? currentHistory[currentHistory.length - 1].status : null;
@@ -563,7 +563,7 @@ export const useStore = create<AppState>()(
             }
             return o;
           });
-          const targetOrder = nextOrders.find(o => o.id === orderId);
+          const targetOrder = nextOrders.find((o: Order) => o.id === orderId);
           if (targetOrder) {
             void updateOrderDB(orderId, { status, history: targetOrder.history });
           }
@@ -572,23 +572,23 @@ export const useStore = create<AppState>()(
         get().logActivity("UPDATE_ORDER", `Mengubah status order ${orderId} menjadi ${status}`);
       },
       updateOrder: (orderId, updates) =>
-        set((state) => {
-          const nextOrders = state.orders.map((o) =>
+        set((state: AppState) => {
+          const nextOrders = state.orders.map((o: Order) =>
             o.id === orderId ? { ...o, ...updates } : o,
           );
           void updateOrderDB(orderId, updates);
           return { orders: nextOrders };
         }),
       updateSparepart: (id, updates) =>
-        set((state) => {
-          const nextSpareparts = state.spareparts.map((s) =>
+        set((state: AppState) => {
+          const nextSpareparts = state.spareparts.map((s: Sparepart) =>
             s.id === id ? { ...s, ...updates } : s,
           );
           void updateSparepartDB(id, updates);
           return { spareparts: nextSpareparts };
         }),
       addSparepart: (newSparepartData) => {
-        set((state) => {
+        set((state: AppState) => {
           void createSparepartDB(newSparepartData);
           return {
             spareparts: [...state.spareparts, newSparepartData],
@@ -603,7 +603,7 @@ export const useStore = create<AppState>()(
         get().logActivity("DELETE_SPAREPART", `Menghapus sparepart ID: ${id}`);
       },
       tambahMutasiStok: (mutasiData) =>
-        set((state) => {
+        set((state: AppState) => {
           const newMutasi: MutasiStok = {
             ...mutasiData,
             id: crypto.randomUUID(),
@@ -611,7 +611,7 @@ export const useStore = create<AppState>()(
           };
 
           // Update stok sparepart and Average Cost (HPP)
-          const spareparts = state.spareparts.map((sp) => {
+          const spareparts = state.spareparts.map((sp: Sparepart) => {
             if (sp.id === mutasiData.sparepartId) {
               let newStok = sp.stok;
               let newHargaModal = sp.hargaModal;
@@ -646,7 +646,7 @@ export const useStore = create<AppState>()(
 
           // ✅ FIX: Sinkronisasi nilai stok baru ke Supabase setelah mutasi
           // Tanpa ini, stok di DB tidak pernah berubah walau UI tampak benar
-          const updatedSp = spareparts.find(sp => sp.id === mutasiData.sparepartId);
+          const updatedSp = spareparts.find((sp: Sparepart) => sp.id === mutasiData.sparepartId);
           if (updatedSp) {
             void updateSparepartDB(updatedSp.id, {
               stok: updatedSp.stok,
@@ -660,7 +660,7 @@ export const useStore = create<AppState>()(
       addCustomer: async (newCustomerData) => {
         const createdId = await createCustomer(newCustomerData);
 
-        set((state) => ({
+        set((state: AppState) => ({
           customers: [
             {
               ...newCustomerData,
@@ -675,21 +675,21 @@ export const useStore = create<AppState>()(
         return createdId;
       },
       updateSettings: (updates) =>
-        set((state) => {
+        set((state: AppState) => {
           const nextSettings = { ...state.settings, ...updates };
           void updateSettingsDB(updates);
           return { settings: nextSettings };
         }),
       updateTechnician: (id, updates) =>
-        set((state) => {
-          const nextTechnicians = state.technicians.map((t) =>
+        set((state: AppState) => {
+          const nextTechnicians = state.technicians.map((t: Technician) =>
             t.id === id ? { ...t, ...updates } : t,
           );
           void updateTechnicianDB(id, updates);
           return { technicians: nextTechnicians };
         }),
       addOrder: (newOrderData) =>
-        set((state) => {
+        set((state: AppState) => {
           // ✅ ID unik berbasis timestamp untuk mencegah collision saat data dihapus/di-reload
           const newId = crypto.randomUUID();
           const date = new Date();

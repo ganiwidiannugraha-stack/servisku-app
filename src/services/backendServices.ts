@@ -1,5 +1,4 @@
 import { supabase } from "../lib/supabase";
-import { DEFAULT_SETTINGS } from "../store/mockData";
 import type { AppUser, Customer, MutasiStok, Order, Settings, Sparepart, Technician } from "../store";
 import type { StatusOrder } from "../components/ui/StatusBadge";
 
@@ -94,6 +93,16 @@ type SettingsRow = {
 };
 
 const settingsId = "default";
+
+const DEFAULT_SETTINGS: Settings = {
+  shopName: 'ServisKu Repair',
+  ownerName: 'Pak Teten',
+  address: 'Jl. Teknologi No. 123, Jakarta',
+  phone: '081234567890',
+  printerWidth: '58mm',
+  enableWA: true,
+  enableNotifications: true
+};
 
 const mapUser = (row: UserRow): AppUser => ({
   id: row.id,
@@ -228,9 +237,9 @@ const toOrderRow = (order: Order): OrderRow => ({
   status: order.status,
   tanggal_masuk: order.tanggalMasuk,
   teknisi_id: order.teknisiId || null,
-  spareparts: order.spareparts || null,
-  jasa: order.jasa || null,
-  history: order.history || null,
+  spareparts: order.spareparts || [],
+  jasa: order.jasa || [],
+  history: order.history || [],
 });
 
 const mapMutasi = (row: MutasiRow): MutasiStok => ({
@@ -392,9 +401,9 @@ export async function updateOrderDB(id: string, updates: Partial<Order>) {
   if (updates.status !== undefined) payload.status = updates.status;
   if (updates.tanggalMasuk !== undefined) payload.tanggal_masuk = updates.tanggalMasuk;
   if (updates.teknisiId !== undefined) payload.teknisi_id = updates.teknisiId || null;
-  if (updates.spareparts !== undefined) payload.spareparts = updates.spareparts || null;
-  if (updates.jasa !== undefined) payload.jasa = updates.jasa || null;
-  if (updates.history !== undefined) payload.history = updates.history || null;
+  if (updates.spareparts !== undefined) payload.spareparts = updates.spareparts || [];
+  if (updates.jasa !== undefined) payload.jasa = updates.jasa || [];
+  if (updates.history !== undefined) payload.history = updates.history || [];
 
   const { error } = await supabase.from("orders").update(payload).eq("id", id);
   if (error) throw error;
