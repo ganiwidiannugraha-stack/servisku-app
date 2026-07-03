@@ -272,7 +272,7 @@ export const Dashboard: React.FC = () => {
           <div className="flex items-center gap-3">
             <button onClick={() => navigate('/order/baru')} className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl font-medium shadow-sm flex items-center gap-2 transition-colors">
               <Plus size={18} />
-              <span className="hidden sm:inline">Order Baru</span>
+              <span className="hidden sm:inline">Terima Perangkat</span>
             </button>
             <button onClick={() => navigate('/pelanggan')} className="bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 px-5 py-2.5 rounded-xl font-medium shadow-sm flex items-center gap-2 transition-colors">
               <Users size={18} />
