@@ -422,7 +422,11 @@ export const Laporan: React.FC = () => {
     const totalServisAll = customers.reduce((sum, c) => sum + (c.totalServis || 0), 0);
     const rataRataServis = totalPelanggan > 0 ? (totalServisAll / totalPelanggan).toFixed(1) : '0';
 
-    return { allCustomers, totalPelanggan, pelangganAktif, pelangganBaru, rataRataServis, growthData };
+    const repeatCustomersCount = Object.values(spending).filter(s => s.count > 1).length;
+    const totalWithOrders = Object.keys(spending).length;
+    const retentionRate = totalWithOrders > 0 ? ((repeatCustomersCount / totalWithOrders) * 100).toFixed(1) : '0.0';
+
+    return { allCustomers, totalPelanggan, pelangganAktif, pelangganBaru, rataRataServis, growthData, retentionRate, repeatCustomersCount };
   }, [filteredOrders, customers, spareparts, orders]);
 
   const exportPDF = () => {
@@ -1368,28 +1372,36 @@ export const Laporan: React.FC = () => {
             <>
               {/* Stats Grid */}
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mb-6">
-                {/* Left Stats (2x2) */}
-                <div className="lg:col-span-5 grid grid-cols-2 gap-4">
-                  <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm flex flex-col justify-center">
-                    <p className="text-sm font-bold text-gray-900 mb-1">Total Pelanggan</p>
-                    <p className="text-4xl font-bold text-gray-900">{crmData.totalPelanggan}</p>
+                {/* Left Stats (3x2) */}
+                <div className="lg:col-span-6 grid grid-cols-2 sm:grid-cols-3 gap-4">
+                  <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm flex flex-col justify-center">
+                    <p className="text-xs font-bold text-gray-500 mb-1">Total Pelanggan</p>
+                    <p className="text-2xl font-bold text-gray-900">{crmData.totalPelanggan}</p>
                   </div>
-                  <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm flex flex-col justify-center">
-                    <p className="text-sm font-bold text-gray-900 mb-1">Pelanggan Aktif</p>
-                    <p className="text-4xl font-bold text-gray-900">{crmData.pelangganAktif}</p>
+                  <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm flex flex-col justify-center">
+                    <p className="text-xs font-bold text-gray-500 mb-1">Pelanggan Aktif</p>
+                    <p className="text-2xl font-bold text-gray-900">{crmData.pelangganAktif}</p>
                   </div>
-                  <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm flex flex-col justify-center">
-                    <p className="text-sm font-bold text-gray-900 mb-1">Pelanggan Baru <span className="text-gray-500 font-normal">(Bulan Ini)</span></p>
-                    <p className="text-4xl font-bold text-emerald-500">+{crmData.pelangganBaru}</p>
+                  <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm flex flex-col justify-center">
+                    <p className="text-xs font-bold text-gray-500 mb-1">Baru (Bulan Ini)</p>
+                    <p className="text-2xl font-bold text-emerald-500">+{crmData.pelangganBaru}</p>
                   </div>
-                  <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm flex flex-col justify-center">
-                    <p className="text-sm font-bold text-gray-900 mb-1">Rata-rata Servis</p>
-                    <p className="text-4xl font-bold text-gray-900">{crmData.rataRataServis}</p>
+                  <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm flex flex-col justify-center">
+                    <p className="text-xs font-bold text-gray-500 mb-1">Retention Rate</p>
+                    <p className="text-2xl font-bold text-blue-600">{crmData.retentionRate}%</p>
+                  </div>
+                  <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm flex flex-col justify-center">
+                    <p className="text-xs font-bold text-gray-500 mb-1">Repeat Customer</p>
+                    <p className="text-2xl font-bold text-gray-900">{crmData.repeatCustomersCount}</p>
+                  </div>
+                  <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm flex flex-col justify-center">
+                    <p className="text-xs font-bold text-gray-500 mb-1">Rata-rata Servis</p>
+                    <p className="text-2xl font-bold text-gray-900">{crmData.rataRataServis}</p>
                   </div>
                 </div>
 
                 {/* Right Chart */}
-                <div className="lg:col-span-7 bg-white rounded-2xl p-6 border border-gray-100 shadow-sm flex flex-col relative overflow-hidden">
+                <div className="lg:col-span-6 bg-white rounded-2xl p-6 border border-gray-100 shadow-sm flex flex-col relative overflow-hidden">
                   <p className="text-sm font-bold text-gray-900 mb-6">Pertumbuhan Pelanggan <span className="text-gray-500 font-normal">(Tahun Ini)</span></p>
                   <div className="flex-1 w-full h-full min-h-[140px] relative mt-2">
                     <ResponsiveContainer width="100%" height="100%">
