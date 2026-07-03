@@ -712,6 +712,40 @@ export const useStore = create<AppState>()(
     }),
     {
       name: "servisku-storage-v5",
+      // ✅ FIX: Saat rehydrate dari localStorage, selalu panggil loadInitialData
+      // agar data Supabase (source of truth) menimpa cache localStorage
+      onRehydrateStorage: () => {
+        return (state) => {
+          // Setelah localStorage selesai di-rehydrate, langsung fetch dari Supabase
+          if (state) {
+            state.loadInitialData();
+          }
+        };
+      },
+      // ✅ FIX: Hanya simpan field data esensial ke localStorage (bukan fungsi)
+      // Ini mencegah cache basi dari menimpa data fresh
+      partialize: (state) => ({
+        customers: state.customers,
+        spareparts: state.spareparts,
+        orders: state.orders,
+        mutasiStok: state.mutasiStok,
+        technicians: state.technicians,
+        settings: state.settings,
+        users: state.users,
+        isAuthenticated: state.isAuthenticated,
+        userRole: state.userRole,
+        userId: state.userId,
+        userName: state.userName,
+        isSidebarCollapsed: state.isSidebarCollapsed,
+        auditLogs: state.auditLogs,
+      }),
+      // ✅ FIX: Merge strategy — data dari Supabase (loadInitialData) selalu menang
+      merge: (persistedState: any, currentState: any) => {
+        return {
+          ...currentState,
+          ...persistedState,
+        };
+      },
     },
   ),
 );
