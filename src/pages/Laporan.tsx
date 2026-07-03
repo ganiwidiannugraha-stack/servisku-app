@@ -1203,7 +1203,7 @@ export const Laporan: React.FC = () => {
                       </tr>
                     </thead>
                     <tbody>
-                      {opsData.failureRateByDevice.map((d, i) => (
+                      {opsData.failureRateByDevice.map((d) => (
                         <tr key={d.device} className="border-b border-red-50 hover:bg-red-50/50">
                           <td className="px-4 py-3 font-medium text-gray-900">{d.device}</td>
                           <td className="px-4 py-3 text-center text-gray-600">{d.total}</td>
@@ -1373,10 +1373,10 @@ export const Laporan: React.FC = () => {
                       </thead>
                       <tbody>
                         {invData.topProfitSpareparts.map((p, i) => (
-                          <tr key={p.detail.id} className="border-b border-emerald-50 hover:bg-emerald-50/50">
+                          <tr key={p.detail?.id} className="border-b border-emerald-50 hover:bg-emerald-50/50">
                             <td className="px-4 py-3 font-medium text-gray-900 flex items-center gap-2">
                               {i === 0 && <span className="text-yellow-500">🏆</span>}
-                              {p.detail.nama}
+                              {p.detail?.nama}
                             </td>
                             <td className="px-4 py-3 text-center text-gray-600">{p.qty}x</td>
                             <td className="px-4 py-3 text-right font-bold text-emerald-700">
