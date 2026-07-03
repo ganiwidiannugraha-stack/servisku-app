@@ -68,7 +68,7 @@ export const Dashboard: React.FC = () => {
           <p className="text-gray-500">Selamat datang kembali. Berikut daftar tugas servis Anda hari ini.</p>
         </motion.div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <motion.div variants={itemVariants} className="p-6 bg-white rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between hover:shadow-md transition-shadow">
             <div>
               <p className="text-gray-500 font-medium text-sm">Tugas Aktif</p>
@@ -131,6 +131,7 @@ export const Dashboard: React.FC = () => {
               <thead className="text-xs text-gray-500 uppercase bg-gray-50 border-b border-gray-100">
                 <tr>
                   <th className="px-6 py-4 font-semibold">NO. SERVIS</th>
+                  <th className="px-6 py-4 font-semibold">STATUS</th>
                   <th className="px-6 py-4 font-semibold">UMUR SERVIS</th>
                   <th className="px-6 py-4 font-semibold">PERANGKAT</th>
                   <th className="px-6 py-4 font-semibold">KELUHAN</th>
@@ -140,7 +141,7 @@ export const Dashboard: React.FC = () => {
               <motion.tbody>
                 {filteredTasks.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="px-6 py-8 text-center text-gray-500">
+                    <td colSpan={6} className="px-6 py-8 text-center text-gray-500">
                       {searchTerm ? 'Tidak ada hasil pencarian.' : 'Tidak ada tugas aktif saat ini. Bagus!'}
                     </td>
                   </tr>
@@ -156,6 +157,11 @@ export const Dashboard: React.FC = () => {
                       <td className="px-6 py-4 font-bold text-gray-900">
                         {order.noServis}
                         {order.prioritas === 'URGENT' && <span className="ml-2 inline-block w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>}
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className={`inline-flex items-center px-2 py-1 rounded-md text-[10px] font-bold ${order.status === 'DIAGNOSA' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'}`}>
+                          {order.status}
+                        </span>
                       </td>
                       <td className="px-6 py-4 text-gray-600 flex items-center gap-1.5"><Clock size={14}/> {calculateDays(order.tanggalMasuk)}</td>
                       <td className="px-6 py-4">{order.jenisPerangkat} - {order.merkModel}</td>
