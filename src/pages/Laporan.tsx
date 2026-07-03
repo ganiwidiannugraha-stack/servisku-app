@@ -236,6 +236,26 @@ export const Laporan: React.FC = () => {
       Order: count
     }));
 
+    const deviceFailures: Record<string, { total: number, batal: number }> = {};
+    filteredOrders.forEach(o => {
+      const type = o.jenisPerangkat || 'Lainnya';
+      if (!deviceFailures[type]) deviceFailures[type] = { total: 0, batal: 0 };
+      deviceFailures[type].total++;
+      if (o.status === 'BATAL' || o.status === 'BATAL_DIAMBIL' || o.status === 'BATAL_SIAP_DIAMBIL') {
+        deviceFailures[type].batal++;
+      }
+    });
+
+    const failureRateByDevice = Object.entries(deviceFailures)
+      .map(([device, data]) => ({
+        device,
+        total: data.total,
+        batal: data.batal,
+        rate: data.total > 0 ? (data.batal / data.total) * 100 : 0
+      }))
+      .filter(x => x.total > 0)
+      .sort((a, b) => b.rate - a.rate);
+
     return { 
       masuk, 
       selesai, 
@@ -245,7 +265,8 @@ export const Laporan: React.FC = () => {
       problematicOrders, 
       avgDays,
       bottleneckCounts,
-      chartJamSibuk
+      chartJamSibuk,
+      failureRateByDevice
     };
   }, [filteredOrders]);
 
@@ -304,7 +325,18 @@ export const Laporan: React.FC = () => {
       return { detail: sp, avgDailySold, projected30Days, restockSuggestion };
     }).filter(p => p.restockSuggestion > 0).sort((a,b) => b.restockSuggestion - a.restockSuggestion);
 
-    return { topSpareparts, valuasiStok, chartData, stokKritis, mutasiTerakhir, deadStock, prediksiRestock };
+    const topProfitSpareparts = Object.entries(terjual)
+      .map(([id, qty]) => {
+        const detail = spareparts.find(s => s.id === id);
+        const profitPerItem = detail ? (detail.harga - detail.hargaModal) : 0;
+        const totalProfit = profitPerItem * qty;
+        return { detail, qty, totalProfit };
+      })
+      .filter(x => x.detail && x.totalProfit > 0)
+      .sort((a, b) => b.totalProfit - a.totalProfit)
+      .slice(0, 5);
+
+    return { topSpareparts, valuasiStok, chartData, stokKritis, mutasiTerakhir, deadStock, prediksiRestock, topProfitSpareparts };
   }, [filteredOrders, spareparts, mutasiStok, startDate, endDate]);
 
   // 4. SDM / TEKNISI METRICS & CHART
@@ -426,7 +458,26 @@ export const Laporan: React.FC = () => {
     const totalWithOrders = Object.keys(spending).length;
     const retentionRate = totalWithOrders > 0 ? ((repeatCustomersCount / totalWithOrders) * 100).toFixed(1) : '0.0';
 
-    return { allCustomers, totalPelanggan, pelangganAktif, pelangganBaru, rataRataServis, growthData, retentionRate, repeatCustomersCount };
+    const customerLastOrder = new Map<string, Date>();
+    orders.forEach(o => {
+      const oDate = new Date(o.tanggalMasuk);
+      const existing = customerLastOrder.get(o.pelangganId);
+      if (!existing || oDate > existing) {
+        customerLastOrder.set(o.pelangganId, oDate);
+      }
+    });
+
+    const ninetyDaysAgo = new Date();
+    ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
+    
+    let pelangganTidur = 0;
+    customerLastOrder.forEach((lastDate) => {
+      if (lastDate < ninetyDaysAgo) {
+        pelangganTidur++;
+      }
+    });
+
+    return { allCustomers, totalPelanggan, pelangganAktif, pelangganBaru, rataRataServis, growthData, retentionRate, repeatCustomersCount, pelangganTidur };
   }, [filteredOrders, customers, spareparts, orders]);
 
   const exportPDF = () => {
@@ -1136,6 +1187,41 @@ export const Laporan: React.FC = () => {
                   </div>
                 </div>
               </div>
+
+              <div className="bg-white p-6 rounded-2xl shadow-sm border border-red-100 mt-6">
+                <h3 className="font-bold text-red-900 mb-4 flex items-center gap-2">
+                  <AlertTriangle size={18} className="text-red-500" /> Kategori Perangkat Sering Gagal (Failure Rate)
+                </h3>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm text-left">
+                    <thead className="text-xs text-red-700 uppercase bg-red-50">
+                      <tr>
+                        <th className="px-4 py-3 rounded-tl-lg">Kategori Perangkat</th>
+                        <th className="px-4 py-3 text-center">Total Servis</th>
+                        <th className="px-4 py-3 text-center">Gagal / Batal</th>
+                        <th className="px-4 py-3 text-right rounded-tr-lg">Tingkat Kegagalan (Failure Rate)</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {opsData.failureRateByDevice.map((d, i) => (
+                        <tr key={d.device} className="border-b border-red-50 hover:bg-red-50/50">
+                          <td className="px-4 py-3 font-medium text-gray-900">{d.device}</td>
+                          <td className="px-4 py-3 text-center text-gray-600">{d.total}</td>
+                          <td className="px-4 py-3 text-center font-bold text-red-600">{d.batal}</td>
+                          <td className="px-4 py-3 text-right">
+                            <span className={`px-2 py-1 rounded text-xs font-bold ${d.rate > 30 ? 'bg-red-100 text-red-700' : (d.rate > 10 ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-700')}`}>
+                              {d.rate.toFixed(1)}%
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                      {opsData.failureRateByDevice.length === 0 && (
+                        <tr><td colSpan={4} className="px-4 py-6 text-center text-gray-500">Belum ada data servis.</td></tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
             </>
           )}
 
@@ -1271,6 +1357,42 @@ export const Laporan: React.FC = () => {
                 </div>
               </div>
 
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+                <div className="bg-white p-6 rounded-2xl shadow-sm border border-emerald-100">
+                  <h3 className="font-bold text-emerald-900 mb-4 flex items-center gap-2">
+                    <span className="text-emerald-500">💰</span> Top 5 Sparepart Paling Cuan (Highest Margin)
+                  </h3>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm text-left">
+                      <thead className="text-xs text-emerald-700 uppercase bg-emerald-50">
+                        <tr>
+                          <th className="px-4 py-3 rounded-tl-lg">Nama Sparepart</th>
+                          <th className="px-4 py-3 text-center">Terjual</th>
+                          <th className="px-4 py-3 text-right rounded-tr-lg">Total Profit</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {invData.topProfitSpareparts.map((p, i) => (
+                          <tr key={p.detail.id} className="border-b border-emerald-50 hover:bg-emerald-50/50">
+                            <td className="px-4 py-3 font-medium text-gray-900 flex items-center gap-2">
+                              {i === 0 && <span className="text-yellow-500">🏆</span>}
+                              {p.detail.nama}
+                            </td>
+                            <td className="px-4 py-3 text-center text-gray-600">{p.qty}x</td>
+                            <td className="px-4 py-3 text-right font-bold text-emerald-700">
+                              Rp {p.totalProfit.toLocaleString('id-ID')}
+                            </td>
+                          </tr>
+                        ))}
+                        {invData.topProfitSpareparts.length === 0 && (
+                          <tr><td colSpan={3} className="px-4 py-6 text-center text-gray-500">Belum ada data profit sparepart.</td></tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+
               <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 mt-6">
                 <h3 className="font-bold text-gray-900 mb-4">Mutasi Stok Terakhir</h3>
                 <div className="overflow-x-auto">
@@ -1372,8 +1494,8 @@ export const Laporan: React.FC = () => {
             <>
               {/* Stats Grid */}
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mb-6">
-                {/* Left Stats (3x2) */}
-                <div className="lg:col-span-6 grid grid-cols-2 sm:grid-cols-3 gap-4">
+                {/* Left Stats */}
+                <div className="lg:col-span-7 grid grid-cols-2 sm:grid-cols-4 gap-4">
                   <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm flex flex-col justify-center">
                     <p className="text-xs font-bold text-gray-500 mb-1">Total Pelanggan</p>
                     <p className="text-2xl font-bold text-gray-900">{crmData.totalPelanggan}</p>
@@ -1387,21 +1509,25 @@ export const Laporan: React.FC = () => {
                     <p className="text-2xl font-bold text-emerald-500">+{crmData.pelangganBaru}</p>
                   </div>
                   <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm flex flex-col justify-center">
+                    <p className="text-xs font-bold text-gray-500 mb-1">Pelanggan Tidur</p>
+                    <p className="text-2xl font-bold text-amber-500">{crmData.pelangganTidur}</p>
+                  </div>
+                  <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm flex flex-col justify-center sm:col-span-2">
                     <p className="text-xs font-bold text-gray-500 mb-1">Retention Rate</p>
                     <p className="text-2xl font-bold text-blue-600">{crmData.retentionRate}%</p>
                   </div>
                   <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm flex flex-col justify-center">
-                    <p className="text-xs font-bold text-gray-500 mb-1">Repeat Customer</p>
+                    <p className="text-xs font-bold text-gray-500 mb-1">Repeat Cust</p>
                     <p className="text-2xl font-bold text-gray-900">{crmData.repeatCustomersCount}</p>
                   </div>
                   <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm flex flex-col justify-center">
-                    <p className="text-xs font-bold text-gray-500 mb-1">Rata-rata Servis</p>
+                    <p className="text-xs font-bold text-gray-500 mb-1">Rata Servis</p>
                     <p className="text-2xl font-bold text-gray-900">{crmData.rataRataServis}</p>
                   </div>
                 </div>
 
                 {/* Right Chart */}
-                <div className="lg:col-span-6 bg-white rounded-2xl p-6 border border-gray-100 shadow-sm flex flex-col relative overflow-hidden">
+                <div className="lg:col-span-5 bg-white rounded-2xl p-6 border border-gray-100 shadow-sm flex flex-col relative overflow-hidden">
                   <p className="text-sm font-bold text-gray-900 mb-6">Pertumbuhan Pelanggan <span className="text-gray-500 font-normal">(Tahun Ini)</span></p>
                   <div className="flex-1 w-full h-full min-h-[140px] relative mt-2">
                     <ResponsiveContainer width="100%" height="100%">
