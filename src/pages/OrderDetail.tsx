@@ -192,6 +192,7 @@ export const OrderDetail: React.FC = () => {
   
   const [isReleaseModalOpen, setIsReleaseModalOpen] = useState(false);
   const [releaseReason, setReleaseReason] = useState('');
+  const [showAllPastOrders, setShowAllPastOrders] = useState(false);
 
   const order = orders.find(o => o.id === id);
   const customer = customers.find(c => c.id === order?.pelangganId);
@@ -521,7 +522,9 @@ export const OrderDetail: React.FC = () => {
     }
   };
 
-  const pastOrders = orders.filter(o => o.pelangganId === customer.id && o.id !== order.id);
+  const pastOrders = orders
+    .filter(o => o.pelangganId === customer.id && o.id !== order.id)
+    .sort((a, b) => new Date(b.tanggalMasuk).getTime() - new Date(a.tanggalMasuk).getTime());
 
   const totalSparepartCost = orderSpareparts.reduce((sum, sp) => sum + (sp.detail!.harga * sp.qty), 0);
   const totalPajak = orderSpareparts.reduce((sum, sp) => sum + ((sp.detail!.harga * sp.qty) * ((sp.detail!.pajak || 0) / 100)), 0);
@@ -908,7 +911,7 @@ export const OrderDetail: React.FC = () => {
               </div>
               <div className="divide-y divide-gray-50">
                 {pastOrders.length > 0 ? (
-                  pastOrders.map(po => (
+                  (showAllPastOrders ? pastOrders : pastOrders.slice(0, 3)).map(po => (
                     <div key={po.id} className="p-5 hover:bg-gray-50/50 cursor-pointer transition-colors" onClick={() => navigate(`/order/${po.id}`)}>
                       <div className="flex justify-between items-start mb-2">
                         <span className="text-xs font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded">{po.noServis}</span>
@@ -924,9 +927,14 @@ export const OrderDetail: React.FC = () => {
                   <div className="p-6 text-center text-sm text-gray-500">Belum ada riwayat servis.</div>
                 )}
               </div>
-              {pastOrders.length > 0 && (
+              {pastOrders.length > 3 && (
                 <div className="p-4 bg-gray-50/50 text-center border-t border-gray-50">
-                  <button className="text-blue-600 text-sm font-bold hover:underline">Lihat Semua Riwayat</button>
+                  <button 
+                    onClick={() => setShowAllPastOrders(!showAllPastOrders)}
+                    className="text-blue-600 text-sm font-bold hover:underline"
+                  >
+                    {showAllPastOrders ? 'Tampilkan Lebih Sedikit' : 'Lihat Lebih Banyak'}
+                  </button>
                 </div>
               )}
             </div>
