@@ -1245,26 +1245,26 @@ export const Laporan: React.FC = () => {
                 </div>
               </div>
               
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-                  <h3 className="font-bold text-gray-900 mb-6">5 Sparepart Terlaris</h3>
-                  <div className="h-64">
-                    {invData.chartData.length > 0 ? (
-                      <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={invData.chartData} layout="vertical" margin={{ top: 5, right: 20, bottom: 5, left: 140 }}>
-                          <CartesianGrid strokeDasharray="3 3" horizontal={false} />
-                          <XAxis type="number" fontSize={12} tickLine={false} axisLine={false} />
-                          <YAxis dataKey="name" type="category" width={130} fontSize={11} tickLine={false} axisLine={false} />
-                          <Tooltip cursor={{fill: 'transparent'}} />
-                          <Bar dataKey="Terjual" fill="#10b981" radius={[0, 4, 4, 0]} barSize={24} />
-                        </BarChart>
-                      </ResponsiveContainer>
-                    ) : (
-                      <div className="h-full flex items-center justify-center text-gray-400">Belum ada data penjualan.</div>
-                    )}
-                  </div>
+              <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 mt-6">
+                <h3 className="font-bold text-gray-900 mb-6">5 Sparepart Terlaris</h3>
+                <div className="h-64">
+                  {invData.chartData.length > 0 ? (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={invData.chartData} layout="vertical" margin={{ top: 5, right: 20, bottom: 5, left: 140 }}>
+                        <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+                        <XAxis type="number" fontSize={12} tickLine={false} axisLine={false} />
+                        <YAxis dataKey="name" type="category" width={130} fontSize={11} tickLine={false} axisLine={false} />
+                        <Tooltip cursor={{fill: 'transparent'}} />
+                        <Bar dataKey="Terjual" fill="#10b981" radius={[0, 4, 4, 0]} barSize={24} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="h-full flex items-center justify-center text-gray-400">Belum ada data penjualan.</div>
+                  )}
                 </div>
+              </div>
 
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
                 <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
                   <h3 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
                     <AlertTriangle size={18} className="text-red-500" /> Stok Kritis (Restock)
@@ -1295,9 +1295,7 @@ export const Laporan: React.FC = () => {
                     </table>
                   </div>
                 </div>
-              </div>
 
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
                 <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
                   <h3 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
                     <AlertTriangle size={18} className="text-gray-400" /> Dead Stock / Slow Moving
@@ -1307,7 +1305,6 @@ export const Laporan: React.FC = () => {
                       <thead className="text-xs text-gray-500 uppercase bg-gray-50">
                         <tr>
                           <th className="px-4 py-3 rounded-tl-lg">Nama Sparepart</th>
-                          <th className="px-4 py-3">Kategori</th>
                           <th className="px-4 py-3 text-right rounded-tr-lg">Stok Menganggur</th>
                         </tr>
                       </thead>
@@ -1315,20 +1312,21 @@ export const Laporan: React.FC = () => {
                         {invData.deadStock.slice(0, 5).map((t) => (
                           <tr key={t.id} className="border-b last:border-0 hover:bg-gray-50">
                             <td className="px-4 py-3 font-medium text-gray-900">{t.nama}</td>
-                            <td className="px-4 py-3 text-gray-500">{t.kategori}</td>
                             <td className="px-4 py-3 text-right font-bold text-gray-500">
                               {t.stok} unit
                             </td>
                           </tr>
                         ))}
                         {invData.deadStock.length === 0 && (
-                          <tr><td colSpan={3} className="px-4 py-6 text-center text-gray-500">Bagus! Tidak ada dead stock.</td></tr>
+                          <tr><td colSpan={2} className="px-4 py-6 text-center text-gray-500">Bagus! Tidak ada dead stock.</td></tr>
                         )}
                       </tbody>
                     </table>
                   </div>
                 </div>
+              </div>
 
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
                 <div className="bg-white p-6 rounded-2xl shadow-sm border border-blue-100">
                   <h3 className="font-bold text-blue-900 mb-4 flex items-center gap-2">
                     <Wrench size={18} className="text-blue-500" /> Prediksi Restock (30 Hari)
@@ -1359,9 +1357,7 @@ export const Laporan: React.FC = () => {
                     </table>
                   </div>
                 </div>
-              </div>
 
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
                 <div className="bg-white p-6 rounded-2xl shadow-sm border border-emerald-100">
                   <h3 className="font-bold text-emerald-900 mb-4 flex items-center gap-2">
                     <span className="text-emerald-500">💰</span> Top 5 Sparepart Paling Cuan (Highest Margin)
