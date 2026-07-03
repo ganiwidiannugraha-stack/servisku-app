@@ -99,6 +99,7 @@ export const Laporan: React.FC = () => {
     let omset = 0;
     let modal = 0;
     let piutang = 0;
+    const piutangDetails: any[] = [];
     const currentOrders = filteredOrders.filter(o => o.status === 'SELESAI' || o.status === 'DIAMBIL');
     
     const dailyData: Record<string, { omset: number, laba: number }> = {};
@@ -118,7 +119,10 @@ export const Laporan: React.FC = () => {
       }
       omset += orderOmset;
       modal += orderModal;
-      if (order.status === 'SELESAI') piutang += orderOmset; 
+      if (order.status === 'SELESAI') {
+         piutang += orderOmset;
+         piutangDetails.push({ ...order, totalBiaya: orderOmset });
+      } 
 
       const cat = order.jenisPerangkat || 'Lainnya';
       categoryData[cat] = (categoryData[cat] || 0) + orderOmset;
@@ -142,8 +146,30 @@ export const Laporan: React.FC = () => {
 
     const orderMengendap = filteredOrders.filter(o => o.status === 'SIAP_DIAMBIL').length;
 
-    return { totalOmset: omset, totalModal: modal, labaBersih: omset - modal, piutang, chartData, recentTransactions, pieCategoryData, orderMengendap };
-  }, [filteredOrders, spareparts]);
+    const aov = currentOrders.length > 0 ? (omset / currentOrders.length) : 0;
+    
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    const diffTime = Math.abs(end.getTime() - start.getTime());
+    let diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    if (diffDays === 0) diffDays = 1;
+    const avgDailyOmset = omset / diffDays;
+    const proyeksi = avgDailyOmset * 30; // 30 days projection
+
+    return { 
+      totalOmset: omset, 
+      totalModal: modal, 
+      labaBersih: omset - modal, 
+      piutang, 
+      chartData, 
+      recentTransactions, 
+      pieCategoryData, 
+      orderMengendap,
+      aov,
+      proyeksiBulanDepan: proyeksi,
+      piutangDetails: piutangDetails.sort((a, b) => new Date(a.tanggalMasuk).getTime() - new Date(b.tanggalMasuk).getTime())
+    };
+  }, [filteredOrders, spareparts, startDate, endDate]);
 
   // 2. OPERASIONAL METRICS & CHART
   const opsData = useMemo(() => {
@@ -722,7 +748,7 @@ export const Laporan: React.FC = () => {
           
           {activeTab === 'KEUANGAN' && (
             <>
-              <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 <div className="p-6 bg-white rounded-2xl shadow-sm border border-gray-100 flex flex-col justify-center">
                   <p className="text-gray-500 font-medium text-sm">Omset Total</p>
                   <h3 className="text-3xl font-bold text-gray-900 mt-2">Rp {financeData.totalOmset.toLocaleString('id-ID')}</h3>
@@ -739,10 +765,23 @@ export const Laporan: React.FC = () => {
                   </h3>
                   <p className="text-xs text-blue-500 mt-1">Laba ÷ Omset</p>
                 </div>
+                <div className="p-6 bg-purple-50 rounded-2xl shadow-sm border border-purple-100 flex flex-col justify-center">
+                  <p className="text-purple-700 font-medium text-sm">Avg. Order Value (AOV)</p>
+                  <h3 className="text-3xl font-bold text-purple-700 mt-2">Rp {financeData.aov.toLocaleString('id-ID', {maximumFractionDigits: 0})}</h3>
+                  <p className="text-xs text-purple-500 mt-1">Rata-rata nilai per servis</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div className="p-6 bg-red-50 rounded-2xl shadow-sm border border-red-100 flex flex-col justify-center">
                   <p className="text-red-700 font-medium text-sm">Piutang / Kasbon</p>
                   <h3 className="text-3xl font-bold text-red-700 mt-2">Rp {financeData.piutang.toLocaleString('id-ID')}</h3>
-                  <p className="text-xs text-red-500 mt-1">Servis Selesai Belum Diambil</p>
+                  <p className="text-xs text-red-500 mt-1">Terdapat {financeData.piutangDetails.length} nota belum dibayar</p>
+                </div>
+                <div className="p-6 bg-cyan-50 rounded-2xl shadow-sm border border-cyan-100 flex flex-col justify-center">
+                  <p className="text-cyan-700 font-medium text-sm">Proyeksi Omset 30 Hari</p>
+                  <h3 className="text-3xl font-bold text-cyan-700 mt-2">Rp {financeData.proyeksiBulanDepan.toLocaleString('id-ID', {maximumFractionDigits: 0})}</h3>
+                  <p className="text-xs text-cyan-500 mt-1">Berdasarkan tren saat ini</p>
                 </div>
                 <div className="p-6 bg-amber-50 rounded-2xl shadow-sm border border-amber-100 flex flex-col justify-center">
                   <p className="text-amber-700 font-medium text-sm">Order Mengendap</p>
@@ -799,46 +838,85 @@ export const Laporan: React.FC = () => {
                 </div>
               </div>
               
-              <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-                <h3 className="font-bold text-gray-900 mb-4">5 Transaksi Terakhir (Selesai/Diambil)</h3>
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm text-left">
-                      <thead className="text-xs text-gray-500 uppercase bg-gray-50">
-                        <tr>
-                          <th className="px-4 py-3 rounded-tl-lg">Waktu Transaksi</th>
-                          <th className="px-4 py-3">No. Servis</th>
-                          <th className="px-4 py-3">Perangkat</th>
-                          <th className="px-4 py-3">Pelanggan</th>
-                          <th className="px-4 py-3 text-right rounded-tr-lg">Total Omset</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {financeData.recentTransactions.map((t) => {
-                          const customer = customers.find(c => c.id === t.pelangganId);
-                          let omset = t.biayaJasa || 0;
-                          if (t.spareparts) {
-                            t.spareparts.forEach(sp => {
-                              const detail = spareparts.find(s => s.id === sp.id);
-                              if (detail) omset += (detail.harga * sp.qty);
-                            });
-                          }
-                          return (
-                            <tr key={t.id} className="border-b last:border-0 hover:bg-gray-50">
-                              <td className="px-4 py-3 text-gray-500 text-xs">{new Date(t.tanggalMasuk).toLocaleString('id-ID', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</td>
-                              <td className="px-4 py-3 font-medium text-gray-900">{t.noServis}</td>
-                              <td className="px-4 py-3 text-gray-500">{t.jenisPerangkat}</td>
-                              <td className="px-4 py-3 text-gray-500">{customer?.nama || 'Unknown'}</td>
-                              <td className="px-4 py-3 text-right font-bold text-gray-900">Rp {omset.toLocaleString('id-ID')}</td>
-                            </tr>
-                          );
-                        })}
-                        {financeData.recentTransactions.length === 0 && (
-                          <tr><td colSpan={5} className="px-4 py-6 text-center text-gray-500">Belum ada transaksi lunas (Selesai/Diambil).</td></tr>
-                        )}
-                      </tbody>
-                    </table>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                  <h3 className="font-bold text-gray-900 mb-4">5 Transaksi Terakhir (Selesai/Diambil)</h3>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm text-left">
+                        <thead className="text-xs text-gray-500 uppercase bg-gray-50">
+                          <tr>
+                            <th className="px-4 py-3 rounded-tl-lg">No. Servis</th>
+                            <th className="px-4 py-3">Pelanggan</th>
+                            <th className="px-4 py-3 text-right rounded-tr-lg">Total Omset</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {financeData.recentTransactions.map((t) => {
+                            const customer = customers.find(c => c.id === t.pelangganId);
+                            let omset = t.biayaJasa || 0;
+                            if (t.spareparts) {
+                              t.spareparts.forEach(sp => {
+                                const detail = spareparts.find(s => s.id === sp.id);
+                                if (detail) omset += (detail.harga * sp.qty);
+                              });
+                            }
+                            return (
+                              <tr key={t.id} className="border-b last:border-0 hover:bg-gray-50">
+                                <td className="px-4 py-3 font-medium text-gray-900">{t.noServis}</td>
+                                <td className="px-4 py-3 text-gray-500">{customer?.nama || 'Unknown'}</td>
+                                <td className="px-4 py-3 text-right font-bold text-gray-900">Rp {omset.toLocaleString('id-ID')}</td>
+                              </tr>
+                            );
+                          })}
+                          {financeData.recentTransactions.length === 0 && (
+                            <tr><td colSpan={3} className="px-4 py-6 text-center text-gray-500">Belum ada transaksi.</td></tr>
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
-                </div>
+
+                  <div className="bg-white p-6 rounded-2xl shadow-sm border border-red-100">
+                    <h3 className="font-bold text-red-800 mb-4 flex items-center gap-2">
+                      <AlertTriangle size={18} className="text-red-500" /> Daftar Piutang Mengendap (Belum Diambil)
+                    </h3>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm text-left">
+                        <thead className="text-xs text-red-700 uppercase bg-red-50">
+                          <tr>
+                            <th className="px-4 py-3 rounded-tl-lg">No. Servis / Tgl Selesai</th>
+                            <th className="px-4 py-3">Pelanggan</th>
+                            <th className="px-4 py-3 text-right rounded-tr-lg">Nominal Tagihan</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {financeData.piutangDetails.slice(0, 5).map((t) => {
+                            const customer = customers.find(c => c.id === t.pelangganId);
+                            const tglMasuk = new Date(t.tanggalMasuk);
+                            // Asumsikan selesai beberapa hari setelah masuk (mockup aging)
+                            const daysAging = Math.floor((new Date().getTime() - tglMasuk.getTime()) / (1000 * 3600 * 24));
+                            return (
+                              <tr key={t.id} className="border-b border-red-50 hover:bg-red-50/50">
+                                <td className="px-4 py-3">
+                                  <div className="font-medium text-gray-900">{t.noServis}</div>
+                                  <div className="text-xs text-red-500 mt-1">{daysAging} hari yang lalu</div>
+                                </td>
+                                <td className="px-4 py-3">
+                                  <div className="text-gray-700 font-medium">{customer?.nama}</div>
+                                  <div className="text-xs text-gray-500 mt-1">{customer?.noHp}</div>
+                                </td>
+                                <td className="px-4 py-3 text-right font-bold text-red-700">Rp {t.totalBiaya.toLocaleString('id-ID')}</td>
+                              </tr>
+                            );
+                          })}
+                          {financeData.piutangDetails.length === 0 && (
+                            <tr><td colSpan={3} className="px-4 py-6 text-center text-gray-500">Tidak ada piutang mengendap.</td></tr>
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+              </div>
             </>
           )}
 
