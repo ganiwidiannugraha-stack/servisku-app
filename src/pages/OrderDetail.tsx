@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useStore } from '../store';
 import { Button } from '../components/ui/Button';
@@ -197,17 +197,22 @@ export const OrderDetail: React.FC = () => {
   const [showAllPastOrders, setShowAllPastOrders] = useState(false);
 
   const [showFAB, setShowFAB] = useState(false);
+  const topElementRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const handleScroll = () => {
-      if (window.scrollY > 300) {
-        setShowFAB(true);
-      } else {
-        setShowFAB(false);
-      }
-    };
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        // Tampilkan FAB jika elemen header sudah tidak terlihat (scroll ke bawah)
+        setShowFAB(!entry.isIntersecting);
+      },
+      { threshold: 0, rootMargin: "-80px 0px 0px 0px" } // Offset sedikit dari header sticky
+    );
+    
+    if (topElementRef.current) {
+      observer.observe(topElementRef.current);
+    }
+    
+    return () => observer.disconnect();
   }, []);
 
   const order = orders.find(o => o.id === id);
@@ -557,7 +562,7 @@ export const OrderDetail: React.FC = () => {
 
       <div className="w-full mt-4">
         {/* Header Title & Actions */}
-        <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div ref={topElementRef} className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex flex-wrap items-center gap-3">
             <h1 className="text-xl font-bold text-gray-900">Order #{order.noServis}</h1>
             <div className="flex items-center gap-2">
