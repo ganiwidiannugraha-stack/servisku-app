@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useStore } from '../store';
 import { LineChart, Line, BarChart, Bar, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
-import { AlertTriangle, Calendar, RefreshCcw, PackageCheck, Banknote, Eye, Wrench, CheckCircle, Search, Clock } from 'lucide-react';
+import { AlertTriangle, Calendar, RefreshCcw, PackageCheck, Banknote, Eye, Wrench, CheckCircle, Search, Clock, Users, Phone, MessageCircle, Plus, Package, Wallet, User } from 'lucide-react';
 import { motion } from 'framer-motion';
 import type { Variants } from 'framer-motion';
 
@@ -237,6 +237,200 @@ export const Dashboard: React.FC = () => {
             </table>
           </div>
         </motion.div>
+      </motion.div>
+    );
+  }
+
+  // ---------------------------------------------------------
+  // FRONTLINE DASHBOARD LOGIC
+  // ---------------------------------------------------------
+  if (userRole === 'FRONTLINE') {
+    const ordersMenungguKonfirmasi = orders.filter(o => o.status === 'MENUNGGU_KONFIRMASI');
+    const ordersSiapDiambil = orders.filter(o => o.status === 'SIAP_DIAMBIL');
+    const ordersMasukFrontline = orders.filter(o => o.status === 'MASUK').length;
+    
+    return (
+      <motion.div 
+        className="p-8 w-full min-h-screen pb-24"
+        variants={containerVariants}
+        initial="hidden"
+        animate="show"
+      >
+        <motion.div variants={itemVariants} className="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Halo, {currentUser?.name || 'Frontline'}! 👋</h1>
+            <p className="text-gray-500">Selamat datang di Pusat Layanan Pelanggan ServisKu.</p>
+          </div>
+          <div className="flex items-center gap-3">
+            <button onClick={() => navigate('/order/baru')} className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl font-medium shadow-sm flex items-center gap-2 transition-colors">
+              <Plus size={18} />
+              <span className="hidden sm:inline">Order Baru</span>
+            </button>
+            <button onClick={() => navigate('/pelanggan')} className="bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 px-5 py-2.5 rounded-xl font-medium shadow-sm flex items-center gap-2 transition-colors">
+              <Users size={18} />
+              <span className="hidden sm:inline">Data Pelanggan</span>
+            </button>
+          </div>
+        </motion.div>
+
+        {/* STATS */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          <motion.div variants={itemVariants} className="p-6 bg-white rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between hover:shadow-md transition-shadow">
+            <div>
+              <p className="text-gray-500 font-medium text-sm">Pesanan Baru Masuk</p>
+              <h3 className="text-3xl font-bold text-blue-600 mt-1">{ordersMasukFrontline}</h3>
+            </div>
+            <div className="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600">
+              <Calendar size={24} />
+            </div>
+          </motion.div>
+          <motion.div variants={itemVariants} className="p-6 bg-white rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between hover:shadow-md transition-shadow">
+            <div>
+              <p className="text-gray-500 font-medium text-sm">Menunggu Konfirmasi</p>
+              <h3 className="text-3xl font-bold text-orange-600 mt-1">{ordersMenungguKonfirmasi.length}</h3>
+            </div>
+            <div className="w-12 h-12 rounded-xl bg-orange-50 flex items-center justify-center text-orange-600">
+              <Phone size={24} />
+            </div>
+          </motion.div>
+          <motion.div variants={itemVariants} className="p-6 bg-white rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between hover:shadow-md transition-shadow">
+            <div>
+              <p className="text-gray-500 font-medium text-sm">Siap Diambil & Bayar</p>
+              <h3 className="text-3xl font-bold text-emerald-600 mt-1">{ordersSiapDiambil.length}</h3>
+            </div>
+            <div className="w-12 h-12 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600">
+              <Package size={24} />
+            </div>
+          </motion.div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          {/* Table Menunggu Konfirmasi */}
+          <motion.div variants={itemVariants} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex flex-col h-[500px]">
+            <div className="p-6 border-b border-gray-100 flex items-center justify-between bg-orange-50/30">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-orange-100 text-orange-600 flex items-center justify-center">
+                  <Phone size={20} />
+                </div>
+                <div>
+                  <h3 className="font-bold text-gray-900">Perlu Konfirmasi Pelanggan</h3>
+                  <p className="text-xs text-gray-500">Hubungi pelanggan untuk persetujuan biaya</p>
+                </div>
+              </div>
+            </div>
+            <div className="overflow-x-auto overflow-y-auto flex-1 hide-scrollbar">
+              <table className="w-full text-left border-collapse">
+                <thead className="sticky top-0 bg-gray-50/90 backdrop-blur z-10">
+                  <tr className="text-gray-500 text-xs uppercase tracking-wider">
+                    <th className="px-6 py-4 font-semibold">NO. SERVIS / PELANGGAN</th>
+                    <th className="px-6 py-4 font-semibold text-center">AKSI</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {ordersMenungguKonfirmasi.length === 0 ? (
+                    <tr>
+                      <td colSpan={2} className="px-6 py-12 text-center text-gray-500">Tidak ada order yang menunggu konfirmasi.</td>
+                    </tr>
+                  ) : (
+                    ordersMenungguKonfirmasi.map(order => {
+                      const cust = customers.find(c => c.id === order.pelangganId);
+                      return (
+                        <tr key={order.id} className="border-b border-gray-50 hover:bg-orange-50/30 transition-colors">
+                          <td className="px-6 py-4">
+                            <div className="font-bold text-gray-900">{order.noServis}</div>
+                            <div className="text-sm text-gray-600 flex items-center gap-1.5 mt-1.5">
+                              <User size={14} className="text-gray-400"/> {cust?.nama}
+                            </div>
+                            <div className="text-xs text-gray-500 mt-1.5 truncate max-w-[200px]">{order.keluhan}</div>
+                          </td>
+                          <td className="px-6 py-4">
+                            <div className="flex flex-col gap-2">
+                                <button 
+                                  onClick={() => window.open(`https://wa.me/${cust?.noHp.replace(/^0/, '62')}?text=Halo Kak ${cust?.nama}, perangkat ${order.jenisPerangkat} dengan No Servis ${order.noServis} sudah selesai didiagnosa. Silakan cek detailnya untuk persetujuan biaya.`, '_blank')}
+                                  className="bg-green-500 hover:bg-green-600 text-white font-medium py-1.5 px-3 rounded-lg transition-colors shadow-sm inline-flex items-center gap-1.5 text-xs w-full justify-center"
+                                >
+                                  <MessageCircle size={14} /> Kirim WA
+                                </button>
+                                <button 
+                                  onClick={() => navigate(`/order/${order.id}`)}
+                                  className="bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 font-medium py-1.5 px-3 rounded-lg transition-colors inline-flex items-center gap-1.5 text-xs w-full justify-center"
+                                >
+                                  <Eye size={14} /> Detail Order
+                                </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </motion.div>
+
+          {/* Table Siap Diambil */}
+          <motion.div variants={itemVariants} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex flex-col h-[500px]">
+            <div className="p-6 border-b border-gray-100 flex items-center justify-between bg-emerald-50/30">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center">
+                  <Package size={20} />
+                </div>
+                <div>
+                  <h3 className="font-bold text-gray-900">Siap Diambil</h3>
+                  <p className="text-xs text-gray-500">Perangkat selesai dan menunggu diambil pelanggan</p>
+                </div>
+              </div>
+            </div>
+            <div className="overflow-x-auto overflow-y-auto flex-1 hide-scrollbar">
+              <table className="w-full text-left border-collapse">
+                <thead className="sticky top-0 bg-gray-50/90 backdrop-blur z-10">
+                  <tr className="text-gray-500 text-xs uppercase tracking-wider">
+                    <th className="px-6 py-4 font-semibold">NO. SERVIS / PELANGGAN</th>
+                    <th className="px-6 py-4 font-semibold text-center">AKSI</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {ordersSiapDiambil.length === 0 ? (
+                    <tr>
+                      <td colSpan={2} className="px-6 py-12 text-center text-gray-500">Tidak ada perangkat yang siap diambil.</td>
+                    </tr>
+                  ) : (
+                    ordersSiapDiambil.map(order => {
+                      const cust = customers.find(c => c.id === order.pelangganId);
+                      return (
+                        <tr key={order.id} className="border-b border-gray-50 hover:bg-emerald-50/30 transition-colors">
+                          <td className="px-6 py-4">
+                            <div className="font-bold text-gray-900">{order.noServis}</div>
+                            <div className="text-sm text-gray-600 flex items-center gap-1.5 mt-1.5">
+                              <User size={14} className="text-gray-400"/> {cust?.nama}
+                            </div>
+                            <div className="text-xs text-emerald-600 font-medium mt-1.5 bg-emerald-100 px-2 py-0.5 rounded-full inline-block">Selesai diperbaiki</div>
+                          </td>
+                          <td className="px-6 py-4">
+                            <div className="flex flex-col gap-2">
+                                <button 
+                                  onClick={() => window.open(`https://wa.me/${cust?.noHp.replace(/^0/, '62')}?text=Halo Kak ${cust?.nama}, perangkat ${order.jenisPerangkat} dengan No Servis ${order.noServis} sudah selesai diperbaiki dan siap diambil. Terima kasih.`, '_blank')}
+                                  className="bg-green-500 hover:bg-green-600 text-white font-medium py-1.5 px-3 rounded-lg transition-colors shadow-sm inline-flex items-center gap-1.5 text-xs w-full justify-center"
+                                >
+                                  <MessageCircle size={14} /> Kabari
+                                </button>
+                                <button 
+                                  onClick={() => navigate(`/order/${order.id}/bayar`)}
+                                  className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-1.5 px-3 rounded-lg transition-colors shadow-sm inline-flex items-center gap-1.5 text-xs w-full justify-center border-none"
+                                >
+                                  <Wallet size={14} /> Bayar & Ambil
+                                </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </motion.div>
+        </div>
       </motion.div>
     );
   }
