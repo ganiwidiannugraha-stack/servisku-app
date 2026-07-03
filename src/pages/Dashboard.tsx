@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useStore } from '../store';
 import { LineChart, Line, BarChart, Bar, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
-import { AlertTriangle, Calendar, RefreshCcw, Banknote, Eye, Wrench, CheckCircle, Search, Clock, Users, Phone, MessageCircle, Plus, Wallet, Box, Package, PackageCheck } from 'lucide-react';
+import { AlertTriangle, Calendar, RefreshCcw, Banknote, Eye, Wrench, CheckCircle, Search, Clock, Users, Phone, MessageCircle, Plus, Wallet, Box, Package, PackageCheck, TrendingUp, Award } from 'lucide-react';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
 import { Modal } from '../components/ui/Modal';
@@ -865,6 +865,63 @@ export const Dashboard: React.FC = () => {
     return { lineData: lData, barData: bData };
   }, [orders, spareparts]);
 
+  // SDM Highlight (Top Technician today or this month)
+  const topTechnician = useMemo(() => {
+    const techScores: Record<string, number> = {};
+    const thisMonth = new Date().getMonth();
+    orders.forEach(o => {
+      if (o.status === 'SELESAI' || o.status === 'DIAMBIL') {
+        const orderMonth = new Date(o.tanggalMasuk).getMonth();
+        if (orderMonth === thisMonth && o.teknisiId) {
+          techScores[o.teknisiId] = (techScores[o.teknisiId] || 0) + 1;
+        }
+      }
+    });
+    
+    let bestTechId = '';
+    let maxDone = 0;
+    Object.entries(techScores).forEach(([tid, count]) => {
+      if (count > maxDone) {
+        maxDone = count;
+        bestTechId = tid;
+      }
+    });
+    
+    if (!bestTechId) return { name: 'Belum ada data', count: 0 };
+    const techName = technicians.find(t => t.id === bestTechId)?.name || 'Unknown';
+    return { name: techName, count: maxDone };
+  }, [orders, technicians]);
+
+  // CRM Highlight (New vs Repeat Customers)
+  const { newCustomers, repeatCustomers } = useMemo(() => {
+    const orderCountByCust: Record<string, number> = {};
+    orders.forEach(o => {
+      orderCountByCust[o.pelangganId] = (orderCountByCust[o.pelangganId] || 0) + 1;
+    });
+    let newC = 0;
+    let repeatC = 0;
+    Object.values(orderCountByCust).forEach(count => {
+      if (count === 1) newC++;
+      else if (count > 1) repeatC++;
+    });
+    return { newCustomers: newC, repeatCustomers: repeatC };
+  }, [orders]);
+
+  // Potensi Pendapatan (from Process/Diagnosa)
+  const potensiPendapatan = useMemo(() => {
+    let pot = 0;
+    orders.forEach(o => {
+      if (['PROSES', 'DIAGNOSA', 'MENUNGGU_SPAREPART'].includes(o.status)) {
+        if (o.estimasiBiaya) {
+          pot += o.estimasiBiaya;
+        } else {
+          pot += (o.biayaJasa || 0);
+        }
+      }
+    });
+    return pot;
+  }, [orders]);
+
   return (
     <motion.div 
       className="p-8 w-full min-h-screen"
@@ -876,6 +933,61 @@ export const Dashboard: React.FC = () => {
         <h1 className="text-2xl font-bold text-gray-900">Halo, {currentUser?.name || (userRole === 'OWNER' ? 'Owner' : 'Admin')}! 👋</h1>
         <p className="text-gray-500">Selamat datang di Ringkasan {userRole === 'OWNER' ? 'Bisnis' : 'Operasional'} ServisKu hari ini.</p>
       </motion.div>
+
+      {(userRole === 'FINANCE' || userRole === 'OWNER') && (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          {/* Potensi Pendapatan */}
+          <motion.div variants={itemVariants} className="bg-gradient-to-r from-blue-500 to-blue-600 p-6 rounded-2xl shadow-sm text-white flex flex-col justify-between hover:shadow-md transition-shadow">
+            <div className="flex justify-between items-start">
+              <div>
+                <p className="text-blue-100 font-medium text-sm">Estimasi Potensi Pendapatan</p>
+                <h3 className="text-2xl font-bold mt-1">Rp {potensiPendapatan.toLocaleString('id-ID')}</h3>
+              </div>
+              <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center text-white backdrop-blur-sm">
+                <TrendingUp size={20} />
+              </div>
+            </div>
+            <p className="text-xs text-blue-100 mt-4">Dari {ordersProses} order yang sedang diproses</p>
+          </motion.div>
+
+          {/* Teknisi Terbaik */}
+          <motion.div variants={itemVariants} className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col justify-between hover:shadow-md transition-shadow">
+            <div className="flex justify-between items-start">
+              <div>
+                <p className="text-gray-500 font-medium text-sm">Teknisi Terbaik (Bulan Ini)</p>
+                <h3 className="text-xl font-bold text-gray-900 mt-1">{topTechnician.name}</h3>
+              </div>
+              <div className="w-10 h-10 rounded-xl bg-purple-50 flex items-center justify-center text-purple-600">
+                <Award size={20} />
+              </div>
+            </div>
+            <p className="text-xs text-gray-500 mt-4"><span className="font-semibold text-purple-600">{topTechnician.count}</span> perangkat diselesaikan</p>
+          </motion.div>
+
+          {/* CRM Pelanggan */}
+          <motion.div variants={itemVariants} className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col justify-between hover:shadow-md transition-shadow">
+            <div className="flex justify-between items-start">
+              <div>
+                <p className="text-gray-500 font-medium text-sm">Pelanggan Aktif</p>
+                <div className="flex gap-4 mt-2">
+                  <div>
+                    <span className="text-2xl font-bold text-gray-900">{newCustomers}</span>
+                    <span className="text-xs text-gray-500 ml-1">Baru</span>
+                  </div>
+                  <div>
+                    <span className="text-2xl font-bold text-gray-900">{repeatCustomers}</span>
+                    <span className="text-xs text-gray-500 ml-1">Repeat</span>
+                  </div>
+                </div>
+              </div>
+              <div className="w-10 h-10 rounded-xl bg-orange-50 flex items-center justify-center text-orange-600">
+                <Users size={20} />
+              </div>
+            </div>
+            <p className="text-xs text-gray-500 mt-4">Rasio Retensi: {repeatCustomers > 0 ? Math.round((repeatCustomers / (newCustomers + repeatCustomers)) * 100) : 0}%</p>
+          </motion.div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         
