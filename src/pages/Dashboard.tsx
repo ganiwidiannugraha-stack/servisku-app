@@ -691,15 +691,15 @@ export const Dashboard: React.FC = () => {
           </motion.div>
 
           {/* Asset Distribution Chart */}
-          <motion.div variants={itemVariants} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex flex-col h-full min-h-[400px]">
-            <h2 className="font-bold text-gray-900 mb-6">Distribusi Nilai Aset</h2>
-            <div className="flex-1 flex flex-col justify-center relative">
-              <ResponsiveContainer width="100%" height={220}>
+          <motion.div variants={itemVariants} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex flex-col">
+            <h2 className="font-bold text-gray-900 mb-2">Distribusi Nilai Aset</h2>
+            <div className="w-full h-[240px] relative">
+              <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
                     data={inventoryPieData}
-                    innerRadius={60}
-                    outerRadius={80}
+                    innerRadius={65}
+                    outerRadius={85}
                     paddingAngle={5}
                     dataKey="value"
                     stroke="none"
@@ -708,18 +708,18 @@ export const Dashboard: React.FC = () => {
                   </Pie>
                 </PieChart>
               </ResponsiveContainer>
-              <div className="absolute top-[110px] left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center">
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                 <span className="text-xl font-bold text-gray-900">Aset</span>
               </div>
             </div>
-            <div className="mt-6 flex flex-col gap-3">
+            <div className="mt-4 flex flex-col gap-3 overflow-y-auto pr-2 hide-scrollbar" style={{ maxHeight: '200px' }}>
               {inventoryPieData.map(entry => (
                 <div key={entry.name} className="flex justify-between items-center text-sm">
                   <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: entry.color }}></div>
-                    <span className="text-gray-600 truncate max-w-[120px]">{entry.name}</span>
+                    <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: entry.color }}></div>
+                    <span className="text-gray-600 truncate max-w-[120px]" title={entry.name}>{entry.name}</span>
                   </div>
-                  <span className="font-semibold text-gray-900">
+                  <span className="font-semibold text-gray-900 whitespace-nowrap">
                     {entry.name === 'Belum Ada Data' ? '' : `Rp ${formatRibuan(entry.value)}`}
                   </span>
                 </div>
