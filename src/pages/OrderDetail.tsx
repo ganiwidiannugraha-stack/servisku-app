@@ -55,7 +55,7 @@ const OrderStepper: React.FC<{ currentStatus: StatusOrder; orderDate: string }> 
           Pesanan Dibatalkan
         </div>
       ) : (
-        <div className="flex w-full max-w-4xl mx-auto pb-10 px-0 sm:px-6 overflow-x-auto hide-scrollbar">
+        <div className="flex w-full max-w-4xl mx-auto pt-4 pb-10 px-0 sm:px-6 overflow-x-auto hide-scrollbar">
           {steps.map((step, index) => {
             const isCompleted = index <= currentIndex;
             const isCurrent = index === currentIndex;
