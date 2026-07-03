@@ -34,6 +34,7 @@ export const Dashboard: React.FC = () => {
   if (userRole === 'TEKNISI') {
     const myTasks = orders.filter(o => o.teknisiId === technicianId && (o.status === 'PROSES' || o.status === 'DIAGNOSA'));
     const myDoneTasks = orders.filter(o => o.teknisiId === technicianId && o.status === 'SELESAI');
+    const unassignedTasks = orders.filter(o => !o.teknisiId && !['SELESAI', 'SIAP_DIAMBIL', 'DIAMBIL', 'BATAL', 'BATAL_SIAP_DIAMBIL', 'BATAL_DIAMBIL'].includes(o.status));
     
     return (
       <motion.div 
@@ -116,6 +117,57 @@ export const Dashboard: React.FC = () => {
                           className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-1.5 px-4 rounded-lg transition-colors shadow-sm inline-flex items-center gap-2 text-xs"
                         >
                           <Wrench size={14} /> Kerjakan
+                        </button>
+                      </td>
+                    </motion.tr>
+                  ))
+                )}
+              </motion.tbody>
+            </table>
+          </div>
+        </motion.div>
+
+        {/* Tugas Belum Diambil */}
+        <motion.div variants={itemVariants} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mt-8">
+          <div className="px-6 py-5 border-b border-gray-100 flex justify-between items-center bg-yellow-50">
+            <h2 className="font-bold text-gray-900 flex items-center gap-2">
+              <AlertTriangle size={18} className="text-yellow-600" />
+              Tugas Belum Diambil ({unassignedTasks.length})
+            </h2>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm text-left">
+              <thead className="text-xs text-gray-500 uppercase bg-gray-50 border-b border-gray-100">
+                <tr>
+                  <th className="px-6 py-4 font-semibold">NO. SERVIS</th>
+                  <th className="px-6 py-4 font-semibold">PERANGKAT</th>
+                  <th className="px-6 py-4 font-semibold">KELUHAN</th>
+                  <th className="px-6 py-4 font-semibold text-center">AKSI</th>
+                </tr>
+              </thead>
+              <motion.tbody>
+                {unassignedTasks.length === 0 ? (
+                  <tr>
+                    <td colSpan={4} className="px-6 py-8 text-center text-gray-500">Semua tugas sudah ada teknisinya.</td>
+                  </tr>
+                ) : (
+                  unassignedTasks.map((order, i) => (
+                    <motion.tr 
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: i * 0.1 }}
+                      key={order.id} 
+                      className="border-b border-gray-50 hover:bg-yellow-50/50 transition-colors"
+                    >
+                      <td className="px-6 py-4 font-bold text-gray-900">{order.noServis}</td>
+                      <td className="px-6 py-4">{order.jenisPerangkat} - {order.merkModel}</td>
+                      <td className="px-6 py-4 max-w-[200px] truncate text-gray-600">{order.keluhan}</td>
+                      <td className="px-6 py-4 text-center">
+                        <button 
+                          onClick={() => navigate(`/order/${order.id}`)}
+                          className="bg-yellow-600 hover:bg-yellow-700 text-white font-medium py-1.5 px-4 rounded-lg transition-colors shadow-sm inline-flex items-center gap-2 text-xs"
+                        >
+                          <Eye size={14} /> Lihat Detail
                         </button>
                       </td>
                     </motion.tr>
