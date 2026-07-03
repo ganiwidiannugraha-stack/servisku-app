@@ -4,8 +4,11 @@ import { Sidebar } from './Sidebar';
 import { Header } from './Header';
 import { motion, AnimatePresence } from 'framer-motion';
 
+import { useStore } from '../../store';
+
 export const PageWrapper: React.FC = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const { isSidebarCollapsed } = useStore();
   const location = useLocation();
   const outlet = useOutlet();
 
@@ -20,7 +23,7 @@ export const PageWrapper: React.FC = () => {
       )}
 
       {/* Sidebar for mobile & desktop */}
-      <div className={`print:hidden fixed inset-y-0 left-0 z-50 flex-shrink-0 w-64 transform bg-white transition-transform duration-300 ease-in-out lg:static lg:translate-x-0 ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+      <div className={`print:hidden fixed inset-y-0 left-0 z-50 flex-shrink-0 w-64 transform bg-white transition-all duration-300 ease-in-out lg:static lg:translate-x-0 ${isSidebarCollapsed ? 'lg:w-20' : 'lg:w-64'} ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <Sidebar onNavigate={() => setIsMobileMenuOpen(false)} />
       </div>
 

@@ -14,7 +14,7 @@ interface SidebarProps {
  * Dilengkapi dengan badge dinamis (Notifikasi jumlah order aktif & stok menipis).
  */
 export const Sidebar: React.FC<SidebarProps> = ({ onNavigate }) => {
-  const { orders, spareparts, userRole } = useStore();
+  const { orders, spareparts, userRole, isSidebarCollapsed } = useStore();
 
   // Dynamic Badges
   const activeOrdersCount = useMemo(() => {
@@ -37,24 +37,33 @@ export const Sidebar: React.FC<SidebarProps> = ({ onNavigate }) => {
   }, [activeOrdersCount, lowStockCount, userRole]);
 
   return (
-    <div className="flex flex-col w-64 h-screen bg-white border-r border-gray-100 shadow-[2px_0_8px_rgba(0,0,0,0.02)]">
-      <div className="flex items-center px-6 h-20 border-b border-gray-100">
-        <div className="flex items-center gap-3">
-          <img src="/logo.png" alt="ServisKu Logo" className="h-10 w-auto object-contain drop-shadow-sm" />
-          <span className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-800 to-blue-600">ServisKu</span>
+    <div className={`flex flex-col h-screen bg-white border-r border-gray-100 shadow-[2px_0_8px_rgba(0,0,0,0.02)] transition-all duration-300 ${isSidebarCollapsed ? 'w-20' : 'w-64'}`}>
+      <div className={`flex items-center h-20 border-b border-gray-100 transition-all duration-300 ${isSidebarCollapsed ? 'px-4 justify-center' : 'px-6'}`}>
+        <div className="flex items-center gap-3 overflow-hidden">
+          <img src="/logo.png" alt="ServisKu Logo" className="h-10 w-auto object-contain flex-shrink-0 drop-shadow-sm" />
+          {!isSidebarCollapsed && (
+            <span className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-800 to-blue-600 truncate">
+              ServisKu
+            </span>
+          )}
         </div>
       </div>
       
-      <div className="flex flex-col flex-1 px-4 py-4 overflow-y-auto">
-        <h2 className="px-4 text-xs font-bold text-slate-400 tracking-wider mb-2 uppercase">Menu Utama</h2>
+      <div className={`flex flex-col flex-1 py-4 overflow-y-auto transition-all duration-300 ${isSidebarCollapsed ? 'px-2' : 'px-4'}`}>
+        {!isSidebarCollapsed && (
+          <h2 className="px-4 text-xs font-bold text-slate-400 tracking-wider mb-2 uppercase">Menu Utama</h2>
+        )}
         <nav className="space-y-1.5 mb-8">
           {menuUtama.map((item) => (
             <NavLink
               key={item.path}
               to={item.path}
               onClick={onNavigate}
+              title={isSidebarCollapsed ? item.name : undefined}
               className={({ isActive }) =>
-                `relative flex items-center justify-between px-4 py-3 rounded-xl transition-all duration-200 ${
+                `relative flex items-center justify-between transition-all duration-200 ${
+                  isSidebarCollapsed ? 'justify-center p-3 rounded-xl' : 'px-4 py-3 rounded-xl'
+                } ${
                   isActive
                     ? 'bg-[#eef2ff] text-blue-700 font-bold overflow-hidden'
                     : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900 font-medium'
@@ -65,12 +74,12 @@ export const Sidebar: React.FC<SidebarProps> = ({ onNavigate }) => {
                 <>
                   {isActive && <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1.5 h-8 bg-blue-600 rounded-r-full"></div>}
                   <div className="flex items-center">
-                    <span className={`mr-3 ${isActive ? 'text-blue-600' : 'text-gray-400'}`}>
+                    <span className={`${isSidebarCollapsed ? '' : 'mr-3'} ${isActive ? 'text-blue-600' : 'text-gray-400'}`}>
                       {item.icon}
                     </span>
-                    {item.name}
+                    {!isSidebarCollapsed && item.name}
                   </div>
-                  {item.badge && (
+                  {!isSidebarCollapsed && item.badge && (
                     <span
                       className={`inline-flex items-center justify-center min-w-6 h-6 px-1.5 text-xs font-bold rounded-full ${
                         item.danger
@@ -79,6 +88,12 @@ export const Sidebar: React.FC<SidebarProps> = ({ onNavigate }) => {
                       }`}
                     >
                       {item.badge}
+                    </span>
+                  )}
+                  {isSidebarCollapsed && item.badge && (
+                    <span className="absolute top-1.5 right-1.5 flex h-2.5 w-2.5">
+                      <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${item.danger ? 'bg-red-400' : 'bg-blue-400'}`}></span>
+                      <span className={`relative inline-flex rounded-full h-2.5 w-2.5 ${item.danger ? 'bg-red-500' : 'bg-blue-500'}`}></span>
                     </span>
                   )}
                 </>
@@ -91,8 +106,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ onNavigate }) => {
           <NavLink
             to="/pengaturan"
             onClick={onNavigate}
+            title={isSidebarCollapsed ? 'Pengaturan' : undefined}
             className={({ isActive }) =>
-              `relative flex items-center justify-between px-4 py-3 rounded-xl transition-all duration-200 ${
+              `relative flex items-center justify-between transition-all duration-200 ${
+                isSidebarCollapsed ? 'justify-center p-3 rounded-xl' : 'px-4 py-3 rounded-xl'
+              } ${
                 isActive
                   ? 'bg-[#eef2ff] text-blue-700 font-bold overflow-hidden'
                   : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900 font-medium'
@@ -103,10 +121,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ onNavigate }) => {
               <>
                 {isActive && <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1.5 h-8 bg-blue-600 rounded-r-full"></div>}
                 <div className="flex items-center">
-                  <span className={`mr-3 ${isActive ? 'text-blue-600' : 'text-gray-400'}`}>
+                  <span className={`${isSidebarCollapsed ? '' : 'mr-3'} ${isActive ? 'text-blue-600' : 'text-gray-400'}`}>
                     <Settings size={20} />
                   </span>
-                  Pengaturan
+                  {!isSidebarCollapsed && 'Pengaturan'}
                 </div>
               </>
             )}
@@ -116,10 +134,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ onNavigate }) => {
             onClick={() => {
               useStore.getState().logout();
             }}
-            className="flex items-center w-full px-4 py-3 text-red-600 font-medium transition-colors rounded-xl hover:bg-red-50 mt-4"
+            title={isSidebarCollapsed ? 'Keluar' : undefined}
+            className={`flex items-center text-red-600 font-medium transition-all duration-200 rounded-xl hover:bg-red-50 mt-4 ${
+              isSidebarCollapsed ? 'justify-center p-3' : 'w-full px-4 py-3'
+            }`}
           >
-            <LogOut size={20} className="mr-3 text-red-400" />
-            Keluar
+            <LogOut size={20} className={`${isSidebarCollapsed ? '' : 'mr-3'} text-red-400`} />
+            {!isSidebarCollapsed && 'Keluar'}
           </button>
         </div>
       </div>

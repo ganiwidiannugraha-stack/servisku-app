@@ -2,12 +2,12 @@ import React, { useState, useMemo } from 'react';
 import { useStore } from '../store';
 import type { Sparepart } from '../store';
 import { Button } from '../components/ui/Button';
-import { Plus, Search, Filter, AlertTriangle, Wallet, Calendar } from 'lucide-react';
+import { Plus, Search, Filter, AlertTriangle, Wallet, Calendar, Trash2 } from 'lucide-react';
 import { Breadcrumb } from '../components/ui/Breadcrumb';
 import { EmptyState } from '../components/ui/EmptyState';
 
 export const Stok: React.FC = () => {
-  const { spareparts, mutasiStok, addSparepart, tambahMutasiStok, userRole } = useStore();
+  const { spareparts, mutasiStok, addSparepart, deleteSparepart, tambahMutasiStok, userRole } = useStore();
   const [searchTerm, setSearchTerm] = useState('');
   const [dateFilter, setDateFilter] = useState('');
   const [kategoriFilter, setKategoriFilter] = useState('ALL');
@@ -52,6 +52,16 @@ export const Stok: React.FC = () => {
     setSelectedSparepart(sparepart);
     setMutasiType(tipe);
     setIsMutasiModalOpen(true);
+  };
+
+  const handleDeleteSparepart = async (id: string) => {
+    if (window.confirm("Apakah Anda yakin ingin menghapus sparepart ini dari katalog? Semua data mutasi untuk barang ini akan ikut terhapus.")) {
+      try {
+        await deleteSparepart(id);
+      } catch (err) {
+        console.error("Gagal menghapus sparepart:", err);
+      }
+    }
   };
 
   return (
@@ -253,6 +263,15 @@ export const Stok: React.FC = () => {
                             >
                               - OUT
                             </button>
+                            {['OWNER', 'ADMIN'].includes(userRole || '') && (
+                              <button 
+                                onClick={() => handleDeleteSparepart(item.id)}
+                                className="bg-red-50 hover:bg-red-100 text-red-600 font-semibold p-1.5 rounded-lg border border-red-100 transition-colors"
+                                title="Hapus Sparepart"
+                              >
+                                <Trash2 size={15} />
+                              </button>
+                            )}
                           </div>
                         </td>
                       )}

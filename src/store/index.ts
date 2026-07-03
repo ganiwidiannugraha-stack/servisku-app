@@ -20,6 +20,7 @@ import {
   updateTechnicianDB,
   updateSettingsDB,
   deleteCustomerDB,
+  deleteSparepartDB,
   getUsers,
   createUserDB,
   updateUserDB,
@@ -256,6 +257,9 @@ interface AppState {
   userId: string | null;
   /** Nama user saat ini */
   userName: string | null;
+  /** Status sidebar diciutkan atau tidak (responsive desktop) */
+  isSidebarCollapsed: boolean;
+  toggleSidebar: () => void;
   
   /** Data seluruh pengguna sistem */
   users: AppUser[];
@@ -318,6 +322,7 @@ interface AppState {
    * @param sparepart - Data sparepart baru
    */
   addSparepart: (sparepart: Sparepart) => void;
+  deleteSparepart: (id: string) => Promise<void>;
 
   /**
    * Mencatat mutasi stok (Stok Masuk / Stok Keluar).
@@ -411,6 +416,8 @@ export const useStore = create<AppState>()(
       userRole: null,
       userId: null,
       userName: null,
+      isSidebarCollapsed: false,
+      toggleSidebar: () => set(state => ({ isSidebarCollapsed: !state.isSidebarCollapsed })),
 
       users: [],
       auditLogs: [],
@@ -581,6 +588,12 @@ export const useStore = create<AppState>()(
           };
         });
         get().logActivity("ADD_SPAREPART", `Menambahkan sparepart baru: ${newSparepartData.nama}`);
+      },
+      deleteSparepart: async (id) => {
+        await deleteSparepartDB(id);
+        const spareparts = await getSpareparts();
+        set({ spareparts });
+        get().logActivity("DELETE_SPAREPART", `Menghapus sparepart ID: ${id}`);
       },
       tambahMutasiStok: (mutasiData) =>
         set((state) => {

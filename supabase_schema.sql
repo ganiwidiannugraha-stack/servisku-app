@@ -84,6 +84,8 @@ CREATE TABLE orders (
     teknisi_id TEXT REFERENCES technicians(id) ON DELETE SET NULL,
     jenis_perangkat TEXT NOT NULL,
     merk_model TEXT,
+    no_seri TEXT,
+    kelengkapan TEXT[],
     keluhan TEXT NOT NULL,
     pemeriksaan_awal TEXT,
     hasil_diagnosa TEXT,
@@ -91,8 +93,12 @@ CREATE TABLE orders (
     biaya_jasa INTEGER,
     -- Simpan detail sparepart sebagai JSONB
     spareparts JSONB DEFAULT '[]'::jsonb NOT NULL,
+    -- Simpan detail jasa custom sebagai JSONB
+    jasa JSONB DEFAULT '[]'::jsonb NOT NULL,
     -- Log Riwayat Perubahan Status
     history JSONB DEFAULT '[]'::jsonb NOT NULL,
+    catatan_internal TEXT,
+    prioritas TEXT,
     status TEXT NOT NULL CHECK (
         status IN (
             'MASUK',

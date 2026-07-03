@@ -21,7 +21,7 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
   const dropdownRef = useRef<HTMLDivElement>(null);
   const notifRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
-  const { orders, customers, spareparts, settings, userName, userRole } = useStore();
+  const { orders, customers, spareparts, settings, userName, userRole, isSidebarCollapsed, toggleSidebar } = useStore();
 
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     setQuery(e.target.value);
@@ -77,6 +77,14 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
         <button 
           onClick={onMenuClick}
           className="p-2 mr-4 text-gray-500 rounded-lg lg:hidden hover:bg-gray-100"
+        >
+          <Menu size={20} />
+        </button>
+        {/* Toggle Sidebar Desktop */}
+        <button 
+          onClick={toggleSidebar}
+          className="hidden lg:flex p-2 mr-4 text-gray-500 rounded-xl hover:bg-gray-50 border border-gray-100 hover:text-gray-900 transition-colors"
+          title={isSidebarCollapsed ? "Perluas Sidebar" : "Ciutkan Sidebar"}
         >
           <Menu size={20} />
         </button>

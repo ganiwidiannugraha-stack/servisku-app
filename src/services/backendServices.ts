@@ -339,6 +339,11 @@ export async function updateSparepartDB(id: string, updates: Partial<Sparepart>)
   if (error) throw error;
 }
 
+export async function deleteSparepartDB(id: string) {
+  const { error } = await supabase.from("spareparts").delete().eq("id", id);
+  if (error) throw error;
+}
+
 export async function getTechnicians() {
   const { data, error } = await supabase.from("technicians").select("*");
   if (error) throw error;
