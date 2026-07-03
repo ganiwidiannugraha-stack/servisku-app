@@ -201,7 +201,52 @@ export const Laporan: React.FC = () => {
 
     const problematicOrders = filteredOrders.filter(o => o.status === 'BATAL' || o.status === 'DIAGNOSA');
 
-    return { masuk, selesai, batal, tingkatKeberhasilan: masuk > 0 ? ((selesai / masuk) * 100).toFixed(1) : 0, pieData, problematicOrders, avgDays };
+    const bottleneckCounts = {
+      DIAGNOSA: 0,
+      MENUNGGU_SPAREPART: 0,
+      PROSES: 0,
+      SIAP_DIAMBIL: 0,
+    };
+    filteredOrders.forEach(o => {
+      if (o.status === 'DIAGNOSA') bottleneckCounts.DIAGNOSA++;
+      if (o.status === 'MENUNGGU_SPAREPART') bottleneckCounts.MENUNGGU_SPAREPART++;
+      if (o.status === 'PROSES') bottleneckCounts.PROSES++;
+      if (o.status === 'SIAP_DIAMBIL') bottleneckCounts.SIAP_DIAMBIL++;
+    });
+
+    const jamSibukCounts: Record<string, number> = {
+      '08:00-11:59': 0,
+      '12:00-14:59': 0,
+      '15:00-17:59': 0,
+      '18:00+': 0
+    };
+    filteredOrders.forEach(o => {
+      const date = new Date(o.tanggalMasuk);
+      if (!isNaN(date.getTime())) {
+        const hour = date.getHours();
+        if (hour >= 8 && hour < 12) jamSibukCounts['08:00-11:59']++;
+        else if (hour >= 12 && hour < 15) jamSibukCounts['12:00-14:59']++;
+        else if (hour >= 15 && hour < 18) jamSibukCounts['15:00-17:59']++;
+        else jamSibukCounts['18:00+']++;
+      }
+    });
+    
+    const chartJamSibuk = Object.entries(jamSibukCounts).map(([jam, count]) => ({
+      name: jam,
+      Order: count
+    }));
+
+    return { 
+      masuk, 
+      selesai, 
+      batal, 
+      tingkatKeberhasilan: masuk > 0 ? ((selesai / masuk) * 100).toFixed(1) : 0, 
+      pieData, 
+      problematicOrders, 
+      avgDays,
+      bottleneckCounts,
+      chartJamSibuk
+    };
   }, [filteredOrders]);
 
   // 3. INVENTORY METRICS & CHART
@@ -1005,6 +1050,49 @@ export const Laporan: React.FC = () => {
                         )}
                       </tbody>
                     </table>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+                {/* Bottleneck Analysis */}
+                <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                  <h3 className="font-bold text-gray-900 mb-6 flex items-center gap-2">
+                    <AlertTriangle size={18} className="text-orange-500" /> Analisis Titik Macet (Bottleneck)
+                  </h3>
+                  <div className="h-64">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={[
+                        { name: 'Diagnosa', count: opsData.bottleneckCounts.DIAGNOSA },
+                        { name: 'Menunggu Part', count: opsData.bottleneckCounts.MENUNGGU_SPAREPART },
+                        { name: 'Proses', count: opsData.bottleneckCounts.PROSES },
+                        { name: 'Siap Diambil', count: opsData.bottleneckCounts.SIAP_DIAMBIL },
+                      ]} layout="vertical" margin={{ top: 5, right: 20, bottom: 5, left: 20 }}>
+                        <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+                        <XAxis type="number" fontSize={12} tickLine={false} axisLine={false} />
+                        <YAxis type="category" dataKey="name" fontSize={12} tickLine={false} axisLine={false} width={100} />
+                        <Tooltip />
+                        <Bar dataKey="count" fill="#f59e0b" radius={[0, 4, 4, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+                
+                {/* Heatmap / Jam Sibuk */}
+                <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                  <h3 className="font-bold text-gray-900 mb-6 flex items-center gap-2">
+                    <Clock size={18} className="text-blue-500" /> Analisis Jam Sibuk Masuk
+                  </h3>
+                  <div className="h-64">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={opsData.chartJamSibuk} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                        <XAxis dataKey="name" fontSize={12} tickLine={false} axisLine={false} />
+                        <YAxis fontSize={12} tickLine={false} axisLine={false} />
+                        <Tooltip />
+                        <Area type="monotone" dataKey="Order" stroke="#3b82f6" fill="#bfdbfe" />
+                      </AreaChart>
+                    </ResponsiveContainer>
                   </div>
                 </div>
               </div>
