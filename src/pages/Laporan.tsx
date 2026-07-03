@@ -955,10 +955,10 @@ export const Laporan: React.FC = () => {
                   <div className="h-64">
                     {invData.chartData.length > 0 ? (
                       <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={invData.chartData} layout="vertical" margin={{ top: 5, right: 20, bottom: 5, left: 30 }}>
+                        <BarChart data={invData.chartData} layout="vertical" margin={{ top: 5, right: 20, bottom: 5, left: 140 }}>
                           <CartesianGrid strokeDasharray="3 3" horizontal={false} />
                           <XAxis type="number" fontSize={12} tickLine={false} axisLine={false} />
-                          <YAxis dataKey="name" type="category" fontSize={12} tickLine={false} axisLine={false} />
+                          <YAxis dataKey="name" type="category" width={130} fontSize={11} tickLine={false} axisLine={false} />
                           <Tooltip cursor={{fill: 'transparent'}} />
                           <Bar dataKey="Terjual" fill="#10b981" radius={[0, 4, 4, 0]} barSize={24} />
                         </BarChart>
