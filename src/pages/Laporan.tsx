@@ -528,7 +528,7 @@ export const Laporan: React.FC = () => {
           ['Laba Bersih',        `Rp ${financeData.labaBersih.toLocaleString('id-ID')}`],
           ['Margin Laba',        `${margin}%`],
           ['Piutang / Kasbon',   `Rp ${financeData.piutang.toLocaleString('id-ID')}`],
-          ['Proyeksi (Omset+Piutang)', `Rp ${financeData.proyeksiPendapatan.toLocaleString('id-ID')}`],
+          ['Proyeksi (Omset+Piutang)', `Rp ${financeData.proyeksiBulanDepan.toLocaleString('id-ID')}`],
         ],
         theme: 'striped',
         headStyles: { fillColor: [59, 130, 246] },
@@ -826,7 +826,6 @@ export const Laporan: React.FC = () => {
       doc.text('4. Kinerja Teknisi', 14, yPos);
       
       const sdmBody = techData.techStats.map(t => {
-        const rasio = t.assigned > 0 ? ((t.finished / t.assigned) * 100).toFixed(0) : '0';
         return [
           t.name,
           t.assigned,
