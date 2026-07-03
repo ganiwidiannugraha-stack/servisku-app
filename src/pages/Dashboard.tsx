@@ -4,6 +4,7 @@ import { useStore } from '../store';
 import { LineChart, Line, BarChart, Bar, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { AlertTriangle, Calendar, RefreshCcw, PackageCheck, Banknote, Eye, Wrench, CheckCircle, Search, Clock, Users, Phone, MessageCircle, Plus, Package, Wallet, User } from 'lucide-react';
 import { motion } from 'framer-motion';
+import toast from 'react-hot-toast';
 import type { Variants } from 'framer-motion';
 
 const formatDateShort = (d: Date) => d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
@@ -17,7 +18,7 @@ const calculateDays = (dateStr: string) => {
 
 export const Dashboard: React.FC = () => {
   const navigate = useNavigate();
-  const { orders, spareparts, customers, userRole, userId, users, technicians } = useStore();
+  const { orders, spareparts, customers, userRole, userId, users, technicians, updateOrderStatus } = useStore();
   const currentUser = users.find(u => u.id === userId);
   const currentTech = currentUser ? technicians.find(t => t.name === currentUser.name) : undefined;
   const technicianId = currentTech?.id;
@@ -418,7 +419,18 @@ export const Dashboard: React.FC = () => {
                                   onClick={() => navigate(`/order/${order.id}/bayar`)}
                                   className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-1.5 px-3 rounded-lg transition-colors shadow-sm inline-flex items-center gap-1.5 text-xs w-full justify-center border-none"
                                 >
-                                  <Wallet size={14} /> Bayar & Ambil
+                                  <Wallet size={14} /> Pembayaran
+                                </button>
+                                <button 
+                                  onClick={() => {
+                                    if(window.confirm('Tandai perangkat ini sudah diserahkan ke pelanggan?')) {
+                                      updateOrderStatus(order.id, 'DIAMBIL');
+                                      toast.success('Perangkat berhasil diserahkan!');
+                                    }
+                                  }}
+                                  className="bg-emerald-500 hover:bg-emerald-600 text-white font-medium py-1.5 px-3 rounded-lg transition-colors shadow-sm inline-flex items-center gap-1.5 text-xs w-full justify-center border-none"
+                                >
+                                  <CheckCircle size={14} /> Tandai Diambil
                                 </button>
                             </div>
                           </td>
