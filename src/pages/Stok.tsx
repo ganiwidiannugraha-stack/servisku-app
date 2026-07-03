@@ -202,7 +202,7 @@ export const Stok: React.FC = () => {
                   <th className="px-6 py-4 text-right">Harga Jual</th>
                   <th className="px-6 py-4 text-center">Keuntungan</th>
                   <th className="px-6 py-4">Status Stok</th>
-                  {['OWNER', 'INVENTORY', 'ADMIN'].includes(userRole || '') && <th className="px-6 py-4 text-center">Aksi Mutasi</th>}
+                  {['OWNER', 'INVENTORY'].includes(userRole || '') && <th className="px-6 py-4 text-center">Aksi Mutasi</th>}
                 </tr>
               </thead>
               <tbody>

@@ -294,7 +294,7 @@ export const Pengaturan: React.FC = () => {
             </motion.div>
             )}
 
-            {activeTab === 'toko' && ['OWNER', 'ADMIN'].includes(userRole || '') && (
+            {activeTab === 'toko' && ['OWNER'].includes(userRole || '') && (
               <motion.form key="toko" onSubmit={handleSaveToko} variants={tabVariants} initial="hidden" animate="show" exit="exit" className="space-y-6">
               <div className="border-b border-gray-100 pb-4">
                 <h2 className="text-xl font-bold text-[#1e3a8a]">Informasi Bengkel</h2>
@@ -326,7 +326,7 @@ export const Pengaturan: React.FC = () => {
             </motion.form>
             )}
 
-            {activeTab === 'notifikasi' && ['OWNER', 'ADMIN'].includes(userRole || '') && (
+            {activeTab === 'notifikasi' && ['OWNER'].includes(userRole || '') && (
               <motion.div key="notifikasi" variants={tabVariants} initial="hidden" animate="show" exit="exit" className="space-y-6">
               <div className="border-b border-gray-100 pb-4">
                 <h2 className="text-xl font-bold text-[#1e3a8a]">Notifikasi & Fitur Tambahan</h2>
@@ -474,7 +474,7 @@ export const Pengaturan: React.FC = () => {
             </motion.div>
             )}
 
-            {activeTab === 'log' && ['OWNER', 'ADMIN'].includes(userRole || '') && (
+            {activeTab === 'log' && ['OWNER'].includes(userRole || '') && (
               <motion.div key="log" variants={tabVariants} initial="hidden" animate="show" exit="exit" className="space-y-6">
               <div className="flex justify-between items-start border-b border-gray-100 pb-4">
                 <div>

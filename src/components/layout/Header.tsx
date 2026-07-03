@@ -76,14 +76,14 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
       <div className="flex items-center flex-1">
         <button 
           onClick={onMenuClick}
-          className="p-2 mr-4 text-gray-500 rounded-lg lg:hidden hover:bg-gray-100"
+          className="p-2 mr-4 text-gray-500 rounded-lg md:hidden hover:bg-gray-100"
         >
           <Menu size={20} />
         </button>
         {/* Toggle Sidebar Desktop */}
         <button 
           onClick={toggleSidebar}
-          className="hidden lg:flex p-2 mr-4 text-gray-500 rounded-xl hover:bg-gray-50 border border-gray-100 hover:text-gray-900 transition-colors"
+          className="hidden md:flex p-2 mr-4 text-gray-500 rounded-xl hover:bg-gray-50 border border-gray-100 hover:text-gray-900 transition-colors"
           title={isSidebarCollapsed ? "Perluas Sidebar" : "Ciutkan Sidebar"}
         >
           <Menu size={20} />

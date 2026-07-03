@@ -17,13 +17,13 @@ export const PageWrapper: React.FC = () => {
       {/* Mobile Sidebar Overlay */}
       {isMobileMenuOpen && (
         <div 
-          className="fixed inset-0 z-40 bg-gray-600 bg-opacity-75 lg:hidden"
+          className="fixed inset-0 z-40 bg-gray-600 bg-opacity-75 md:hidden"
           onClick={() => setIsMobileMenuOpen(false)}
         ></div>
       )}
 
       {/* Sidebar for mobile & desktop */}
-      <div className={`print:hidden fixed inset-y-0 left-0 z-50 flex-shrink-0 w-64 transform bg-white transition-all duration-300 ease-in-out lg:static lg:translate-x-0 ${isSidebarCollapsed ? 'lg:w-20' : 'lg:w-64'} ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+      <div className={`print:hidden fixed inset-y-0 left-0 z-50 flex-shrink-0 w-64 transform bg-white transition-all duration-300 ease-in-out md:static md:translate-x-0 ${isSidebarCollapsed ? 'md:w-20' : 'md:w-64'} ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <Sidebar onNavigate={() => setIsMobileMenuOpen(false)} />
       </div>
 
