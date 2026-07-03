@@ -196,6 +196,20 @@ export const OrderDetail: React.FC = () => {
   const [releaseReason, setReleaseReason] = useState('');
   const [showAllPastOrders, setShowAllPastOrders] = useState(false);
 
+  const [showFAB, setShowFAB] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      if (window.scrollY > 300) {
+        setShowFAB(true);
+      } else {
+        setShowFAB(false);
+      }
+    };
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
   const order = orders.find(o => o.id === id);
   const customer = customers.find(c => c.id === order?.pelangganId);
   
@@ -1233,6 +1247,17 @@ export const OrderDetail: React.FC = () => {
           </div>
         </div>
       </Modal>
+
+      {/* Floating Action Button untuk Update Status */}
+      {!['DIAMBIL', 'BATAL_DIAMBIL'].includes(order.status) && (
+        <button
+          onClick={handleOpenUpdate}
+          className={`fixed bottom-8 right-8 z-50 bg-blue-600 hover:bg-blue-700 text-white px-5 py-3.5 rounded-full shadow-xl shadow-blue-500/40 flex items-center gap-2.5 font-bold transition-all duration-300 ${showFAB ? 'translate-y-0 opacity-100' : 'translate-y-12 opacity-0 pointer-events-none'}`}
+        >
+          <Edit2 size={18} />
+          <span>Update Status</span>
+        </button>
+      )}
     </div>
   );
 };
