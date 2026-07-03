@@ -32,15 +32,15 @@ const getStepIndex = (status: StatusOrder): number => {
   return 0;
 };
 
-const OrderStepper: React.FC<{ currentStatus: StatusOrder; orderDate: string }> = ({ currentStatus, orderDate }) => {
+const OrderStepper: React.FC<{ currentStatus: StatusOrder; orderDate: string; history?: any[] }> = ({ currentStatus, orderDate, history = [] }) => {
   const steps = [
-    { label: 'Diterima' },
-    { label: 'Diagnosa' },
-    { label: 'Tunggu Part' },
-    { label: 'Perbaikan' },
-    { label: 'Selesai' },
-    { label: 'Siap Diambil' },
-    { label: 'Diambil' }
+    { label: 'Diterima', code: 'MASUK' },
+    { label: 'Diagnosa', code: 'DIAGNOSA' },
+    { label: 'Tunggu Part', code: 'TUNGGU_PART' },
+    { label: 'Perbaikan', code: 'PROSES' },
+    { label: 'Selesai', code: 'SELESAI' },
+    { label: 'Siap Diambil', code: 'SIAP_DIAMBIL' },
+    { label: 'Diambil', code: 'DIAMBIL' }
   ];
   
   const currentIndex = getStepIndex(currentStatus);
@@ -60,10 +60,17 @@ const OrderStepper: React.FC<{ currentStatus: StatusOrder; orderDate: string }> 
             const isCompleted = index <= currentIndex;
             const isCurrent = index === currentIndex;
             const isLast = index === steps.length - 1;
+            let realDateString = '';
+            if (index === 0) {
+              realDateString = orderDate; // Step 'Diterima' pakai tanggalMasuk
+            } else {
+              const hist = history.find(h => h.status === step.code);
+              if (hist) realDateString = hist.date;
+            }
             
-            const d = new Date(orderDate);
-            d.setDate(d.getDate() + index);
-            const stepDate = d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+            const stepDate = realDateString 
+              ? new Date(realDateString).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })
+              : '';
             
             return (
               <React.Fragment key={index}>
@@ -600,7 +607,7 @@ export const OrderDetail: React.FC = () => {
           
           {/* Kolom Kiri (Utama) */}
           <div className="xl:col-span-2 space-y-6">
-            <OrderStepper currentStatus={order.status} orderDate={order.tanggalMasuk} />
+            <OrderStepper currentStatus={order.status} orderDate={order.tanggalMasuk} history={order.history} />
             
             {/* Top Row: Info Perangkat & Info Pelanggan (Separate Cards) */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
