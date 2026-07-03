@@ -577,49 +577,8 @@ export const OrderDetail: React.FC = () => {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 mb-6 items-start">
-          <div className="xl:col-span-2">
-            <OrderStepper currentStatus={order.status} orderDate={order.tanggalMasuk} />
-          </div>
-          <div className="xl:col-span-1">
-            {/* Timeline Status */}
-            <div className="bg-white border border-gray-100 rounded-2xl shadow-sm p-6 flex flex-col">
-              <h2 className="text-sm font-semibold text-gray-900 mb-6">Status Timeline</h2>
-              <div className="relative border-l-2 border-gray-100 ml-2.5 space-y-7 max-h-[300px] overflow-y-auto pr-2 hide-scrollbar">
-                
-                {/* Current Status & History */}
-                {(order.history || []).length > 0 ? (
-                  [...(order.history || [])]
-                    .filter((h, index, arr) => index === 0 || h.status !== arr[index - 1].status)
-                    .reverse().map((h, i) => (
-                    <div key={i} className="relative pl-6">
-                      <div className={`absolute w-3 h-3 rounded-full -left-[7px] top-1 ring-4 ring-white shadow-sm ${i === 0 ? 'bg-blue-600' : 'bg-gray-400'}`}></div>
-                      <h3 className={`text-sm font-bold ${i === 0 ? 'text-gray-900' : 'text-gray-600'}`}>{h.status}</h3>
-                      <p className="text-xs text-gray-500 mt-1">
-                        {new Date(h.date).toLocaleString('id-ID', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                        <br/><span className="text-[10px] text-gray-400">Oleh: {h.by}</span>
-                      </p>
-                    </div>
-                  ))
-                ) : (
-                  <div className="relative pl-6">
-                    <div className="absolute w-3 h-3 bg-blue-600 rounded-full -left-[7px] top-1 ring-4 ring-white shadow-sm"></div>
-                    <h3 className="text-sm font-bold text-gray-900">{order.status}</h3>
-                    <p className="text-xs text-gray-500 mt-1">Status Saat Ini</p>
-                  </div>
-                )}
-
-                {/* Status Masuk (Bottom) */}
-                <div className="relative pl-6">
-                  <div className="absolute w-3 h-3 bg-gray-300 rounded-full -left-[7px] top-1 ring-4 ring-white"></div>
-                  <h3 className="text-sm font-bold text-gray-500">MASUK</h3>
-                  <p className="text-xs text-gray-400 mt-1">{new Date(order.tanggalMasuk).toLocaleString('id-ID', {
-                    day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
-                  })}</p>
-                </div>
-              </div>
-            </div>
-          </div>
+        <div className="mb-6">
+          <OrderStepper currentStatus={order.status} orderDate={order.tanggalMasuk} />
         </div>
 
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
@@ -907,6 +866,47 @@ export const OrderDetail: React.FC = () => {
             </div>
 
 
+
+          </div>
+
+          <div className="xl:col-span-1 space-y-6">
+            {/* Timeline Status */}
+            <div className="bg-white border border-gray-100 rounded-2xl shadow-sm p-6 flex flex-col">
+              <h2 className="text-sm font-semibold text-gray-900 mb-6">Status Timeline</h2>
+              <div className="relative border-l-2 border-gray-100 ml-2.5 space-y-7 max-h-[300px] overflow-y-auto pr-2 hide-scrollbar">
+                
+                {/* Current Status & History */}
+                {(order.history || []).length > 0 ? (
+                  [...(order.history || [])]
+                    .filter((h, index, arr) => index === 0 || h.status !== arr[index - 1].status)
+                    .reverse().map((h, i) => (
+                    <div key={i} className="relative pl-6">
+                      <div className={`absolute w-3 h-3 rounded-full -left-[7px] top-1 ring-4 ring-white shadow-sm ${i === 0 ? 'bg-blue-600' : 'bg-gray-400'}`}></div>
+                      <h3 className={`text-sm font-bold ${i === 0 ? 'text-gray-900' : 'text-gray-600'}`}>{h.status}</h3>
+                      <p className="text-xs text-gray-500 mt-1">
+                        {new Date(h.date).toLocaleString('id-ID', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                        <br/><span className="text-[10px] text-gray-400">Oleh: {h.by}</span>
+                      </p>
+                    </div>
+                  ))
+                ) : (
+                  <div className="relative pl-6">
+                    <div className="absolute w-3 h-3 bg-blue-600 rounded-full -left-[7px] top-1 ring-4 ring-white shadow-sm"></div>
+                    <h3 className="text-sm font-bold text-gray-900">{order.status}</h3>
+                    <p className="text-xs text-gray-500 mt-1">Status Saat Ini</p>
+                  </div>
+                )}
+
+                {/* Status Masuk (Bottom) */}
+                <div className="relative pl-6">
+                  <div className="absolute w-3 h-3 bg-gray-300 rounded-full -left-[7px] top-1 ring-4 ring-white"></div>
+                  <h3 className="text-sm font-bold text-gray-500">MASUK</h3>
+                  <p className="text-xs text-gray-400 mt-1">{new Date(order.tanggalMasuk).toLocaleString('id-ID', {
+                    day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
+                  })}</p>
+                </div>
+              </div>
+            </div>
 
             {/* Riwayat Servis Pelanggan */}
             <div className="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden">
