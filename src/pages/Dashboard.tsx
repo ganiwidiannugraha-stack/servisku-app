@@ -688,7 +688,6 @@ export const Dashboard: React.FC = () => {
                 </tbody>
               </table>
             </div>
-            </div>
           </motion.div>
 
           {/* Asset Distribution Chart */}
