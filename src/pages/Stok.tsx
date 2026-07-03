@@ -263,7 +263,7 @@ export const Stok: React.FC = () => {
                             >
                               - OUT
                             </button>
-                            {['OWNER', 'ADMIN'].includes(userRole || '') && (
+                            {['OWNER', 'INVENTORY'].includes(userRole || '') && (
                               <button 
                                 onClick={() => handleDeleteSparepart(item.id)}
                                 className="bg-red-50 hover:bg-red-100 text-red-600 font-semibold p-1.5 rounded-lg border border-red-100 transition-colors"
