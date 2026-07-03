@@ -312,15 +312,33 @@ export const Laporan: React.FC = () => {
     const techStats = technicians.map(t => {
       const tOrders = filteredOrders.filter(o => o.teknisiId === t.id);
       const finishedOrders = tOrders.filter(o => o.status === 'SELESAI' || o.status === 'DIAMBIL');
+      const batalOrders = tOrders.filter(o => o.status === 'BATAL');
       const finished = finishedOrders.length;
+      const batalCount = batalOrders.length;
+      
+      let totalDays = 0;
+      finishedOrders.forEach(o => {
+        // Karena tidak ada timestamp SELESAI asli, kita pakai estimasiSelesai (atau fallback 2 hari)
+        const start = new Date(o.tanggalMasuk).getTime();
+        const end = o.estimasiSelesai ? new Date(o.estimasiSelesai).getTime() : start + (2 * 24 * 60 * 60 * 1000);
+        let days = (end - start) / (1000 * 3600 * 24);
+        if (days < 0.1) days = 0.5;
+        totalDays += days;
+      });
+      const avgDays = finished > 0 ? (totalDays / finished) : 0;
+      
+      // Quality Rate: Persentase servis berhasil (Selesai dibagi Total yg di-assign yg bukan batal krn teknisi, tp utk simpel (Selesai / Assign)*100)
+      const qualityRate = tOrders.length > 0 ? ((finished / tOrders.length) * 100) : 0;
+
       const pendapatanJasa = finishedOrders.reduce((sum, o) => sum + (o.biayaJasa || 0) + (o.jasa || []).reduce((jsum, j) => jsum + j.harga, 0), 0);
-      return { ...t, assigned: tOrders.length, finished, pendapatanJasa };
+      return { ...t, assigned: tOrders.length, finished, batalCount, avgDays, qualityRate, pendapatanJasa };
     }).sort((a, b) => b.finished - a.finished);
 
     const chartData = techStats.map(t => ({
       name: t.name.split(' ')[0],
       Assigned: t.assigned,
-      Selesai: t.finished
+      Selesai: t.finished,
+      'Quality Rate': parseFloat(t.qualityRate.toFixed(1))
     }));
 
     return { techStats, chartData };
@@ -1308,31 +1326,35 @@ export const Laporan: React.FC = () => {
               </div>
 
               <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-                <h3 className="font-bold text-gray-900 mb-4">Leaderboard Teknisi</h3>
+                <h3 className="font-bold text-gray-900 mb-4">Leaderboard & Kinerja Teknisi</h3>
                 <div className="space-y-4">
                   {techData.techStats.map((t, i) => (
-                    <div key={t.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors">
+                    <div key={t.id} className="flex flex-col xl:flex-row xl:items-center justify-between p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors gap-4">
                       <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold">
+                        <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold shrink-0">
                           {i + 1}
                         </div>
                         <div>
                           <p className="font-bold text-gray-900">{t.name}</p>
-                          <p className="text-xs text-gray-500">Pekerjaan Aktif: {t.jobs}</p>
+                          <p className="text-xs text-gray-500">Aktif: {t.jobs} | Batal: {t.batalCount}</p>
                         </div>
                       </div>
-                      <div className="flex gap-4 text-center text-sm">
-                        <div className="bg-white px-3 py-1 rounded shadow-sm border border-gray-100">
-                          <p className="font-bold text-gray-900">{t.rating}</p>
-                          <p className="text-gray-400 text-[10px] uppercase">Rating</p>
+                      <div className="flex flex-wrap gap-2 text-center text-sm justify-start xl:justify-end">
+                        <div className="bg-white px-3 py-1 rounded shadow-sm border border-gray-100 flex-1 xl:flex-none">
+                          <p className={`font-bold ${t.qualityRate >= 80 ? 'text-emerald-600' : 'text-amber-500'}`}>{t.qualityRate.toFixed(0)}%</p>
+                          <p className="text-gray-400 text-[10px] uppercase">Quality</p>
                         </div>
-                        <div className="bg-white px-3 py-1 rounded shadow-sm border border-gray-100 text-right">
-                          <p className="font-bold text-emerald-600">{t.finished}</p>
+                        <div className="bg-white px-3 py-1 rounded shadow-sm border border-gray-100 flex-1 xl:flex-none">
+                          <p className="font-bold text-gray-900">{t.avgDays.toFixed(1)} hr</p>
+                          <p className="text-gray-400 text-[10px] uppercase">SLA/Rata</p>
+                        </div>
+                        <div className="bg-white px-3 py-1 rounded shadow-sm border border-gray-100 flex-1 xl:flex-none text-right">
+                          <p className="font-bold text-gray-900">{t.finished}</p>
                           <p className="text-gray-400 text-[10px] uppercase">Selesai</p>
                         </div>
-                        <div className="bg-white px-3 py-1 rounded shadow-sm border border-gray-100 text-right">
+                        <div className="bg-white px-3 py-1 rounded shadow-sm border border-gray-100 flex-1 xl:flex-none text-right">
                           <p className="font-bold text-blue-600">Rp {(t as any).pendapatanJasa?.toLocaleString('id-ID') || 0}</p>
-                          <p className="text-gray-400 text-[10px] uppercase">Jasa Teknisi</p>
+                          <p className="text-gray-400 text-[10px] uppercase">Jasa</p>
                         </div>
                       </div>
                     </div>
