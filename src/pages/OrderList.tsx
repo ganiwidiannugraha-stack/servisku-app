@@ -23,7 +23,7 @@ export const OrderList: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
   const [dateFilter, setDateFilter] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
-  const ITEMS_PER_PAGE = 10;
+  const [itemsPerPage, setItemsPerPage] = useState(10);
 
   const getCustomer = (id: string) => customers.find(c => c.id === id);
   const getTechnician = (id: string) => technicians.find(t => t.id === id);
@@ -58,8 +58,8 @@ export const OrderList: React.FC = () => {
     return matchesSearch && matchesStatus && matchesDate && matchesTech;
   });
 
-  const totalPages = Math.ceil(filteredOrders.length / ITEMS_PER_PAGE);
-  const paginatedOrders = filteredOrders.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
+  const totalPages = Math.ceil(filteredOrders.length / itemsPerPage);
+  const paginatedOrders = filteredOrders.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -334,11 +334,27 @@ export const OrderList: React.FC = () => {
             </tbody>
           </table>
         </div>
-        {totalPages > 1 && (
-          <div className="px-6 py-5 border-t border-gray-100 flex items-center justify-between bg-white rounded-b-2xl">
-            <span className="text-sm text-gray-500 font-medium">
-              Halaman {currentPage} dari {totalPages} ({filteredOrders.length} total)
-            </span>
+        {totalPages > 0 && (
+          <div className="px-6 py-5 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-4 bg-white rounded-b-2xl">
+            <div className="flex items-center gap-3">
+              <span className="text-sm text-gray-500 font-medium">
+                Halaman {currentPage} dari {totalPages} ({filteredOrders.length} total)
+              </span>
+              <select 
+                className="text-sm border border-gray-200 rounded-lg px-2 py-1 text-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500/20 bg-gray-50/50"
+                value={itemsPerPage}
+                onChange={(e) => {
+                  setItemsPerPage(Number(e.target.value));
+                  setCurrentPage(1);
+                }}
+              >
+                <option value={5}>5 / halaman</option>
+                <option value={10}>10 / halaman</option>
+                <option value={15}>15 / halaman</option>
+                <option value={20}>20 / halaman</option>
+                <option value={50}>50 / halaman</option>
+              </select>
+            </div>
             <div className="flex items-center gap-1 border border-gray-200 rounded-full p-1 shadow-sm">
               <button 
                 disabled={currentPage === 1}

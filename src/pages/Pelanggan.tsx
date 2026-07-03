@@ -17,7 +17,7 @@ export const Pelanggan: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [dateFilter, setDateFilter] = useState('ALL');
   const [currentPage, setCurrentPage] = useState(1);
-  const ITEMS_PER_PAGE = 10;
+  const [itemsPerPage, setItemsPerPage] = useState(10);
 
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<'add'|'edit'>('add');
@@ -96,8 +96,8 @@ export const Pelanggan: React.FC = () => {
   });
 
 
-  const totalPages = Math.ceil(filteredCustomers.length / ITEMS_PER_PAGE);
-  const paginatedCustomers = filteredCustomers.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
+  const totalPages = Math.ceil(filteredCustomers.length / itemsPerPage);
+  const paginatedCustomers = filteredCustomers.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
   return (
     <div className="p-8 w-full min-h-screen pb-24 bg-[#f8fafc]">
@@ -421,11 +421,27 @@ export const Pelanggan: React.FC = () => {
             </div>
           </div>
 
-          {totalPages > 1 && (
-            <div className="px-6 py-4 mt-6 border border-gray-100 flex items-center justify-between bg-white rounded-2xl shadow-sm">
-              <span className="text-sm text-gray-500 font-medium">
-                Menampilkan {(currentPage - 1) * ITEMS_PER_PAGE + 1} - {Math.min(currentPage * ITEMS_PER_PAGE, filteredCustomers.length)} dari {filteredCustomers.length} data
-              </span>
+          {totalPages > 0 && (
+            <div className="px-6 py-4 mt-6 border border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-4 bg-white rounded-2xl shadow-sm">
+              <div className="flex items-center gap-3">
+                <span className="text-sm text-gray-500 font-medium">
+                  Menampilkan {filteredCustomers.length === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1} - {Math.min(currentPage * itemsPerPage, filteredCustomers.length)} dari {filteredCustomers.length} data
+                </span>
+                <select 
+                  className="text-sm border border-gray-200 rounded-lg px-2 py-1 text-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500/20 bg-gray-50/50"
+                  value={itemsPerPage}
+                  onChange={(e) => {
+                    setItemsPerPage(Number(e.target.value));
+                    setCurrentPage(1);
+                  }}
+                >
+                  <option value={5}>5 / halaman</option>
+                  <option value={10}>10 / halaman</option>
+                  <option value={15}>15 / halaman</option>
+                  <option value={20}>20 / halaman</option>
+                  <option value={50}>50 / halaman</option>
+                </select>
+              </div>
               <div className="flex items-center gap-1 border border-gray-200 rounded-full p-1 shadow-sm bg-white">
                 <button 
                   disabled={currentPage === 1}

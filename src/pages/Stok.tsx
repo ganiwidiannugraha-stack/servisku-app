@@ -12,7 +12,7 @@ export const Stok: React.FC = () => {
   const [dateFilter, setDateFilter] = useState('');
   const [kategoriFilter, setKategoriFilter] = useState('ALL');
   const [currentPage, setCurrentPage] = useState(1);
-  const ITEMS_PER_PAGE = 10;
+  const [itemsPerPage, setItemsPerPage] = useState(10);
   
   // Modals state
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -29,11 +29,11 @@ export const Stok: React.FC = () => {
   });
 
   const paginatedSpareparts = filteredSpareparts.slice(
-    (currentPage - 1) * ITEMS_PER_PAGE,
-    currentPage * ITEMS_PER_PAGE
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
   );
   
-  const totalPages = Math.ceil(filteredSpareparts.length / ITEMS_PER_PAGE);
+  const totalPages = Math.ceil(filteredSpareparts.length / itemsPerPage);
 
   // Reset page when search or filters change
   React.useEffect(() => {
@@ -270,11 +270,27 @@ export const Stok: React.FC = () => {
             </table>
 
             {/* Pagination Controls */}
-            {totalPages > 1 && (
-              <div className="px-6 py-4 border-t border-gray-100 flex items-center justify-between bg-gray-50/30">
-                <p className="text-sm text-gray-500">
-                  Menampilkan <span className="font-medium text-gray-900">{(currentPage - 1) * ITEMS_PER_PAGE + 1}</span> - <span className="font-medium text-gray-900">{Math.min(currentPage * ITEMS_PER_PAGE, filteredSpareparts.length)}</span> dari <span className="font-medium text-gray-900">{filteredSpareparts.length}</span> data
-                </p>
+            {totalPages > 0 && (
+            <div className="px-6 py-4 border-t border-gray-100 bg-gray-50/50 flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <span className="text-sm text-gray-500">
+                  Menampilkan <span className="font-medium text-gray-900">{filteredSpareparts.length === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1}</span> - <span className="font-medium text-gray-900">{Math.min(currentPage * itemsPerPage, filteredSpareparts.length)}</span> dari <span className="font-medium text-gray-900">{filteredSpareparts.length}</span> data
+                </span>
+                <select 
+                  className="text-sm border border-gray-200 rounded-lg px-2 py-1 text-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500/20 bg-white"
+                  value={itemsPerPage}
+                  onChange={(e) => {
+                    setItemsPerPage(Number(e.target.value));
+                    setCurrentPage(1);
+                  }}
+                >
+                  <option value={5}>5 / halaman</option>
+                  <option value={10}>10 / halaman</option>
+                  <option value={15}>15 / halaman</option>
+                  <option value={20}>20 / halaman</option>
+                  <option value={50}>50 / halaman</option>
+                </select>
+              </div>
                 <div className="flex items-center gap-1 border border-gray-200 rounded-full p-1 shadow-sm bg-white">
                   <button 
                     disabled={currentPage === 1}
