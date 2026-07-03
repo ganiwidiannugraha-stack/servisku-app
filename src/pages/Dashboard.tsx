@@ -7,6 +7,7 @@ import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
 import { Modal } from '../components/ui/Modal';
 import { Button } from '../components/ui/Button';
+import { Breadcrumb } from '../components/ui/Breadcrumb';
 import type { Variants } from 'framer-motion';
 
 const formatDateShort = (d: Date) => d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
@@ -20,7 +21,7 @@ const calculateDays = (dateStr: string) => {
 
 export const Dashboard: React.FC = () => {
   const navigate = useNavigate();
-  const { orders, spareparts, customers, userRole, userId, users, technicians, updateOrderStatus } = useStore();
+  const { orders, spareparts, customers, userRole, userId, users, technicians, updateOrderStatus, userName } = useStore();
   const currentUser = users.find(u => u.id === userId);
   const currentTech = currentUser ? technicians.find(t => t.name === currentUser.name) : undefined;
   const technicianId = currentTech?.id;
@@ -544,6 +545,134 @@ export const Dashboard: React.FC = () => {
           </div>
         </Modal>
 
+      </motion.div>
+    );
+  }
+
+  // ---------------------------------------------------------
+  // INVENTORY DASHBOARD LOGIC
+  // ---------------------------------------------------------
+  if (userRole === 'INVENTORY') {
+    const totalSparepartItems = spareparts.length;
+    const totalStockQty = spareparts.reduce((sum, sp) => sum + sp.stok, 0);
+    const totalAssetValue = spareparts.reduce((sum, sp) => sum + (sp.stok * sp.harga), 0);
+    const lowStockSpareparts = spareparts.filter(s => s.stok <= (s.minStok || 5));
+
+    return (
+      <motion.div 
+        className="p-8 w-full min-h-screen"
+        initial="hidden"
+        animate="visible"
+        variants={containerVariants}
+      >
+        <Breadcrumb items={[{ label: 'Dashboard' }]} />
+        <div className="mb-8">
+          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+            Halo, {userName?.split(' ')[0] || 'Tim Gudang'}! <span className="text-xl">📦</span>
+          </h1>
+          <p className="mt-1 text-gray-500 font-medium">Selamat datang di Ringkasan Inventaris ServisKu hari ini.</p>
+        </div>
+
+        {/* 4 Metric Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <motion.div variants={itemVariants} className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col justify-between hover:shadow-md transition-shadow">
+            <div className="flex justify-between items-start">
+              <span className="text-sm font-semibold text-gray-500">Total Jenis Sparepart</span>
+              <div className="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center text-blue-600"><Package size={16} /></div>
+            </div>
+            <h3 className="text-3xl font-bold text-gray-900 mt-4">{totalSparepartItems}</h3>
+          </motion.div>
+          
+          <motion.div variants={itemVariants} className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col justify-between hover:shadow-md transition-shadow">
+            <div className="flex justify-between items-start">
+              <span className="text-sm font-semibold text-gray-500">Total Kuantitas Stok</span>
+              <div className="w-8 h-8 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-600"><PackageCheck size={16} /></div>
+            </div>
+            <h3 className="text-3xl font-bold text-gray-900 mt-4">{formatRibuan(totalStockQty)} <span className="text-sm text-gray-500 font-medium">unit</span></h3>
+          </motion.div>
+          
+          <motion.div variants={itemVariants} className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col justify-between hover:shadow-md transition-shadow">
+            <div className="flex justify-between items-start">
+              <span className="text-sm font-semibold text-gray-500">Nilai Aset Stok</span>
+              <div className="w-8 h-8 rounded-full bg-green-50 flex items-center justify-center text-green-600"><Banknote size={16} /></div>
+            </div>
+            <h3 className="text-3xl font-bold text-gray-900 mt-4">Rp {formatRibuan(totalAssetValue)}</h3>
+          </motion.div>
+          
+          <motion.div variants={itemVariants} className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col justify-between hover:shadow-md transition-shadow cursor-pointer hover:bg-orange-50/30" onClick={() => navigate('/stok')}>
+            <div className="flex justify-between items-start">
+              <span className="text-sm font-semibold text-gray-500">Perlu Restock</span>
+              <div className="w-8 h-8 rounded-full bg-orange-50 flex items-center justify-center text-orange-600"><AlertTriangle size={16} /></div>
+            </div>
+            <h3 className="text-3xl font-bold text-orange-600 mt-4">{lowStockSpareparts.length}</h3>
+          </motion.div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <motion.div variants={itemVariants} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+            <div className="px-6 py-5 border-b border-gray-100 flex justify-between items-center bg-red-50/50">
+              <h2 className="font-bold text-red-900 flex items-center gap-2">
+                <AlertTriangle size={18} className="text-red-600" /> Peringatan Stok Tipis
+              </h2>
+              <button onClick={() => navigate('/stok')} className="text-sm font-semibold text-red-600 hover:text-red-700 transition-colors">Lihat Semua &rsaquo;</button>
+            </div>
+            <div className="p-0">
+              {lowStockSpareparts.length === 0 ? (
+                <div className="p-8 text-center text-gray-500">Stok semua sparepart dalam keadaan aman.</div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm text-left">
+                    <thead className="text-xs text-gray-500 uppercase bg-gray-50 border-b border-gray-100">
+                      <tr>
+                        <th className="px-6 py-4 font-semibold">NAMA SPAREPART</th>
+                        <th className="px-6 py-4 font-semibold">KATEGORI</th>
+                        <th className="px-6 py-4 font-semibold text-right">STOK TERSISA</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {lowStockSpareparts.slice(0, 8).map(sp => (
+                        <tr key={sp.id} className="border-b border-gray-50">
+                          <td className="px-6 py-4 font-bold text-gray-900">{sp.nama}</td>
+                          <td className="px-6 py-4 text-gray-600">{sp.kategori}</td>
+                          <td className="px-6 py-4 text-right">
+                            <span className="inline-block px-3 py-1 bg-red-100 text-red-700 font-bold rounded-full text-xs">{sp.stok} unit</span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </motion.div>
+
+          <motion.div variants={itemVariants} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex flex-col">
+            <div className="px-6 py-5 border-b border-gray-100 flex justify-between items-center">
+              <h2 className="font-bold text-gray-900">Daftar Sparepart Teratas</h2>
+              <button onClick={() => navigate('/stok')} className="text-sm font-semibold text-blue-600 hover:text-blue-700 transition-colors">Lihat Semua &rsaquo;</button>
+            </div>
+            <div className="p-0 flex-1 overflow-x-auto">
+              <table className="w-full text-sm text-left">
+                <thead className="text-xs text-gray-500 uppercase bg-gray-50 border-b border-gray-100">
+                  <tr>
+                    <th className="px-6 py-4 font-semibold">NAMA SPAREPART</th>
+                    <th className="px-6 py-4 font-semibold">KATEGORI</th>
+                    <th className="px-6 py-4 font-semibold text-right">STOK</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {spareparts.slice(-8).reverse().map(sp => (
+                    <tr key={sp.id} className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors">
+                      <td className="px-6 py-4 font-bold text-gray-900 truncate max-w-[200px]">{sp.nama}</td>
+                      <td className="px-6 py-4 text-gray-600">{sp.kategori}</td>
+                      <td className="px-6 py-4 text-right font-medium">{sp.stok} unit</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </motion.div>
+        </div>
       </motion.div>
     );
   }
