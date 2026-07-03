@@ -282,7 +282,7 @@ const mapSettings = (row: SettingsRow): Settings => ({
 
 
 export async function getCustomers() {
-  const { data, error } = await supabase.from("customers").select("*");
+  const { data, error } = await supabase.from("customers").select("*").order("created_at", { ascending: false });
   if (error) throw error;
   return (data || []).map((row) => mapCustomer(row as CustomerRow));
 }
@@ -322,7 +322,7 @@ export async function deleteCustomerDB(id: string) {
 }
 
 export async function getSpareparts() {
-  const { data, error } = await supabase.from("spareparts").select("*");
+  const { data, error } = await supabase.from("spareparts").select("*").order("created_at", { ascending: false });
   if (error) throw error;
   return (data || []).map((row) => mapSparepart(row as SparepartRow));
 }
@@ -354,7 +354,7 @@ export async function deleteSparepartDB(id: string) {
 }
 
 export async function getTechnicians() {
-  const { data, error } = await supabase.from("technicians").select("*");
+  const { data, error } = await supabase.from("technicians").select("*").order("created_at", { ascending: false });
   if (error) throw error;
   return (data || []).map((row) => mapTechnician(row as TechnicianRow));
 }
@@ -372,7 +372,7 @@ export async function updateTechnicianDB(id: string, updates: Partial<Technician
 }
 
 export async function getOrders() {
-  const { data, error } = await supabase.from("orders").select("*");
+  const { data, error } = await supabase.from("orders").select("*").order("tanggal_masuk", { ascending: false });
   if (error) throw error;
   return (data || []).map((row) => mapOrder(row as OrderRow));
 }
@@ -415,7 +415,7 @@ export async function updateOrderStatusDB(id: string, status: StatusOrder) {
 }
 
 export async function getMutasiStok() {
-  const { data, error } = await supabase.from("mutasi_stok").select("*");
+  const { data, error } = await supabase.from("mutasi_stok").select("*").order("tanggal", { ascending: false });
   if (error) throw error;
   return (data || []).map((row) => mapMutasi(row as MutasiRow));
 }
