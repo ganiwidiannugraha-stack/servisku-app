@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Navigate } from 'react-router-dom';
 import { useStore } from '../store';
 import { Button } from '../components/ui/Button';
@@ -41,6 +41,20 @@ export const NewOrder: React.FC = () => {
     prioritas: 'NORMAL' as 'NORMAL' | 'HIGH' | 'URGENT',
   });
 
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+        e.preventDefault();
+        handleSubmit(e);
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formData, isSubmitting]);
+
   if (userRole === 'TEKNISI') {
     return <Navigate to="/order" replace />;
   }
@@ -53,8 +67,23 @@ export const NewOrder: React.FC = () => {
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (e?: React.FormEvent | KeyboardEvent) => {
+    e?.preventDefault();
+    if (isSubmitting) return;
+
+    // Validation
+    const errors: Record<string, string> = {};
+    if (!formData.namaPelanggan.trim()) errors.namaPelanggan = 'Nama pelanggan wajib diisi';
+    if (!formData.noHpPelanggan.trim()) errors.noHpPelanggan = 'No HP wajib diisi';
+    if (!formData.jenisPerangkat.trim()) errors.jenisPerangkat = 'Jenis perangkat wajib diisi';
+    if (!formData.keluhan.trim()) errors.keluhan = 'Keluhan wajib diisi';
+
+    if (Object.keys(errors).length > 0) {
+      setFormErrors(errors);
+      toast.error('Mohon lengkapi data yang wajib diisi');
+      return;
+    }
+    setFormErrors({});
     setIsSubmitting(true);
     
     let pelangganId = '';
@@ -174,6 +203,7 @@ export const NewOrder: React.FC = () => {
                 type="tel"
                 placeholder="Mis: 081234567890"
                 value={formData.noHpPelanggan}
+                className={formErrors.noHpPelanggan ? 'border-red-500 ring-1 ring-red-500' : ''}
                 onChange={(e) => {
                   const val = e.target.value.replace(/\D/g, '');
                   setFormData({ ...formData, noHpPelanggan: val });
@@ -216,11 +246,12 @@ export const NewOrder: React.FC = () => {
           <div className="p-6">
             <h2 className="text-sm font-medium text-gray-500 uppercase tracking-wide mb-4">Data Perangkat</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+
               <div>
                 <label className="block mb-1 text-sm font-medium text-gray-700">Jenis Perangkat <span className="text-red-500">*</span></label>
                 <select
                   required
-                  className="w-full py-2 px-3 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent bg-white"
+                  className={`w-full py-2 px-3 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent bg-white ${formErrors.jenisPerangkat ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-300'}`}
                   value={formData.jenisPerangkat}
                   onChange={(e) => setFormData({ ...formData, jenisPerangkat: e.target.value })}
                 >
@@ -301,7 +332,7 @@ export const NewOrder: React.FC = () => {
                   required
                   minLength={10}
                   rows={3}
-                  className="w-full py-2 px-3 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                  className={`w-full py-2 px-3 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent ${formErrors.keluhan ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-300'}`}
                   placeholder="Contoh: Laptop tidak bisa menyala, layar bergaris..."
                   value={formData.keluhan}
                   onChange={(e) => setFormData({ ...formData, keluhan: e.target.value })}

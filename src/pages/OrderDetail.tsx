@@ -408,6 +408,7 @@ export const OrderDetail: React.FC = () => {
       }
     }
 
+    const oldStatus = order.status;
     updateOrderStatus(order.id, newStatus);
     
     if (statusNote) {
@@ -416,8 +417,24 @@ export const OrderDetail: React.FC = () => {
       }
     }
 
-    toast.success(`Status berhasil diperbarui ke ${newStatus}`);
-    
+    toast((t) => (
+      <div className="flex items-center gap-3">
+        <div>
+          <p className="text-sm font-medium text-gray-900">Status diubah ke {newStatus}</p>
+        </div>
+        <button
+          onClick={() => {
+            updateOrderStatus(order.id, oldStatus);
+            toast.dismiss(t.id);
+            toast.success(`Dibatalkan! Kembali ke ${oldStatus}`);
+          }}
+          className="text-xs bg-gray-100 hover:bg-gray-200 text-gray-800 px-3 py-1.5 rounded-lg font-medium transition-colors border border-gray-200"
+        >
+          Undo
+        </button>
+      </div>
+    ), { duration: 5000 });
+
     if (sendWA) {
       const msg = `Halo ${customer.nama}, status servis Anda (${order.noServis}) saat ini adalah: *${newStatus}*.\n\nCatatan:\n${statusNote || '-'}\n\nTerima kasih — ITC Computer.`;
       setTimeout(() => {

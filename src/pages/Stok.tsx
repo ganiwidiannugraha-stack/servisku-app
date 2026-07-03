@@ -5,10 +5,15 @@ import { Button } from '../components/ui/Button';
 import { Plus, Search, Filter, AlertTriangle, Wallet, Calendar, Trash2 } from 'lucide-react';
 import { Breadcrumb } from '../components/ui/Breadcrumb';
 import { EmptyState } from '../components/ui/EmptyState';
+import { Modal } from '../components/ui/Modal';
+import { toast } from 'react-hot-toast';
 
 export const Stok: React.FC = () => {
   const { spareparts, mutasiStok, addSparepart, deleteSparepart, tambahMutasiStok, userRole } = useStore();
   const [searchTerm, setSearchTerm] = useState('');
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [sparepartToDelete, setSparepartToDelete] = useState<string | null>(null);
+
   const [dateFilter, setDateFilter] = useState('');
   const [kategoriFilter, setKategoriFilter] = useState('ALL');
   const [currentPage, setCurrentPage] = useState(1);
@@ -54,14 +59,22 @@ export const Stok: React.FC = () => {
     setIsMutasiModalOpen(true);
   };
 
-  const handleDeleteSparepart = async (id: string) => {
-    if (window.confirm("Apakah Anda yakin ingin menghapus sparepart ini dari katalog? Semua data mutasi untuk barang ini akan ikut terhapus.")) {
+  const handleDeleteSparepart = (id: string) => {
+    setSparepartToDelete(id);
+    setIsDeleteModalOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (sparepartToDelete) {
       try {
-        await deleteSparepart(id);
-      } catch (err) {
-        console.error("Gagal menghapus sparepart:", err);
+        await deleteSparepart(sparepartToDelete);
+        toast.success("Sparepart berhasil dihapus.");
+      } catch {
+        toast.error("Gagal menghapus sparepart. Cek koneksi Anda.");
       }
     }
+    setIsDeleteModalOpen(false);
+    setSparepartToDelete(null);
   };
 
   return (
@@ -501,6 +514,41 @@ export const Stok: React.FC = () => {
           </div>
         </div>
       )}
+      {/* Modal Hapus Sparepart */}
+      <Modal
+        isOpen={isDeleteModalOpen}
+        onClose={() => {
+          setIsDeleteModalOpen(false);
+          setSparepartToDelete(null);
+        }}
+        title="Hapus Sparepart"
+        maxWidth="max-w-md"
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => {
+              setIsDeleteModalOpen(false);
+              setSparepartToDelete(null);
+            }}>
+              Batal
+            </Button>
+            <Button variant="primary" className="bg-red-600 hover:bg-red-700 border-none" onClick={confirmDelete}>
+              Ya, Hapus
+            </Button>
+          </>
+        }
+      >
+        <div className="flex items-start gap-4">
+          <div className="w-10 h-10 rounded-full bg-red-100 text-red-600 flex items-center justify-center flex-shrink-0 mt-1">
+            <Trash2 size={20} />
+          </div>
+          <div>
+            <h4 className="text-gray-900 font-semibold text-base mb-1">Hapus dari Katalog?</h4>
+            <p className="text-gray-600 text-sm">
+              Apakah Anda yakin ingin menghapus sparepart ini dari katalog? Semua data mutasi untuk barang ini akan ikut terhapus secara permanen.
+            </p>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 };

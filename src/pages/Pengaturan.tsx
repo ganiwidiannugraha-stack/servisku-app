@@ -5,7 +5,8 @@ import { Breadcrumb } from '../components/ui/Breadcrumb';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
-import { Store, Bell, Save, Users, UserCircle, Key, Activity, MessageSquare, Monitor, ShieldAlert, Camera } from 'lucide-react';
+import { Modal } from '../components/ui/Modal';
+import { Store, Bell, Save, Users, UserCircle, Key, Activity, MessageSquare, Monitor, ShieldAlert, Camera, AlertCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { Variants } from 'framer-motion';
@@ -21,6 +22,8 @@ export const Pengaturan: React.FC = () => {
   
   const [activeTab, setActiveTab] = useState<'profil' | 'toko' | 'notifikasi' | 'akun' | 'log'>('profil');
   const [isConfirmClearLogsOpen, setIsConfirmClearLogsOpen] = useState(false);
+  const [isUserDeleteModalOpen, setIsUserDeleteModalOpen] = useState(false);
+  const [userToDelete, setUserToDelete] = useState<{id: string, username: string} | null>(null);
   
   const currentUser = users.find(u => u.id === userId);
 
@@ -127,12 +130,19 @@ export const Pengaturan: React.FC = () => {
     toast.success(`Status ${u.username} berhasil diubah`);
   };
 
-  const handleDeleteUser = async (id: string, username: string) => {
-    if (confirm(`Yakin ingin menghapus pengguna ${username}?`)) {
-      await deleteUser(id);
-      logActivity('DELETE_USER', `Menghapus pengguna ${username}`);
+  const handleDeleteUser = (id: string, username: string) => {
+    setUserToDelete({ id, username });
+    setIsUserDeleteModalOpen(true);
+  };
+
+  const confirmDeleteUser = async () => {
+    if (userToDelete) {
+      await deleteUser(userToDelete.id);
+      logActivity('DELETE_USER', `Menghapus pengguna ${userToDelete.username}`);
       toast.success('Pengguna berhasil dihapus');
     }
+    setIsUserDeleteModalOpen(false);
+    setUserToDelete(null);
   };
 
   if (!currentUser) return <Navigate to="/login" />;
@@ -534,6 +544,42 @@ export const Pengaturan: React.FC = () => {
         }}
         onCancel={() => setIsConfirmClearLogsOpen(false)}
       />
+
+      {/* Modal Konfirmasi Hapus Pengguna */}
+      <Modal
+        isOpen={isUserDeleteModalOpen}
+        onClose={() => {
+          setIsUserDeleteModalOpen(false);
+          setUserToDelete(null);
+        }}
+        title="Hapus Pengguna"
+        maxWidth="max-w-md"
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => {
+              setIsUserDeleteModalOpen(false);
+              setUserToDelete(null);
+            }}>
+              Batal
+            </Button>
+            <Button className="bg-red-600 hover:bg-red-700 border-none" onClick={confirmDeleteUser}>
+              Ya, Hapus
+            </Button>
+          </>
+        }
+      >
+        <div className="flex items-start gap-4">
+          <div className="w-10 h-10 rounded-full bg-red-100 text-red-600 flex items-center justify-center flex-shrink-0 mt-1">
+            <AlertCircle size={20} />
+          </div>
+          <div>
+            <h4 className="text-gray-900 font-semibold text-base mb-1">Hapus Pengguna {userToDelete?.username}?</h4>
+            <p className="text-gray-600 text-sm">
+              Tindakan ini tidak dapat dibatalkan. Pengguna ini akan kehilangan seluruh akses ke dalam sistem secara permanen.
+            </p>
+          </div>
+        </div>
+      </Modal>
     </div>
     </div>
   );
