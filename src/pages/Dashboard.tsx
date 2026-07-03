@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useStore } from '../store';
 import { LineChart, Line, BarChart, Bar, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
-import { AlertTriangle, Calendar, RefreshCcw, PackageCheck, Banknote, Eye, Wrench, CheckCircle, Search, Clock, Users, Phone, MessageCircle, Plus, Package, Wallet } from 'lucide-react';
+import { AlertTriangle, Calendar, RefreshCcw, Banknote, Eye, Wrench, CheckCircle, Search, Clock, Users, Phone, MessageCircle, Plus, Wallet, Box } from 'lucide-react';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
 import { Modal } from '../components/ui/Modal';
@@ -578,7 +578,7 @@ export const Dashboard: React.FC = () => {
           <motion.div variants={itemVariants} className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col justify-between hover:shadow-md transition-shadow">
             <div className="flex justify-between items-start">
               <span className="text-sm font-semibold text-gray-500">Total Jenis Sparepart</span>
-              <div className="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center text-blue-600"><Package size={16} /></div>
+              <div className="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center text-blue-600"><Box size={16} /></div>
             </div>
             <h3 className="text-3xl font-bold text-gray-900 mt-4">{totalSparepartItems}</h3>
           </motion.div>
@@ -586,7 +586,7 @@ export const Dashboard: React.FC = () => {
           <motion.div variants={itemVariants} className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col justify-between hover:shadow-md transition-shadow">
             <div className="flex justify-between items-start">
               <span className="text-sm font-semibold text-gray-500">Total Kuantitas Stok</span>
-              <div className="w-8 h-8 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-600"><PackageCheck size={16} /></div>
+              <div className="w-8 h-8 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-600"><CheckCircle size={16} /></div>
             </div>
             <h3 className="text-3xl font-bold text-gray-900 mt-4">{formatRibuan(totalStockQty)} <span className="text-sm text-gray-500 font-medium">unit</span></h3>
           </motion.div>
