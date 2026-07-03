@@ -75,7 +75,7 @@ function App() {
     return () => {
       authListener.subscription.unsubscribe();
     };
-  }, []);
+  }, [loadInitialData]);
 
   return (
     <ErrorBoundary>

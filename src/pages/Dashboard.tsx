@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useStore } from '../store';
 import { LineChart, Line, BarChart, Bar, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
@@ -26,6 +26,11 @@ export const Dashboard: React.FC = () => {
   const currentTech = currentUser ? technicians.find(t => t.name === currentUser.name) : undefined;
   const technicianId = currentTech?.id;
 
+  // Hoisted state hooks to satisfy Rules of Hooks
+  const [searchTerm, setSearchTerm] = useState('');
+  const [isReleaseModalOpen, setIsReleaseModalOpen] = useState(false);
+  const [selectedOrderIdForRelease, setSelectedOrderIdForRelease] = useState<string | null>(null);
+
   const containerVariants: Variants = {
     hidden: { opacity: 0 },
     show: {
@@ -43,7 +48,6 @@ export const Dashboard: React.FC = () => {
   // TEKNISI DASHBOARD LOGIC
   // ---------------------------------------------------------
   if (userRole === 'TEKNISI') {
-    const [searchTerm, setSearchTerm] = useState('');
     
     const myTasks = orders.filter(o => o.teknisiId === technicianId && (o.status === 'PROSES' || o.status === 'DIAGNOSA'));
     const myDoneTasks = orders.filter(o => o.teknisiId === technicianId && o.status === 'SELESAI');
@@ -51,14 +55,14 @@ export const Dashboard: React.FC = () => {
     
     const filteredTasks = myTasks.filter(t => t.noServis.toLowerCase().includes(searchTerm.toLowerCase()) || t.jenisPerangkat.toLowerCase().includes(searchTerm.toLowerCase()));
     
-    const myCommission = useMemo(() => {
+    const myCommission = (() => {
       let total = 0;
       myDoneTasks.forEach(t => {
         const jasaPrice = (t.jasa || []).reduce((sum, j) => sum + j.harga, 0) + (t.biayaJasa || 0);
         total += (jasaPrice * 0.3); // Asumsi komisi 30% dari total jasa
       });
       return total;
-    }, [myDoneTasks]);
+    })();
     
     return (
       <motion.div 
@@ -254,9 +258,7 @@ export const Dashboard: React.FC = () => {
     const ordersSiapDiambil = orders.filter(o => o.status === 'SIAP_DIAMBIL');
     const ordersMasukFrontline = orders.filter(o => o.status === 'MASUK').length;
     
-    // UI States
-    const [isReleaseModalOpen, setIsReleaseModalOpen] = useState(false);
-    const [selectedOrderIdForRelease, setSelectedOrderIdForRelease] = useState<string | null>(null);
+    // UI States hoisted to top
     
     return (
       <motion.div 
@@ -559,7 +561,7 @@ export const Dashboard: React.FC = () => {
     const lowStockSpareparts = spareparts.filter(s => s.stok <= (s.minStok || 5));
     const topSpareparts = [...spareparts].sort((a, b) => (b.stok * b.harga) - (a.stok * a.harga)).slice(0, 8);
 
-    const inventoryPieData = useMemo(() => {
+    const inventoryPieData = (() => {
       if (spareparts.length === 0) return [{ name: 'Belum Ada Data', value: 1, color: '#e5e7eb' }];
       const counts: Record<string, number> = {};
       spareparts.forEach(sp => {
@@ -571,9 +573,9 @@ export const Dashboard: React.FC = () => {
         .sort((a, b) => b[1] - a[1])
         .slice(0, 5) // Top 5 categories
         .map(([name, value], index) => ({ name, value, color: colors[index % colors.length] }));
-    }, [spareparts]);
+    })();
 
-    const categorySummary = useMemo(() => {
+    const categorySummary = (() => {
       const summary: Record<string, { count: number; stock: number }> = {};
       spareparts.forEach(sp => {
         const cat = sp.kategori || 'Lainnya';
@@ -585,7 +587,7 @@ export const Dashboard: React.FC = () => {
         .map(([kategori, data]) => ({ kategori, ...data }))
         .sort((a, b) => b.stock - a.stock)
         .slice(0, 8);
-    }, [spareparts]);
+    })();
 
     return (
       <motion.div 
@@ -796,7 +798,7 @@ export const Dashboard: React.FC = () => {
   const stokMenipis = spareparts.filter(s => s.stok <= (s.minStok || 0));
   const perangkatBelumDiambil = orders.filter(o => o.status === 'SELESAI');
 
-  const todayRevenue = useMemo(() => {
+  const todayRevenue = (() => {
     const today = new Date().toDateString();
     let rev = 0;
     orders.filter(o => o.status === 'DIAMBIL' && new Date(o.tanggalMasuk).toDateString() === today).forEach(o => {
@@ -814,9 +816,9 @@ export const Dashboard: React.FC = () => {
       }
     });
     return rev;
-  }, [orders, spareparts]);
+  })();
 
-  const pieData = useMemo(() => {
+  const pieData = (() => {
     if (orders.length === 0) return [{ name: 'Belum Ada Data', value: 1, color: '#e5e7eb' }];
     const counts: Record<string, number> = {};
     orders.forEach(o => {
@@ -828,9 +830,9 @@ export const Dashboard: React.FC = () => {
     return Object.entries(counts)
       .sort((a, b) => b[1] - a[1])
       .map(([name, value], index) => ({ name, value, color: colors[index % colors.length] }));
-  }, [orders]);
+  })();
 
-  const { lineData, barData } = useMemo(() => {
+  const { lineData, barData } = (() => {
     const lData = [];
     const bData = [];
     const today = new Date();
@@ -863,10 +865,10 @@ export const Dashboard: React.FC = () => {
       bData.push({ name: label, value: revenue });
     }
     return { lineData: lData, barData: bData };
-  }, [orders, spareparts]);
+  })();
 
   // SDM Highlight (Top Technician today or this month)
-  const topTechnician = useMemo(() => {
+  const topTechnician = (() => {
     const techScores: Record<string, number> = {};
     const thisMonth = new Date().getMonth();
     orders.forEach(o => {
@@ -890,10 +892,10 @@ export const Dashboard: React.FC = () => {
     if (!bestTechId) return { name: 'Belum ada data', count: 0 };
     const techName = technicians.find(t => t.id === bestTechId)?.name || 'Unknown';
     return { name: techName, count: maxDone };
-  }, [orders, technicians]);
+  })();
 
   // CRM Highlight (New vs Repeat Customers)
-  const { newCustomers, repeatCustomers } = useMemo(() => {
+  const { newCustomers, repeatCustomers } = (() => {
     const orderCountByCust: Record<string, number> = {};
     orders.forEach(o => {
       orderCountByCust[o.pelangganId] = (orderCountByCust[o.pelangganId] || 0) + 1;
@@ -905,10 +907,10 @@ export const Dashboard: React.FC = () => {
       else if (count > 1) repeatC++;
     });
     return { newCustomers: newC, repeatCustomers: repeatC };
-  }, [orders]);
+  })();
 
   // Potensi Pendapatan (from Process/Diagnosa)
-  const potensiPendapatan = useMemo(() => {
+  const potensiPendapatan = (() => {
     let pot = 0;
     orders.forEach(o => {
       if (['PROSES', 'DIAGNOSA', 'MENUNGGU_SPAREPART'].includes(o.status)) {
@@ -920,7 +922,7 @@ export const Dashboard: React.FC = () => {
       }
     });
     return pot;
-  }, [orders]);
+  })();
 
   return (
     <motion.div 

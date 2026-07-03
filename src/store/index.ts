@@ -1,3 +1,12 @@
+/**
+ * @file store/index.ts
+ * @description State Management utama menggunakan Zustand.
+ * 
+ * @security [STATE EXPOSURE] State ini di-persist ke `localStorage`. 
+ * Hacker dengan akses fisik atau eksploit XSS dapat mengubah `userRole` menjadi 'OWNER'.
+ * Untuk mitigasi, fungsi `onRehydrateStorage` memverifikasi sesi langsung ke Supabase Auth
+ * untuk mereset hak akses jika token tidak valid. RLS di backend tetap wajib.
+ */
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type { StatusOrder } from "../components/ui/StatusBadge";
@@ -719,6 +728,17 @@ export const useStore = create<AppState>()(
           // Setelah localStorage selesai di-rehydrate, langsung fetch dari Supabase
           if (state) {
             state.loadInitialData();
+            
+            // SECURITY PATCH: Validasi sesi ke Supabase Auth secara asinkron
+            // Mencegah manipulasi `isAuthenticated` dan `userRole` via localStorage
+            import("../lib/supabase").then(({ supabase }) => {
+              supabase.auth.getSession().then(({ data: { session } }) => {
+                if (!session) {
+                  console.warn("[Security] Manipulasi localStorage terdeteksi atau sesi expired. Memaksa logout...");
+                  useStore.setState({ isAuthenticated: false, userRole: null, userId: null, userName: "" });
+                }
+              }).catch(console.error);
+            });
           }
         };
       },

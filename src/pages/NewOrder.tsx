@@ -13,12 +13,9 @@ export const NewOrder: React.FC = () => {
   const navigate = useNavigate();
   const { customers, technicians, addOrder, userRole } = useStore();
 
-  if (userRole === 'TEKNISI') {
-    return <Navigate to="/order" replace />;
-  }
+  const [showExitConfirm, setShowExitConfirm] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [successData, setSuccessData] = useState<{ id: string, noServis: string, pelanggan: string, hp: string, perangkat: string, keluhan: string, biaya: number, estimasiSelesai: string } | null>(null);
-
   const [formData, setFormData] = useState({
     // Pelanggan
     namaPelanggan: '',
@@ -44,7 +41,9 @@ export const NewOrder: React.FC = () => {
     prioritas: 'NORMAL' as 'NORMAL' | 'HIGH' | 'URGENT',
   });
 
-  const [showExitConfirm, setShowExitConfirm] = useState(false);
+  if (userRole === 'TEKNISI') {
+    return <Navigate to="/order" replace />;
+  }
 
   const handleCancel = () => {
     if (formData.namaPelanggan || formData.noHpPelanggan || formData.keluhan) {

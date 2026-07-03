@@ -1,3 +1,15 @@
+/**
+ * @file backendServices.ts
+ * @description Layer Data Access untuk berinteraksi dengan Supabase.
+ * 
+ * @security [IDOR WARNING] Aplikasi ini melakukan update dan delete berdasarkan parameter `id` 
+ * dari client. Di lingkungan produksi (Production), WAJIB mengaktifkan Row Level Security (RLS) 
+ * di dashboard Supabase agar pengguna hanya bisa mengubah data sesuai `auth.uid()`.
+ * 
+ * @security [VALIDATION WARNING] Input divalidasi ringan di UI, namun Payload yang masuk ke fungsi-fungsi ini 
+ * diasumsikan aman (Trusted). Untuk Enterprise-grade, integrasikan `zod` untuk memvalidasi
+ * payload sebelum operasi `insert()` atau `update()`.
+ */
 import { supabase } from "../lib/supabase";
 import type { AppUser, Customer, MutasiStok, Order, Settings, Sparepart, Technician } from "../store";
 import type { StatusOrder } from "../components/ui/StatusBadge";
@@ -281,6 +293,11 @@ const mapSettings = (row: SettingsRow): Settings => ({
  */
 
 
+/**
+ * Mengambil daftar seluruh pelanggan dari database.
+ * @returns {Promise<Customer[]>} Array daftar pelanggan yang diurutkan dari terbaru.
+ * @throws {Error} Jika query ke Supabase gagal.
+ */
 export async function getCustomers() {
   const { data, error } = await supabase.from("customers").select("*").order("created_at", { ascending: false });
   if (error) throw error;
@@ -371,12 +388,22 @@ export async function updateTechnicianDB(id: string, updates: Partial<Technician
   if (error) throw error;
 }
 
+/**
+ * Mengambil seluruh data order servis dari database.
+ * @returns {Promise<Order[]>} Array order yang sudah di-mapping ke interface Order.
+ * @throws {Error} Jika query ke Supabase gagal.
+ */
 export async function getOrders() {
   const { data, error } = await supabase.from("orders").select("*").order("tanggal_masuk", { ascending: false });
   if (error) throw error;
   return (data || []).map((row) => mapOrder(row as OrderRow));
 }
 
+/**
+ * Menyimpan data order servis baru ke dalam database.
+ * @param {Order} order - Objek order lengkap dengan ID yang digenerate oleh frontend.
+ * @throws {Error} Jika payload tidak sesuai dengan skema Supabase atau koneksi terputus.
+ */
 export async function createOrderDB(order: Order) {
   const { error } = await supabase.from("orders").insert(toOrderRow(order));
   if (error) throw error;
