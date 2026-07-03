@@ -13,6 +13,7 @@ import {
   SkeletonTablePage,
   SkeletonLaporan,
 } from './components/ui/SkeletonLoader';
+import { supabase } from './lib/supabase';
 
 // ─────────────────────────────────────────────────────────────
 // Lazy loaded pages — Code splitting untuk performa optimal
@@ -58,6 +59,22 @@ function App() {
 
   useEffect(() => {
     loadInitialData();
+    
+    // Subscribe to Supabase Auth state changes
+    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_OUT' || !session) {
+        useStore.setState({
+          isAuthenticated: false,
+          userRole: null,
+          userId: null,
+          userName: null,
+        });
+      }
+    });
+
+    return () => {
+      authListener.subscription.unsubscribe();
+    };
   }, []);
 
   return (

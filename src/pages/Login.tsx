@@ -12,8 +12,8 @@ import { Eye, EyeOff } from 'lucide-react';
  * 
  * Fitur:
  * - Autentikasi berbasis Role (Admin & Teknisi)
- * - Fitur "Ingat Saya" menggunakan LocalStorage
- * - Akses kredenisal demo bawaan untuk kemudahan testing
+ * - Autentikasi berbasis Role (Admin & Teknisi)
+ * - Rate limiting sederhana
  * - Validasi form client-side
  * 
  * @component
@@ -30,24 +30,34 @@ export const Login: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  
+  // State untuk Rate Limiting
+  const [failedAttempts, setFailedAttempts] = useState(0);
+  const [lockoutTimer, setLockoutTimer] = useState(0);
 
   // Referensi ke input untuk melakukan auto-focus saat pertama render
   const usernameRef = useRef<HTMLInputElement>(null);
 
   /**
    * Effect Hook: Inisialisasi awal
-   * 1. Mencari credential yang tersimpan jika fitur "Ingat Saya" sebelumnya dicentang.
-   * 2. Otomatis fokus kursor ke field Username agar user bisa langsung mengetik.
+   * Otomatis fokus kursor ke field Username agar user bisa langsung mengetik.
+   * Mengatur timer jika terkena lockout.
    */
   useEffect(() => {
-    const savedUser = localStorage.getItem('servisku_saved_username');
-    const savedPass = localStorage.getItem('servisku_saved_password');
-    if (savedUser && savedPass) {
-      setUsername(savedUser);
-      setPassword(savedPass);
-    }
     usernameRef.current?.focus();
   }, []);
+
+  useEffect(() => {
+    let timer: any;
+    if (lockoutTimer > 0) {
+      timer = setInterval(() => {
+        setLockoutTimer(prev => prev - 1);
+      }, 1000);
+    } else if (lockoutTimer === 0 && failedAttempts >= 5) {
+      setFailedAttempts(0); // Reset after lockout
+    }
+    return () => clearInterval(timer);
+  }, [lockoutTimer, failedAttempts]);
 
   // Proteksi rute: Jika sudah login, langsung arahkan ke Dashboard
   if (isAuthenticated) {
@@ -63,6 +73,7 @@ export const Login: React.FC = () => {
    */
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (lockoutTimer > 0) return;
     if (!username || !password) return;
 
     setIsLoading(true);
@@ -71,9 +82,17 @@ export const Login: React.FC = () => {
     const success = await login(username, password);
     
     if (success) {
+      setFailedAttempts(0);
       navigate('/dashboard', { replace: true });
     } else {
-      setError('Username atau kata sandi tidak sesuai. Silakan coba lagi.');
+      const attempts = failedAttempts + 1;
+      setFailedAttempts(attempts);
+      if (attempts >= 5) {
+        setLockoutTimer(30);
+        setError('Terlalu banyak percobaan. Silakan coba lagi dalam 30 detik.');
+      } else {
+        setError(`Username atau kata sandi tidak sesuai. (Percobaan ${attempts}/5)`);
+      }
       setIsLoading(false);
     }
   };
@@ -172,25 +191,11 @@ export const Login: React.FC = () => {
             <div className="pt-2">
               <button
                 type="submit"
-                disabled={!isFormValid || isLoading}
+                disabled={!isFormValid || isLoading || lockoutTimer > 0}
                 className="w-full bg-primary hover:bg-primary-dark text-white font-semibold text-xs tracking-widest uppercase py-4 rounded-none transition-all disabled:opacity-50 disabled:cursor-not-allowed flex justify-center items-center shadow-lg shadow-primary/20"
               >
-                {isLoading ? 'Memproses...' : 'MASUK'}
+                {isLoading ? 'Memproses...' : lockoutTimer > 0 ? `Terkunci (${lockoutTimer}s)` : 'MASUK'}
               </button>
-            </div>
-            
-            {/* Demo Info */}
-            <div className="mt-8 pt-8 flex flex-col items-center gap-4 border-t border-gray-200/60">
-              <div className="text-center">
-                <p className="text-[10px] text-gray-400 mb-1">Akses Demo (Role-Based):</p>
-                <div className="flex gap-4 justify-center text-xs font-mono text-gray-500">
-                  <span className="bg-gray-100 px-2 py-0.5 rounded cursor-pointer hover:bg-gray-200" onClick={() => {setUsername('owner'); setPassword('owner');}}>owner:owner</span>
-                  <span className="bg-gray-100 px-2 py-0.5 rounded cursor-pointer hover:bg-gray-200" onClick={() => {setUsername('frontline'); setPassword('frontline');}}>frontline:frontline</span>
-                  <span className="bg-gray-100 px-2 py-0.5 rounded cursor-pointer hover:bg-gray-200" onClick={() => {setUsername('finance'); setPassword('finance');}}>finance:finance</span>
-                  <span className="bg-gray-100 px-2 py-0.5 rounded cursor-pointer hover:bg-gray-200" onClick={() => {setUsername('inventory'); setPassword('inventory');}}>inventory:inventory</span>
-                  <span className="bg-gray-100 px-2 py-0.5 rounded cursor-pointer hover:bg-gray-200" onClick={() => {setUsername('teknisi'); setPassword('teknisi');}}>teknisi:teknisi</span>
-                </div>
-              </div>
             </div>
             
           </form>

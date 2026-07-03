@@ -5,7 +5,7 @@ import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Breadcrumb } from '../components/ui/Breadcrumb';
 import { Modal } from '../components/ui/Modal';
-import { generateWALink } from '../utils/whatsappLink';
+import { sendWhatsAppMessage } from '../utils/whatsappLink';
 import { CheckCircle2, MessageCircle, FileText, AlertCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -116,7 +116,7 @@ export const NewOrder: React.FC = () => {
     const msg = `Halo ${successData.pelanggan},\n\nPerangkat Anda telah kami terima. Berikut informasinya:\n\n📋 No. Servis  : ${successData.noServis}\n📱 Perangkat   : ${successData.perangkat}\n🔧 Keluhan     : ${successData.keluhan}\n💰 Est. Biaya  : Rp ${successData.biaya.toLocaleString('id-ID')}\n📅 Est. Selesai: ${successData.estimasiSelesai || '-'}\n\nKami akan menghubungi Anda kembali setelah pemeriksaan selesai.\nTerima kasih — ITC Computer 🛠️`;
     
     toast.success('WhatsApp dibuka di tab baru');
-    window.open(generateWALink(successData.hp, msg), '_blank');
+    sendWhatsAppMessage(successData.hp, msg);
   };
 
   return (
@@ -332,7 +332,8 @@ export const NewOrder: React.FC = () => {
                       required
                       value={formData.estimasiBiaya ? Number(formData.estimasiBiaya).toLocaleString('id-ID') : ''}
                       onChange={(e) => {
-                        const rawValue = e.target.value.replace(/\D/g, '');
+                        let rawValue = e.target.value.replace(/\D/g, '');
+                        if (rawValue.startsWith('0')) rawValue = rawValue.replace(/^0+/, '');
                         setFormData({ ...formData, estimasiBiaya: rawValue });
                       }}
                     />

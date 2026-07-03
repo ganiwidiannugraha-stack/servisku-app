@@ -332,7 +332,8 @@ export const Payment: React.FC = () => {
                   placeholder="0"
                   value={jumlahBayar ? Number(jumlahBayar).toLocaleString('id-ID') : ''}
                   onChange={(e) => {
-                    const rawValue = e.target.value.replace(/\D/g, '');
+                    let rawValue = e.target.value.replace(/\D/g, '');
+                    if (rawValue.startsWith('0')) rawValue = rawValue.replace(/^0+/, '');
                     setJumlahBayar(rawValue);
                   }}
                 />

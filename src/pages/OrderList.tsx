@@ -4,6 +4,7 @@ import { useStore } from '../store';
 import { Breadcrumb } from '../components/ui/Breadcrumb';
 import { EmptyState } from '../components/ui/EmptyState';
 import { Search, Filter, Calendar, ClipboardList, Eye, User, Lock, PlusCircle } from 'lucide-react';
+import { sendWhatsAppMessage } from '../utils/whatsappLink';
 import toast from 'react-hot-toast';
 
 
@@ -268,14 +269,14 @@ export const OrderList: React.FC = () => {
                           <div className="flex items-center gap-2">
                             <span className="text-[10px] font-bold text-gray-400 uppercase w-12">Masuk</span>
                             <span className="text-gray-700 font-medium">
-                              {new Date(order.tanggalMasuk).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
+                              {new Date(order.tanggalMasuk).toLocaleString('id-ID', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
                             </span>
                           </div>
                           <div className="flex items-center gap-2">
                             <span className="text-[10px] font-bold text-amber-500 uppercase w-12">Target</span>
                             {order.estimasiSelesai ? (
                               <span className="text-amber-700 font-medium bg-amber-50 px-1.5 py-0.5 rounded text-xs">
-                                {new Date(order.estimasiSelesai).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
+                                {new Date(order.estimasiSelesai).toLocaleString('id-ID', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
                               </span>
                             ) : (
                               <span className="text-gray-400 italic text-xs">-</span>
@@ -301,17 +302,18 @@ export const OrderList: React.FC = () => {
                             </button>
                           )}
                           {!isOthers && customer?.noHp && (
-                            <a
-                              href={`https://wa.me/${customer.noHp.replace(/\D/g, '')}`}
-                              target="_blank"
-                              rel="noreferrer"
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                sendWhatsAppMessage(customer.noHp, '');
+                              }}
                               className="w-7 h-7 rounded-lg border border-green-200 bg-green-50 text-green-600 flex items-center justify-center hover:bg-green-100 transition-colors"
                               title="Hubungi via WhatsApp"
                             >
                               <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round">
                                 <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
                               </svg>
-                            </a>
+                            </button>
                           )}
                         </div>
                       </td>

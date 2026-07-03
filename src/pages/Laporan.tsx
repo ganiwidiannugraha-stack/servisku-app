@@ -140,7 +140,9 @@ export const Laporan: React.FC = () => {
       .sort((a, b) => new Date(b.tanggalMasuk).getTime() - new Date(a.tanggalMasuk).getTime())
       .slice(0, 5);
 
-    return { totalOmset: omset, totalModal: modal, labaBersih: omset - modal, piutang, chartData, recentTransactions, pieCategoryData };
+    const orderMengendap = filteredOrders.filter(o => o.status === 'SIAP_DIAMBIL').length;
+
+    return { totalOmset: omset, totalModal: modal, labaBersih: omset - modal, piutang, chartData, recentTransactions, pieCategoryData, orderMengendap };
   }, [filteredOrders, spareparts]);
 
   // 2. OPERASIONAL METRICS & CHART
@@ -220,8 +222,10 @@ export const Laporan: React.FC = () => {
   const techData = useMemo(() => {
     const techStats = technicians.map(t => {
       const tOrders = filteredOrders.filter(o => o.teknisiId === t.id);
-      const finished = tOrders.filter(o => o.status === 'SELESAI' || o.status === 'DIAMBIL').length;
-      return { ...t, assigned: tOrders.length, finished };
+      const finishedOrders = tOrders.filter(o => o.status === 'SELESAI' || o.status === 'DIAMBIL');
+      const finished = finishedOrders.length;
+      const pendapatanJasa = finishedOrders.reduce((sum, o) => sum + (o.biayaJasa || 0) + (o.jasa || []).reduce((jsum, j) => jsum + j.harga, 0), 0);
+      return { ...t, assigned: tOrders.length, finished, pendapatanJasa };
     }).sort((a, b) => b.finished - a.finished);
 
     const chartData = techStats.map(t => ({
@@ -718,7 +722,7 @@ export const Laporan: React.FC = () => {
           
           {activeTab === 'KEUANGAN' && (
             <>
-              <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+              <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
                 <div className="p-6 bg-white rounded-2xl shadow-sm border border-gray-100 flex flex-col justify-center">
                   <p className="text-gray-500 font-medium text-sm">Omset Total</p>
                   <h3 className="text-3xl font-bold text-gray-900 mt-2">Rp {financeData.totalOmset.toLocaleString('id-ID')}</h3>
@@ -739,6 +743,11 @@ export const Laporan: React.FC = () => {
                   <p className="text-red-700 font-medium text-sm">Piutang / Kasbon</p>
                   <h3 className="text-3xl font-bold text-red-700 mt-2">Rp {financeData.piutang.toLocaleString('id-ID')}</h3>
                   <p className="text-xs text-red-500 mt-1">Servis Selesai Belum Diambil</p>
+                </div>
+                <div className="p-6 bg-amber-50 rounded-2xl shadow-sm border border-amber-100 flex flex-col justify-center">
+                  <p className="text-amber-700 font-medium text-sm">Order Mengendap</p>
+                  <h3 className="text-3xl font-bold text-amber-700 mt-2">{financeData.orderMengendap}</h3>
+                  <p className="text-xs text-amber-600 mt-1">Order Siap Diambil</p>
                 </div>
               </div>
               
@@ -796,9 +805,11 @@ export const Laporan: React.FC = () => {
                     <table className="w-full text-sm text-left">
                       <thead className="text-xs text-gray-500 uppercase bg-gray-50">
                         <tr>
-                          <th className="px-4 py-3 rounded-tl-lg">Perangkat</th>
+                          <th className="px-4 py-3 rounded-tl-lg">Waktu Transaksi</th>
+                          <th className="px-4 py-3">No. Servis</th>
+                          <th className="px-4 py-3">Perangkat</th>
                           <th className="px-4 py-3">Pelanggan</th>
-                          <th className="px-4 py-3 text-right rounded-tr-lg">Nominal</th>
+                          <th className="px-4 py-3 text-right rounded-tr-lg">Total Omset</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -813,14 +824,16 @@ export const Laporan: React.FC = () => {
                           }
                           return (
                             <tr key={t.id} className="border-b last:border-0 hover:bg-gray-50">
-                              <td className="px-4 py-3 font-medium text-gray-900">{t.jenisPerangkat}</td>
+                              <td className="px-4 py-3 text-gray-500 text-xs">{new Date(t.tanggalMasuk).toLocaleString('id-ID', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</td>
+                              <td className="px-4 py-3 font-medium text-gray-900">{t.noServis}</td>
+                              <td className="px-4 py-3 text-gray-500">{t.jenisPerangkat}</td>
                               <td className="px-4 py-3 text-gray-500">{customer?.nama || 'Unknown'}</td>
                               <td className="px-4 py-3 text-right font-bold text-gray-900">Rp {omset.toLocaleString('id-ID')}</td>
                             </tr>
                           );
                         })}
                         {financeData.recentTransactions.length === 0 && (
-                          <tr><td colSpan={3} className="px-4 py-6 text-center text-gray-500">Belum ada transaksi selesai.</td></tr>
+                          <tr><td colSpan={5} className="px-4 py-6 text-center text-gray-500">Belum ada transaksi lunas (Selesai/Diambil).</td></tr>
                         )}
                       </tbody>
                     </table>
@@ -1005,7 +1018,7 @@ export const Laporan: React.FC = () => {
                       {invData.mutasiTerakhir.map((m) => (
                         <tr key={m.id} className="border-b last:border-0 hover:bg-gray-50">
                           <td className="px-4 py-3 font-medium text-gray-900">
-                            {new Date(m.tanggal).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                            {new Date(m.tanggal).toLocaleString('id-ID', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
                           </td>
                           <td className="px-4 py-3">
                             <span className={`px-2 py-1 rounded text-xs font-bold ${m.tipe === 'IN' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
@@ -1065,9 +1078,13 @@ export const Laporan: React.FC = () => {
                           <p className="font-bold text-gray-900">{t.rating}</p>
                           <p className="text-gray-400 text-[10px] uppercase">Rating</p>
                         </div>
-                        <div className="bg-white px-3 py-1 rounded shadow-sm border border-gray-100">
+                        <div className="bg-white px-3 py-1 rounded shadow-sm border border-gray-100 text-right">
                           <p className="font-bold text-emerald-600">{t.finished}</p>
                           <p className="text-gray-400 text-[10px] uppercase">Selesai</p>
+                        </div>
+                        <div className="bg-white px-3 py-1 rounded shadow-sm border border-gray-100 text-right">
+                          <p className="font-bold text-blue-600">Rp {(t as any).pendapatanJasa?.toLocaleString('id-ID') || 0}</p>
+                          <p className="text-gray-400 text-[10px] uppercase">Jasa Teknisi</p>
                         </div>
                       </div>
                     </div>

@@ -23,11 +23,11 @@ DROP TABLE IF EXISTS users CASCADE;
 
 -- 3. CREATE TABLES
 
--- Tabel Users (Untuk Authentikasi Lokal - Akan migrasi ke Supabase Auth nanti)
+-- Tabel Users (Migrasi ke Supabase Auth)
 CREATE TABLE users (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    auth_id UUID UNIQUE, -- Terhubung dengan auth.users() dari Supabase Auth
     username TEXT UNIQUE NOT NULL,
-    password_hash TEXT NOT NULL,
     role TEXT NOT NULL CHECK (role IN ('OWNER', 'ADMIN', 'FRONTLINE', 'FINANCE', 'INVENTORY', 'TEKNISI')),
     name TEXT NOT NULL,
     email TEXT,
@@ -91,6 +91,8 @@ CREATE TABLE orders (
     biaya_jasa INTEGER,
     -- Simpan detail sparepart sebagai JSONB
     spareparts JSONB DEFAULT '[]'::jsonb NOT NULL,
+    -- Log Riwayat Perubahan Status
+    history JSONB DEFAULT '[]'::jsonb NOT NULL,
     status TEXT NOT NULL CHECK (
         status IN (
             'MASUK',
@@ -161,16 +163,15 @@ ALTER TABLE settings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE audit_logs ENABLE ROW LEVEL SECURITY;
 
--- Buat policy "Allow All" untuk sementara karena belum pakai Supabase Auth
--- (Hapus ini nanti di Production)
-CREATE POLICY "Allow all operations for anon customers" ON customers FOR ALL USING (true);
-CREATE POLICY "Allow all operations for anon spareparts" ON spareparts FOR ALL USING (true);
-CREATE POLICY "Allow all operations for anon orders" ON orders FOR ALL USING (true);
-CREATE POLICY "Allow all operations for anon mutasi_stok" ON mutasi_stok FOR ALL USING (true);
-CREATE POLICY "Allow all operations for anon technicians" ON technicians FOR ALL USING (true);
-CREATE POLICY "Allow all operations for anon settings" ON settings FOR ALL USING (true);
-CREATE POLICY "Allow all operations for anon users" ON users FOR ALL USING (true);
-CREATE POLICY "Allow all operations for anon audit_logs" ON audit_logs FOR ALL USING (true);
+-- Buat policy restrict (hanya bisa diakses kalau sudah login lewat Supabase Auth)
+CREATE POLICY "Authenticated users access customers" ON customers FOR ALL USING (auth.uid() IS NOT NULL);
+CREATE POLICY "Authenticated users access spareparts" ON spareparts FOR ALL USING (auth.uid() IS NOT NULL);
+CREATE POLICY "Authenticated users access orders" ON orders FOR ALL USING (auth.uid() IS NOT NULL);
+CREATE POLICY "Authenticated users access mutasi_stok" ON mutasi_stok FOR ALL USING (auth.uid() IS NOT NULL);
+CREATE POLICY "Authenticated users access technicians" ON technicians FOR ALL USING (auth.uid() IS NOT NULL);
+CREATE POLICY "Authenticated users access settings" ON settings FOR ALL USING (auth.uid() IS NOT NULL);
+CREATE POLICY "Authenticated users access users" ON users FOR ALL USING (auth.uid() IS NOT NULL);
+CREATE POLICY "Authenticated users access audit_logs" ON audit_logs FOR ALL USING (auth.uid() IS NOT NULL);
 
 -- 6. SEED DATA AWAL (Default)
 
@@ -202,12 +203,14 @@ INSERT INTO spareparts (id, nama, kategori, merek, rak, stok, min_stok, harga_mo
 INSERT INTO settings (shop_name, owner_name, address, phone, printer_width, enable_wa, enable_notifications) VALUES
 ('ServisKu Repair', 'Pak Teten', 'Jl. Teknologi No. 123, Jakarta', '081234567890', '58mm', true, true);
 
--- Insert Default Users
-INSERT INTO users (username, password_hash, role, name, position, avatar) VALUES
-('owner', 'owner', 'OWNER', 'Bos Owner', 'Pemilik Bengkel', 'B'),
-('frontline', 'frontline', 'FRONTLINE', 'Sari Kasir', 'Kasir Depan', 'S'),
-('teknisi', 'teknisi', 'TEKNISI', 'Deni Setiawan', 'Teknisi Utama', 'D'),
-('inventory', 'inventory', 'INVENTORY', 'Agus Gudang', 'Admin Gudang', 'A'),
-('finance', 'finance', 'FINANCE', 'Rina Keuangan', 'Staf Keuangan', 'R');
+-- Insert Default Users (Tanpa auth_id sementara, script JS yang akan mendaftarkannya)
+INSERT INTO users (username, role, name, position, avatar) VALUES
+('owner', 'OWNER', 'Pak Teten', 'Pemilik Bengkel', 'P'),
+('sari', 'FRONTLINE', 'Sari Kustina', 'Kasir Depan', 'S'),
+('deni', 'TEKNISI', 'Deni Setiawan', 'Teknisi Utama', 'D'),
+('rina', 'TEKNISI', 'Rina Amelia', 'Teknisi Junior', 'R'),
+('hendra', 'TEKNISI', 'Hendra Kusuma', 'Teknisi Senior', 'H'),
+('agus', 'INVENTORY', 'Agus Pratama', 'Admin Gudang', 'A'),
+('budi', 'FINANCE', 'Budi Santoso', 'Staf Keuangan', 'B');
 
 -- Selesai!

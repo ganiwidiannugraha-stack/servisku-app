@@ -14,3 +14,27 @@ export function generateWALink(noHp: string, pesan: string): string {
   const nomor = cleanHp.startsWith('0') ? '62' + cleanHp.slice(1) : cleanHp;
   return `https://wa.me/${nomor}?text=${encodeURIComponent(pesan)}`;
 }
+
+/**
+ * Service: Mengirim pesan WhatsApp.
+ * Saat ini (Sistem #1) menggunakan wa.me link yang membuka WhatsApp Web/App.
+ * Di masa depan (Sistem #4), ubah fungsi ini untuk melakukan HTTP Request (fetch/axios)
+ * ke API WhatsApp Gateway Anda (misal: Wablas, Fonnte, atau Meta WA API), 
+ * tanpa perlu mengubah kode di komponen UI (OrderNew, OrderDetail).
+ */
+export async function sendWhatsAppMessage(noHp: string, pesan: string): Promise<boolean> {
+  try {
+    // TODO (Sistem 4): Ganti logika di bawah ini dengan API Request ke WA Gateway.
+    // const response = await fetch('https://api.wagateway.com/send', { ... });
+    // return response.ok;
+    
+    // CURRENT (Sistem 1): Buka tab baru menggunakan wa.me
+    const link = generateWALink(noHp, pesan);
+    window.open(link, '_blank', 'noopener,noreferrer');
+    
+    return true; // Asumsikan sukses dibuka
+  } catch (error) {
+    console.error("Gagal mengirim pesan WA:", error);
+    return false;
+  }
+}

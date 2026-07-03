@@ -10,7 +10,7 @@ export const PageWrapper: React.FC = () => {
   const outlet = useOutlet();
 
   return (
-    <div className="flex h-screen overflow-hidden bg-gradient-to-br from-[#f8faff] via-[#f0f4f9] to-[#eef2ff]">
+    <div className="flex h-screen overflow-hidden print:h-auto print:overflow-visible bg-gradient-to-br from-[#f8faff] via-[#f0f4f9] to-[#eef2ff]">
       {/* Mobile Sidebar Overlay */}
       {isMobileMenuOpen && (
         <div 
@@ -20,13 +20,15 @@ export const PageWrapper: React.FC = () => {
       )}
 
       {/* Sidebar for mobile & desktop */}
-      <div className={`fixed inset-y-0 left-0 z-50 flex-shrink-0 w-64 transform bg-white transition-transform duration-300 ease-in-out lg:static lg:translate-x-0 ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+      <div className={`print:hidden fixed inset-y-0 left-0 z-50 flex-shrink-0 w-64 transform bg-white transition-transform duration-300 ease-in-out lg:static lg:translate-x-0 ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <Sidebar onNavigate={() => setIsMobileMenuOpen(false)} />
       </div>
 
-      <div className="flex flex-col flex-1 w-0 overflow-hidden">
-        <Header onMenuClick={() => setIsMobileMenuOpen(true)} />
-        <main className="relative flex-1 overflow-y-auto focus:outline-none bg-gray-50/30">
+      <div className="flex flex-col flex-1 w-0 overflow-hidden print:overflow-visible print:w-full">
+        <div className="print:hidden">
+          <Header onMenuClick={() => setIsMobileMenuOpen(true)} />
+        </div>
+        <main className="relative flex-1 overflow-y-auto focus:outline-none bg-gray-50/30 print:overflow-visible print:bg-white print:block">
           <AnimatePresence mode="wait">
             <motion.div
               key={location.pathname}

@@ -86,7 +86,7 @@ export const Pengaturan: React.FC = () => {
   };
   
   const handleOpenEditUser = (u: any) => {
-    setUserFormData({ name: u.name, username: u.username, password: u.passwordHash, role: u.role, position: u.position || '', email: u.email || '', phone: u.phone || '' });
+    setUserFormData({ name: u.name, username: u.username, password: '', role: u.role, position: u.position || '', email: u.email || '', phone: u.phone || '' });
     setEditingUserId(u.id);
     setShowUserForm(true);
   };
@@ -97,7 +97,6 @@ export const Pengaturan: React.FC = () => {
       await updateUser(editingUserId, {
         name: userFormData.name,
         username: userFormData.username,
-        passwordHash: userFormData.password,
         role: userFormData.role as any,
         position: userFormData.position,
         email: userFormData.email,
@@ -109,14 +108,13 @@ export const Pengaturan: React.FC = () => {
       await addUser({
         name: userFormData.name,
         username: userFormData.username,
-        passwordHash: userFormData.password,
         role: userFormData.role as any,
         position: userFormData.position,
         email: userFormData.email,
         phone: userFormData.phone,
         avatar: '',
         isActive: true
-      });
+      }, userFormData.password);
       logActivity('ADD_USER', `Menambahkan pengguna baru ${userFormData.username}`);
       toast.success('Pengguna berhasil ditambahkan');
     }
@@ -152,13 +150,13 @@ export const Pengaturan: React.FC = () => {
       toast.error('Konfirmasi kata sandi tidak cocok!');
       return;
     }
-    const success = await changePassword(passData.old, passData.new);
+    const success = await changePassword(passData.new);
     if (success) {
       toast.success('Kata sandi berhasil diubah');
       setPassData({ old: '', new: '', confirm: '' });
       logActivity('CHANGE_PASSWORD', 'Mengubah kata sandi akun');
     } else {
-      toast.error('Kata sandi lama salah!');
+      toast.error('Gagal mengubah password (session mungkin expired).');
     }
   };
 
@@ -284,14 +282,15 @@ export const Pengaturan: React.FC = () => {
                   <form onSubmit={handleChangePassword} className="space-y-4">
                     <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wide flex items-center gap-2"><Key size={16} className="text-gray-400"/> Ubah Kata Sandi</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="md:col-span-2">
-                        <Input label="Kata Sandi Saat Ini" type="password" value={passData.old} onChange={e => setPassData({...passData, old: e.target.value})} required/>
-                      </div>
+                      <div className="space-y-4">
+                      {/* Note: In Supabase, you don't necessarily need old password to update if you have a valid session, 
+                          but typically we should re-authenticate or just rely on the active session. */}
                       <Input label="Kata Sandi Baru" type="password" value={passData.new} onChange={e => setPassData({...passData, new: e.target.value})} required/>
                       <Input label="Konfirmasi Kata Sandi" type="password" value={passData.confirm} onChange={e => setPassData({...passData, confirm: e.target.value})} required/>
                     </div>
                     <div className="flex justify-end">
                       <Button type="submit" variant="secondary" className="border-gray-200 text-gray-700 hover:bg-gray-50">Perbarui Sandi</Button>
+                    </div>
                     </div>
                   </form>
                 </div>
@@ -390,10 +389,20 @@ export const Pengaturan: React.FC = () => {
               {showUserForm && (
                 <form onSubmit={handleSaveUser} className="bg-gray-50 p-6 rounded-xl border border-gray-200 mb-6 space-y-4">
                   <h3 className="font-bold text-gray-900">{editingUserId ? 'Edit Pengguna' : 'Tambah Pengguna Baru'}</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-4 max-h-[60vh] overflow-y-auto px-1">
                     <Input label="Nama Lengkap" value={userFormData.name} onChange={e => setUserFormData({...userFormData, name: e.target.value})} required />
                     <Input label="Username" value={userFormData.username} onChange={e => setUserFormData({...userFormData, username: e.target.value})} required />
-                    <Input label="Password" type="text" value={userFormData.password} onChange={e => setUserFormData({...userFormData, password: e.target.value})} required />
+                    
+                    {!editingUserId && (
+                      <Input 
+                        label="Password" 
+                        type="password" 
+                        value={userFormData.password} 
+                        onChange={e => setUserFormData({...userFormData, password: e.target.value})} 
+                        required 
+                        placeholder="Wajib untuk user baru"
+                      />
+                    )}
                     <div>
                       <label className="block text-sm font-bold text-gray-700 mb-1">Peran (Role)</label>
                       <select className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 text-gray-700 font-medium" value={userFormData.role} onChange={e => setUserFormData({...userFormData, role: e.target.value})} required>

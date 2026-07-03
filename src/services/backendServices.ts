@@ -5,8 +5,8 @@ import type { StatusOrder } from "../components/ui/StatusBadge";
 
 type UserRow = {
   id: string;
+  auth_id: string | null;
   username: string;
-  password_hash: string;
   role: AppUser["role"];
   name: string;
   email: string | null;
@@ -69,6 +69,7 @@ type OrderRow = {
   teknisi_id?: string | null;
   spareparts?: { id: string; qty: number }[] | null;
   jasa?: { id: string; nama: string; harga: number }[] | null;
+  history?: { status: StatusOrder; date: string; by: string }[] | null;
 };
 
 type MutasiRow = {
@@ -96,8 +97,8 @@ const settingsId = "default";
 
 const mapUser = (row: UserRow): AppUser => ({
   id: row.id,
+  authId: row.auth_id || undefined,
   username: row.username,
-  passwordHash: row.password_hash,
   role: row.role,
   name: row.name,
   email: row.email || "",
@@ -107,10 +108,9 @@ const mapUser = (row: UserRow): AppUser => ({
   isActive: row.is_active,
 });
 
-const toUserRow = (user: Omit<AppUser, "id">, id?: string): Partial<UserRow> => {
+const toUserRow = (user: Omit<AppUser, "id">, authId?: string, id?: string): Partial<UserRow> => {
   const row: Partial<UserRow> = {
     username: user.username,
-    password_hash: user.passwordHash,
     role: user.role,
     name: user.name,
     email: user.email || null,
@@ -119,6 +119,7 @@ const toUserRow = (user: Omit<AppUser, "id">, id?: string): Partial<UserRow> => 
     avatar: user.avatar || null,
     is_active: user.isActive,
   };
+  if (authId) row.auth_id = authId;
   if (id) row.id = id;
   return row;
 };
@@ -205,6 +206,7 @@ const mapOrder = (row: OrderRow): Order => ({
   teknisiId: row.teknisi_id || undefined,
   spareparts: row.spareparts || undefined,
   jasa: row.jasa || undefined,
+  history: row.history || undefined,
 });
 
 const toOrderRow = (order: Order): OrderRow => ({
@@ -228,6 +230,7 @@ const toOrderRow = (order: Order): OrderRow => ({
   teknisi_id: order.teknisiId || null,
   spareparts: order.spareparts || null,
   jasa: order.jasa || null,
+  history: order.history || null,
 });
 
 const mapMutasi = (row: MutasiRow): MutasiStok => ({
@@ -386,6 +389,7 @@ export async function updateOrderDB(id: string, updates: Partial<Order>) {
   if (updates.teknisiId !== undefined) payload.teknisi_id = updates.teknisiId || null;
   if (updates.spareparts !== undefined) payload.spareparts = updates.spareparts || null;
   if (updates.jasa !== undefined) payload.jasa = updates.jasa || null;
+  if (updates.history !== undefined) payload.history = updates.history || null;
 
   const { error } = await supabase.from("orders").update(payload).eq("id", id);
   if (error) throw error;
@@ -437,8 +441,8 @@ export async function getUsers() {
   return (data || []).map((row) => mapUser(row as UserRow));
 }
 
-export async function createUserDB(user: Omit<AppUser, "id">) {
-  const { data, error } = await supabase.from("users").insert(toUserRow(user)).select("id").single();
+export async function createUserDB(user: Omit<AppUser, "id">, authId?: string) {
+  const { data, error } = await supabase.from("users").insert(toUserRow(user, authId)).select("id").single();
   if (error) throw error;
   return data.id as string;
 }
@@ -446,7 +450,6 @@ export async function createUserDB(user: Omit<AppUser, "id">) {
 export async function updateUserDB(id: string, updates: Partial<AppUser>) {
   const payload: Partial<UserRow> = {};
   if (updates.username !== undefined) payload.username = updates.username;
-  if (updates.passwordHash !== undefined) payload.password_hash = updates.passwordHash;
   if (updates.role !== undefined) payload.role = updates.role;
   if (updates.name !== undefined) payload.name = updates.name;
   if (updates.email !== undefined) payload.email = updates.email || null;

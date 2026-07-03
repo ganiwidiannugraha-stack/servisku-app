@@ -7,7 +7,7 @@ import { Breadcrumb } from '../components/ui/Breadcrumb';
 import { Printer, Wallet, MessageCircle, Plus, Edit2, Package, Trash2, User, MonitorSmartphone, Wrench, Phone, BookOpen, FileText, Check } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Modal } from '../components/ui/Modal';
-import { generateWALink } from '../utils/whatsappLink';
+import { sendWhatsAppMessage } from '../utils/whatsappLink';
 
 /**
  * Helper: Memformat string angka mentah menjadi format uang dengan titik pemisah ribuan.
@@ -15,7 +15,8 @@ import { generateWALink } from '../utils/whatsappLink';
  * @returns String yang diformat (misal: "1.000.000")
  */
 const formatRibuan = (val: string) => {
-  const num = val.replace(/\D/g, '');
+  let num = val.replace(/\D/g, '');
+  if (num.startsWith('0')) num = num.replace(/^0+/, '');
   return num.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
 };
 
@@ -392,7 +393,7 @@ export const OrderDetail: React.FC = () => {
       const msg = `Halo ${customer.nama}, status servis Anda (${order.noServis}) saat ini adalah: *${newStatus}*.\n\nCatatan:\n${statusNote || '-'}\n\nTerima kasih — ITC Computer.`;
       setTimeout(() => {
         toast.success('WhatsApp dibuka di tab baru');
-        window.open(generateWALink(customer.noHp, msg), '_blank');
+        sendWhatsAppMessage(customer.noHp, msg);
       }, 500);
     }
     
@@ -400,7 +401,7 @@ export const OrderDetail: React.FC = () => {
   };
 
   const handleWA = () => {
-    window.open(generateWALink(customer.noHp, `Halo ${customer.nama}, `), '_blank');
+    sendWhatsAppMessage(customer.noHp, `Halo ${customer.nama}, `);
   };
 
   const handleSaveBiaya = (e: React.FormEvent) => {
@@ -581,12 +582,25 @@ export const OrderDetail: React.FC = () => {
               <h2 className="text-sm font-semibold text-gray-900 mb-6">Status Timeline</h2>
               <div className="relative border-l-2 border-gray-100 ml-2.5 space-y-7">
                 
-                {/* Current Status (Top) */}
-                <div className="relative pl-6">
-                  <div className="absolute w-3 h-3 bg-blue-600 rounded-full -left-[7px] top-1 ring-4 ring-white shadow-sm"></div>
-                  <h3 className="text-sm font-bold text-gray-900">{order.status}</h3>
-                  <p className="text-xs text-gray-500 mt-1">Status Saat Ini</p>
-                </div>
+                {/* Current Status & History */}
+                {(order.history || []).length > 0 ? (
+                  [...(order.history || [])].reverse().map((h, i) => (
+                    <div key={i} className="relative pl-6">
+                      <div className={`absolute w-3 h-3 rounded-full -left-[7px] top-1 ring-4 ring-white shadow-sm ${i === 0 ? 'bg-blue-600' : 'bg-gray-400'}`}></div>
+                      <h3 className={`text-sm font-bold ${i === 0 ? 'text-gray-900' : 'text-gray-600'}`}>{h.status}</h3>
+                      <p className="text-xs text-gray-500 mt-1">
+                        {new Date(h.date).toLocaleString('id-ID', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                        <br/><span className="text-[10px] text-gray-400">Oleh: {h.by}</span>
+                      </p>
+                    </div>
+                  ))
+                ) : (
+                  <div className="relative pl-6">
+                    <div className="absolute w-3 h-3 bg-blue-600 rounded-full -left-[7px] top-1 ring-4 ring-white shadow-sm"></div>
+                    <h3 className="text-sm font-bold text-gray-900">{order.status}</h3>
+                    <p className="text-xs text-gray-500 mt-1">Status Saat Ini</p>
+                  </div>
+                )}
 
                 {/* Status Masuk (Bottom) */}
                 <div className="relative pl-6">

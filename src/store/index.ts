@@ -1,6 +1,8 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type { StatusOrder } from "../components/ui/StatusBadge";
+import { createClient } from "@supabase/supabase-js";
+import { supabase } from "../lib/supabase";
 import {
   getCustomers,
   getSpareparts,
@@ -15,7 +17,6 @@ import {
   updateCustomerDB,
   updateSparepartDB,
   updateOrderDB,
-  updateOrderStatusDB,
   updateTechnicianDB,
   updateSettingsDB,
   deleteCustomerDB,
@@ -124,8 +125,8 @@ export type Role = "OWNER" | "FRONTLINE" | "FINANCE" | "INVENTORY" | "TEKNISI";
 
 export interface AppUser {
   id: string;
+  authId?: string;
   username: string;
-  passwordHash: string; // Plaintext untuk demo
   role: Role;
   name: string;
   email: string;
@@ -218,6 +219,11 @@ export interface Order {
    * Fleksibel dan independen terhadap *Biaya Jasa Utama*.
    */
   jasa?: { id: string; nama: string; harga: number }[];
+  /**
+   * Log Riwayat Perubahan Status (Timeline).
+   * Mencatat setiap transisi status beserta waktu dan pelakunya.
+   */
+  history?: { status: StatusOrder; date: string; by: string }[];
 }
 
 /**
@@ -259,9 +265,9 @@ interface AppState {
   logActivity: (action: string, details: string) => void;
   clearLogs: () => void;
   updateProfile: (updates: Partial<AppUser>) => Promise<void>;
-  changePassword: (oldPass: string, newPass: string) => Promise<boolean>;
+  changePassword: (newPass: string) => Promise<boolean>;
   resetUserPassword: (id: string, newPass: string) => Promise<void>;
-  addUser: (user: Omit<AppUser, 'id'>) => Promise<void>;
+  addUser: (user: Omit<AppUser, 'id'>, initialPassword?: string) => Promise<void>;
   deleteUser: (id: string) => Promise<void>;
   updateUser: (id: string, updates: Partial<AppUser>) => Promise<void>;
 
@@ -440,21 +446,41 @@ export const useStore = create<AppState>()(
         set({ users, userName: newUserName });
       },
       
-      changePassword: async (oldPass, newPass) => {
+      changePassword: async (newPass) => {
         const state = get();
         if (!state.userId) return false;
-        const user = state.users.find(u => u.id === state.userId);
-        if (user && user.passwordHash === oldPass) {
-          await updateUserDB(state.userId, { passwordHash: newPass });
-          const users = await getUsers();
-          set({ users });
-          return true;
+        const { error } = await supabase.auth.updateUser({ password: newPass });
+        if (error) {
+          console.error("Gagal ganti password:", error);
+          return false;
         }
-        return false;
+        return true;
       },
       
-      addUser: async (user) => {
-        await createUserDB(user);
+      addUser: async (user, initialPassword) => {
+        let authId: string | undefined = undefined;
+        if (initialPassword) {
+          const emailAlias = `${user.username}@servisku.internal`;
+          // Buat client terpisah agar session owner tidak ter-overwrite saat sign up user baru
+          const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+          const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+          const tempClient = createClient(supabaseUrl, supabaseKey, {
+            auth: { persistSession: false }
+          });
+          
+          const { data, error } = await tempClient.auth.signUp({
+            email: emailAlias,
+            password: initialPassword,
+          });
+
+          if (error) {
+            console.error("Gagal mendaftarkan user di Supabase Auth:", error);
+          } else if (data?.user) {
+            authId = data.user.id;
+          }
+        }
+        
+        await createUserDB(user, authId);
         const users = await getUsers();
         set({ users });
       },
@@ -468,19 +494,25 @@ export const useStore = create<AppState>()(
         const users = await getUsers();
         set({ users });
       },
-      resetUserPassword: async (id, newPass) => {
-        await updateUserDB(id, { passwordHash: newPass });
-        const users = await getUsers();
-        set({ users });
+      resetUserPassword: async () => {
+        console.warn("Reset password dari frontend dengan anon key membutuhkan setup khusus. Saat ini belum diimplementasikan.");
       },
 
       login: async (username, pass) => {
-        // Karena users mungkin belum ter-load jika login pertama kali (sebelum app mount full),
-        // ambil langsung dari DB untuk pengecekan login:
+        const emailAlias = `${username}@servisku.internal`;
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email: emailAlias,
+          password: pass
+        });
+
+        if (error || !data.session) {
+          return false;
+        }
+
         const dbUsers = await getUsers();
-        set({ users: dbUsers }); // Update state sekalian
+        set({ users: dbUsers });
         
-        const user = dbUsers.find(u => u.username === username && u.passwordHash === pass && u.isActive);
+        const user = dbUsers.find(u => u.username === username && u.isActive);
         
         if (user) {
           set({
@@ -496,7 +528,8 @@ export const useStore = create<AppState>()(
         return false;
       },
 
-      logout: () => {
+      logout: async () => {
+        await supabase.auth.signOut();
         set({
           isAuthenticated: false,
           userRole: null,
@@ -507,10 +540,19 @@ export const useStore = create<AppState>()(
 
       updateOrderStatus: (orderId, status) => {
         set((state) => {
-          const nextOrders = state.orders.map((o) =>
-            o.id === orderId ? { ...o, status } : o,
-          );
-          void updateOrderStatusDB(orderId, status);
+          const userName = state.userName || 'Sistem';
+          const newHistoryItem = { status, date: new Date().toISOString(), by: userName };
+          const nextOrders = state.orders.map((o) => {
+            if (o.id === orderId) {
+              const currentHistory = o.history || [];
+              return { ...o, status, history: [...currentHistory, newHistoryItem] };
+            }
+            return o;
+          });
+          const targetOrder = nextOrders.find(o => o.id === orderId);
+          if (targetOrder) {
+            void updateOrderDB(orderId, { status, history: targetOrder.history });
+          }
           return { orders: nextOrders };
         });
         get().logActivity("UPDATE_ORDER", `Mengubah status order ${orderId} menjadi ${status}`);
