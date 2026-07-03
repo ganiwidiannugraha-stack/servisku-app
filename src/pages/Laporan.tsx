@@ -3,7 +3,7 @@ import { useStore } from '../store';
 import { Button } from '../components/ui/Button';
 import { 
   Download, FileText, Star, ChevronDown,
-  AlertTriangle, Users, Wrench
+  AlertTriangle, Users, Wrench, Clock
 } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
