@@ -41,9 +41,15 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const unpaidOrdersCount = orders.filter(o => o.status === 'SELESAI').length;
-  const lowStockCount = spareparts.filter(s => s.stok <= (s.minStok || 5)).length;
-  const totalNotifications = unpaidOrdersCount + lowStockCount;
+  const showUnpaidNotif = ['OWNER', 'FRONTLINE'].includes(userRole || '');
+  const showStockNotif = ['OWNER', 'INVENTORY'].includes(userRole || '');
+  const showTechNotif = ['OWNER', 'TEKNISI'].includes(userRole || '');
+
+  const unpaidOrdersCount = showUnpaidNotif ? orders.filter(o => o.status === 'SELESAI').length : 0;
+  const lowStockCount = showStockNotif ? spareparts.filter(s => s.stok <= (s.minStok || 5)).length : 0;
+  const unassignedOrdersCount = showTechNotif ? orders.filter(o => o.status === 'MASUK' && !o.teknisiId).length : 0;
+  
+  const totalNotifications = unpaidOrdersCount + lowStockCount + unassignedOrdersCount;
 
   const searchResults = () => {
     if (!query) return null;
@@ -212,6 +218,17 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
                       <div>
                         <p className="text-sm font-semibold text-gray-900">{lowStockCount} spare part stok rendah</p>
                         <p className="text-xs text-gray-500 mt-0.5">Segera lakukan restock</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                {unassignedOrdersCount > 0 && (
+                  <div className="p-4 border-b border-gray-50 hover:bg-gray-50 cursor-pointer transition-colors" onClick={() => { navigate('/order'); setIsNotifOpen(false); }}>
+                    <div className="flex items-start gap-3">
+                      <div className="mt-1.5 w-2 h-2 rounded-full bg-blue-500 shrink-0"></div>
+                      <div>
+                        <p className="text-sm font-semibold text-gray-900">{unassignedOrdersCount} order baru menunggu teknisi</p>
+                        <p className="text-xs text-gray-500 mt-0.5">Segera cek dan ambil alih pekerjaan</p>
                       </div>
                     </div>
                   </div>
