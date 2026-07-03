@@ -573,6 +573,20 @@ export const Dashboard: React.FC = () => {
         .map(([name, value], index) => ({ name, value, color: colors[index % colors.length] }));
     }, [spareparts]);
 
+    const categorySummary = useMemo(() => {
+      const summary: Record<string, { count: number; stock: number }> = {};
+      spareparts.forEach(sp => {
+        const cat = sp.kategori || 'Lainnya';
+        if (!summary[cat]) summary[cat] = { count: 0, stock: 0 };
+        summary[cat].count += 1;
+        summary[cat].stock += sp.stok;
+      });
+      return Object.entries(summary)
+        .map(([kategori, data]) => ({ kategori, ...data }))
+        .sort((a, b) => b.stock - a.stock)
+        .slice(0, 8);
+    }, [spareparts]);
+
     return (
       <motion.div 
         className="p-8 w-full min-h-screen"
@@ -623,21 +637,21 @@ export const Dashboard: React.FC = () => {
           </motion.div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          <motion.div variants={itemVariants} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-            <div className="px-6 py-5 border-b border-gray-100 flex justify-between items-center bg-red-50/50">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+          <motion.div variants={itemVariants} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex flex-col h-[400px]">
+            <div className="px-6 py-5 border-b border-gray-100 flex justify-between items-center bg-red-50/50 shrink-0">
               <h2 className="font-bold text-red-900 flex items-center gap-2">
                 <AlertTriangle size={18} className="text-red-600" /> Peringatan Stok Tipis
               </h2>
               <button onClick={() => navigate('/stok')} className="text-sm font-semibold text-red-600 hover:text-red-700 transition-colors">Lihat Semua &rsaquo;</button>
             </div>
-            <div className="p-0">
+            <div className="p-0 flex-1 overflow-y-auto hide-scrollbar">
               {lowStockSpareparts.length === 0 ? (
-                <div className="p-8 text-center text-gray-500">Stok semua sparepart dalam keadaan aman.</div>
+                <div className="p-8 text-center text-gray-500 h-full flex items-center justify-center">Stok semua sparepart dalam keadaan aman.</div>
               ) : (
-                <div className="overflow-x-auto">
+                <div className="overflow-x-auto min-h-full">
                   <table className="w-full text-sm text-left">
-                    <thead className="text-xs text-gray-500 uppercase bg-gray-50 border-b border-gray-100">
+                    <thead className="text-xs text-gray-500 uppercase bg-gray-50/90 backdrop-blur border-b border-gray-100 sticky top-0 z-10">
                       <tr>
                         <th className="px-6 py-4 font-semibold">NAMA SPAREPART</th>
                         <th className="px-6 py-4 font-semibold">KATEGORI</th>
@@ -651,6 +665,45 @@ export const Dashboard: React.FC = () => {
                           <td className="px-6 py-4 text-gray-600">{sp.kategori}</td>
                           <td className="px-6 py-4 text-right">
                             <span className="inline-block px-3 py-1 bg-red-100 text-red-700 font-bold rounded-full text-xs">{sp.stok} unit</span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </motion.div>
+
+          <motion.div variants={itemVariants} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex flex-col h-[400px]">
+            <div className="px-6 py-5 border-b border-gray-100 flex justify-between items-center bg-blue-50/50 shrink-0">
+              <h2 className="font-bold text-blue-900 flex items-center gap-2">
+                <Box size={18} className="text-blue-600" /> Ringkasan Kategori
+              </h2>
+              <button onClick={() => navigate('/stok')} className="text-sm font-semibold text-blue-600 hover:text-blue-700 transition-colors">Lihat Semua &rsaquo;</button>
+            </div>
+            <div className="p-0 flex-1 overflow-y-auto hide-scrollbar">
+              {categorySummary.length === 0 ? (
+                <div className="p-8 text-center text-gray-500 h-full flex items-center justify-center">Belum ada kategori terdaftar.</div>
+              ) : (
+                <div className="overflow-x-auto min-h-full">
+                  <table className="w-full text-sm text-left">
+                    <thead className="text-xs text-gray-500 uppercase bg-gray-50/90 backdrop-blur border-b border-gray-100 sticky top-0 z-10">
+                      <tr>
+                        <th className="px-6 py-4 font-semibold">KATEGORI</th>
+                        <th className="px-6 py-4 font-semibold text-center">TOTAL ITEM</th>
+                        <th className="px-6 py-4 font-semibold text-right">TOTAL STOK</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {categorySummary.map((cat, idx) => (
+                        <tr key={idx} className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors">
+                          <td className="px-6 py-4 font-bold text-gray-900">{cat.kategori}</td>
+                          <td className="px-6 py-4 text-center">
+                            <span className="inline-block px-3 py-1 bg-gray-100 text-gray-700 font-medium rounded-full text-xs">{cat.count} jenis</span>
+                          </td>
+                          <td className="px-6 py-4 text-right font-medium text-blue-600">
+                            {cat.stock} unit
                           </td>
                         </tr>
                       ))}
