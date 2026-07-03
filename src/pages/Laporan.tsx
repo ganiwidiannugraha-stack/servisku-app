@@ -528,6 +528,7 @@ export const Laporan: React.FC = () => {
           ['Laba Bersih',        `Rp ${financeData.labaBersih.toLocaleString('id-ID')}`],
           ['Margin Laba',        `${margin}%`],
           ['Piutang / Kasbon',   `Rp ${financeData.piutang.toLocaleString('id-ID')}`],
+          ['Proyeksi (Omset+Piutang)', `Rp ${financeData.proyeksiPendapatan.toLocaleString('id-ID')}`],
         ],
         theme: 'striped',
         headStyles: { fillColor: [59, 130, 246] },
@@ -638,6 +639,47 @@ export const Laporan: React.FC = () => {
           headStyles: { fillColor: [239, 68, 68], fontSize: 9 },
           styles: { fontSize: 9 },
         });
+        yPos = (doc as any).lastAutoTable.finalY + 8;
+      }
+
+      // Sub-tabel: Bottleneck
+      if (Object.keys(opsData.bottleneckCounts).length > 0) {
+        checkPage(30);
+        doc.setFontSize(11);
+        doc.setTextColor(80);
+        doc.text('Analisis Titik Macet (Bottleneck):', 14, yPos);
+        autoTable(doc, {
+          startY: yPos + 3,
+          head: [['Tahapan', 'Jumlah Servis Tertahan']],
+          body: [
+            ['Diagnosa', opsData.bottleneckCounts.DIAGNOSA],
+            ['Menunggu Sparepart', opsData.bottleneckCounts.MENUNGGU_SPAREPART],
+            ['Proses Servis', opsData.bottleneckCounts.PROSES],
+            ['Siap Diambil', opsData.bottleneckCounts.SIAP_DIAMBIL],
+          ],
+          theme: 'grid',
+          headStyles: { fillColor: [245, 158, 11], fontSize: 9 },
+          styles: { fontSize: 9 },
+        });
+        yPos = (doc as any).lastAutoTable.finalY + 8;
+      }
+
+      // Sub-tabel: Failure Rate
+      if (opsData.failureRateByDevice.length > 0) {
+        checkPage(40);
+        doc.setFontSize(11);
+        doc.setTextColor(80);
+        doc.text('Kategori Perangkat Sering Gagal (Failure Rate):', 14, yPos);
+        autoTable(doc, {
+          startY: yPos + 3,
+          head: [['Kategori', 'Total Servis', 'Batal/Gagal', 'Tingkat Kegagalan']],
+          body: opsData.failureRateByDevice.map(d => [
+            d.device, d.total, d.batal, `${d.rate.toFixed(1)}%`
+          ]),
+          theme: 'grid',
+          headStyles: { fillColor: [239, 68, 68], fontSize: 9 },
+          styles: { fontSize: 9 },
+        });
         yPos = (doc as any).lastAutoTable.finalY + 15;
       } else {
         yPos += 10;
@@ -707,6 +749,67 @@ export const Laporan: React.FC = () => {
           headStyles: { fillColor: [239, 68, 68], fontSize: 9 },
           styles: { fontSize: 9 },
         });
+        yPos = (doc as any).lastAutoTable.finalY + 8;
+      }
+
+      // Sub-tabel: Top Profit
+      if (invData.topProfitSpareparts.length > 0) {
+        checkPage(30);
+        doc.setFontSize(11);
+        doc.setTextColor(80);
+        doc.text('Top 5 Sparepart Paling Cuan (Highest Margin):', 14, yPos);
+        autoTable(doc, {
+          startY: yPos + 3,
+          head: [['Nama Sparepart', 'Terjual', 'Total Profit (Rp)']],
+          body: invData.topProfitSpareparts.map(p => [
+            p.detail?.nama || '-',
+            p.qty,
+            `Rp ${p.totalProfit.toLocaleString('id-ID')}`
+          ]),
+          theme: 'grid',
+          headStyles: { fillColor: [16, 185, 129], fontSize: 9 },
+          styles: { fontSize: 9 },
+        });
+        yPos = (doc as any).lastAutoTable.finalY + 8;
+      }
+      
+      // Sub-tabel: Prediksi Restock
+      if (invData.prediksiRestock.length > 0) {
+        checkPage(30);
+        doc.setFontSize(11);
+        doc.setTextColor(80);
+        doc.text('Prediksi Restock (30 Hari ke depan):', 14, yPos);
+        autoTable(doc, {
+          startY: yPos + 3,
+          head: [['Nama Sparepart', 'Rata-rata Terjual/Hari', 'Saran Beli']],
+          body: invData.prediksiRestock.slice(0, 10).map(p => [
+            p.detail?.nama || '-',
+            `${p.avgDailySold.toFixed(1)} unit`,
+            `+${p.restockSuggestion} unit`
+          ]),
+          theme: 'grid',
+          headStyles: { fillColor: [59, 130, 246], fontSize: 9 },
+          styles: { fontSize: 9 },
+        });
+        yPos = (doc as any).lastAutoTable.finalY + 8;
+      }
+
+      // Sub-tabel: Dead Stock
+      if (invData.deadStock.length > 0) {
+        checkPage(30);
+        doc.setFontSize(11);
+        doc.setTextColor(80);
+        doc.text('Dead Stock (Tidak ada penjualan periode ini):', 14, yPos);
+        autoTable(doc, {
+          startY: yPos + 3,
+          head: [['Nama Sparepart', 'Kategori', 'Sisa Stok']],
+          body: invData.deadStock.slice(0, 10).map(sp => [
+            sp.nama, sp.kategori, sp.stok
+          ]),
+          theme: 'grid',
+          headStyles: { fillColor: [156, 163, 175], fontSize: 9 },
+          styles: { fontSize: 9 },
+        });
         yPos = (doc as any).lastAutoTable.finalY + 15;
       } else {
         yPos += 10;
@@ -724,20 +827,20 @@ export const Laporan: React.FC = () => {
       
       const sdmBody = techData.techStats.map(t => {
         const rasio = t.assigned > 0 ? ((t.finished / t.assigned) * 100).toFixed(0) : '0';
-        const techInfo = technicians.find(tc => tc.id === t.id);
         return [
           t.name,
           t.assigned,
           t.finished,
-          `${rasio}%`,
-          techInfo ? `${techInfo.rating.toFixed(1)} / 5.0` : '-',
+          `${t.qualityRate.toFixed(0)}%`,
+          `${t.avgDays.toFixed(1)} hr`,
+          `Rp ${(t as any).pendapatanJasa?.toLocaleString('id-ID') || 0}`
         ];
       });
       
       autoTable(doc, {
         startY: yPos + 5,
-        head: [['Nama Teknisi', 'Ditugaskan', 'Selesai', 'Rasio Selesai', 'Rating']],
-        body: sdmBody.length > 0 ? sdmBody : [['-', '-', '-', '-', '-']],
+        head: [['Nama Teknisi', 'Ditugaskan', 'Selesai', 'Quality Rate', 'SLA (Rata2)', 'Total Jasa']],
+        body: sdmBody.length > 0 ? sdmBody : [['-', '-', '-', '-', '-', '-']],
         theme: 'striped',
         headStyles: { fillColor: [139, 92, 246] },
         styles: { fontSize: 10 },
@@ -754,22 +857,44 @@ export const Laporan: React.FC = () => {
       doc.setTextColor(0);
       doc.text('5. Analisis Loyalitas Pelanggan (CRM)', 14, yPos);
       
-      const crmBody = crmData.allCustomers.slice(0, 15).map((c, i) => [
-        i + 1,
-        c.detail?.nama || '-',
-        c.detail?.noHp || '-',
-        c.count,
-        `Rp ${c.total.toLocaleString('id-ID')}`,
-      ]);
-      
       autoTable(doc, {
         startY: yPos + 5,
-        head: [['#', 'Nama Pelanggan', 'Kontak', 'Freq Servis', 'Total Pengeluaran (CLV)']],
-        body: crmBody.length > 0 ? crmBody : [['-', '-', '-', '-', '-']],
+        head: [['Indikator CRM', 'Nilai']],
+        body: [
+          ['Total Pelanggan Aktif', crmData.pelangganAktif.toString()],
+          ['Pelanggan Baru (Bulan Ini)', crmData.pelangganBaru.toString()],
+          ['Pelanggan Kembali (Repeat Order)', crmData.repeatCustomersCount.toString()],
+          ['Tingkat Retensi (Retention Rate)', `${crmData.retentionRate}%`],
+          ['Pelanggan Tidur (>90 Hari)', crmData.pelangganTidur.toString()],
+        ],
         theme: 'striped',
         headStyles: { fillColor: [236, 72, 153] },
         styles: { fontSize: 10 },
       });
+      yPos = (doc as any).lastAutoTable.finalY + 8;
+
+      if (crmData.allCustomers.length > 0) {
+        checkPage(30);
+        doc.setFontSize(11);
+        doc.setTextColor(80);
+        doc.text('Daftar Top Pelanggan:', 14, yPos);
+        const crmBody = crmData.allCustomers.slice(0, 15).map((c, i) => [
+          i + 1,
+          c.detail?.nama || '-',
+          c.detail?.noHp || '-',
+          c.count,
+          `Rp ${c.total.toLocaleString('id-ID')}`,
+        ]);
+        
+        autoTable(doc, {
+          startY: yPos + 3,
+          head: [['#', 'Nama Pelanggan', 'Kontak', 'Freq Servis', 'Total Pengeluaran (CLV)']],
+          body: crmBody,
+          theme: 'grid',
+          headStyles: { fillColor: [236, 72, 153], fontSize: 9 },
+          styles: { fontSize: 9 },
+        });
+      }
     }
 
     // --- Footer ---
