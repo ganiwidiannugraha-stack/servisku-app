@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { NavLink } from 'react-router-dom';
-import { Home, ClipboardList, Box, Users, BarChart3, Settings, LogOut } from 'lucide-react';
+import { Home, ClipboardList, Box, Users, BarChart3, Settings, LogOut, Cpu, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useStore } from '../../store';
 
 interface SidebarProps {
@@ -38,15 +38,30 @@ export const Sidebar: React.FC<SidebarProps> = ({ onNavigate }) => {
 
   return (
     <div className={`flex flex-col h-screen bg-white border-r border-gray-100 shadow-[2px_0_8px_rgba(0,0,0,0.02)] transition-all duration-300 ${isSidebarCollapsed ? 'w-20' : 'w-64'}`}>
-      <div className={`flex items-center h-20 border-b border-gray-100 transition-all duration-300 ${isSidebarCollapsed ? 'px-4 justify-center' : 'px-6'}`}>
-        <div className="flex items-center gap-3 overflow-hidden">
-          <img src="/logo.png" alt="ServisKu Logo" className="h-10 w-auto object-contain flex-shrink-0 drop-shadow-sm" />
+      <div className={`flex items-center h-20 border-b border-gray-100 transition-all duration-300 relative ${isSidebarCollapsed ? 'px-0 justify-center' : 'px-6'}`}>
+        <div 
+          onClick={useStore.getState().toggleSidebar}
+          className="flex items-center gap-3 overflow-hidden cursor-pointer group w-full h-full"
+          title={isSidebarCollapsed ? "Perbesar Sidebar" : "Perkecil Sidebar"}
+        >
+          <div className={`flex items-center justify-center bg-gradient-to-br from-blue-600 to-blue-800 text-white rounded-xl shadow-md transition-all duration-300 ${isSidebarCollapsed ? 'w-10 h-10 mx-auto' : 'w-9 h-9 flex-shrink-0'}`}>
+            <Cpu size={isSidebarCollapsed ? 22 : 18} className="group-hover:rotate-12 transition-transform duration-300" />
+          </div>
+          
           {!isSidebarCollapsed && (
-            <span className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-800 to-blue-600 truncate">
+            <span className="text-2xl font-black tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-blue-900 to-blue-600 truncate">
               ServisKu
             </span>
           )}
         </div>
+
+        {/* Toggle Button explicitly visible on hover or when expanded */}
+        <button
+          onClick={useStore.getState().toggleSidebar}
+          className={`absolute -right-3 top-1/2 -translate-y-1/2 w-6 h-6 bg-white border border-gray-200 rounded-full flex items-center justify-center text-gray-400 hover:text-blue-600 hover:border-blue-300 hover:shadow-md transition-all z-10 opacity-0 group-hover:opacity-100 hidden md:flex ${!isSidebarCollapsed ? 'opacity-100' : ''}`}
+        >
+          {isSidebarCollapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
+        </button>
       </div>
       
       <div className={`flex flex-col flex-1 py-4 overflow-y-auto transition-all duration-300 ${isSidebarCollapsed ? 'px-2' : 'px-4'}`}>

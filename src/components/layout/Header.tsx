@@ -21,7 +21,7 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
   const dropdownRef = useRef<HTMLDivElement>(null);
   const notifRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
-  const { orders, customers, spareparts, settings, userName, userRole, isSidebarCollapsed, toggleSidebar } = useStore();
+  const { orders, customers, spareparts, settings, userName, userRole } = useStore();
 
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     setQuery(e.target.value);
@@ -80,14 +80,7 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
         >
           <Menu size={20} />
         </button>
-        {/* Toggle Sidebar Desktop */}
-        <button 
-          onClick={toggleSidebar}
-          className="hidden md:flex p-2 mr-4 text-gray-500 rounded-xl hover:bg-gray-50 border border-gray-100 hover:text-gray-900 transition-colors"
-          title={isSidebarCollapsed ? "Perluas Sidebar" : "Ciutkan Sidebar"}
-        >
-          <Menu size={20} />
-        </button>
+        {/* Toggle Sidebar Desktop dipindah ke dalam Sidebar.tsx */}
         <div className="w-full max-w-xl relative" ref={dropdownRef}>
           <div className="relative flex items-center">
             <Search className="absolute left-3.5 text-gray-400" size={18} />
