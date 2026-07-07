@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { Home, ClipboardList, Box, Users, BarChart3, Settings, LogOut, ChevronLeft, ChevronRight, Monitor, UserCircle } from 'lucide-react';
+import { Home, ClipboardList, Box, Users, BarChart3, Settings, LogOut, ChevronLeft, ChevronRight, UserCircle } from 'lucide-react';
 import { useStore } from '../../store';
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';

@@ -139,13 +139,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({ startDate, end
     setActivePreset(preset.label);
   };
 
-  const isDaySelected = (day: Date) => {
-    if (!tempStart) return false;
-    const ymd = toYMD(day);
-    if (ymd === toYMD(tempStart)) return true;
-    if (tempEnd && ymd === toYMD(tempEnd)) return true;
-    return false;
-  };
+
 
   const isDayInRange = (day: Date) => {
     if (!tempStart || !tempEnd) return false;

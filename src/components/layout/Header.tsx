@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Bell, Search, Menu, ChevronDown, Package, User, Wrench, X, HelpCircle } from 'lucide-react';
+import { Bell, Search, Menu, Package, User, Wrench, X, HelpCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useStore } from '../../store';
 import { HelpCenter } from '../ui/HelpCenter';

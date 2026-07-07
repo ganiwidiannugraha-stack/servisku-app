@@ -65,9 +65,9 @@ export const Stok: React.FC = () => {
     return (spareparts || []).filter(sp => sp.stok <= (sp.minStok || 0)).length;
   }, [spareparts]);
 
-  const uniqueCategories = useMemo(() => Array.from(new Set(spareparts?.map(s => s.kategori).filter(Boolean))), [spareparts]);
-  const uniqueBrands = useMemo(() => Array.from(new Set(spareparts?.map(s => s.merek).filter(Boolean))), [spareparts]);
-  const uniqueRacks = useMemo(() => Array.from(new Set(spareparts?.map(s => s.rak).filter(Boolean))), [spareparts]);
+  const uniqueCategories = useMemo(() => Array.from(new Set(spareparts?.map(s => s.kategori).filter(Boolean))) as string[], [spareparts]);
+  const uniqueBrands = useMemo(() => Array.from(new Set(spareparts?.map(s => s.merek).filter(Boolean))) as string[], [spareparts]);
+  const uniqueRacks = useMemo(() => Array.from(new Set(spareparts?.map(s => s.rak).filter(Boolean))) as string[], [spareparts]);
 
   const handleOpenMutasiModal = (sparepart: Sparepart, tipe: 'IN' | 'OUT') => {
     setSelectedSparepart(sparepart);
