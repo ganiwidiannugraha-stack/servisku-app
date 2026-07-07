@@ -6,8 +6,9 @@ import { Input } from '../components/ui/Input';
 import { Breadcrumb } from '../components/ui/Breadcrumb';
 import { Modal } from '../components/ui/Modal';
 import { sendWhatsAppMessage } from '../utils/whatsappLink';
-import { CheckCircle2, MessageCircle, FileText, AlertCircle } from 'lucide-react';
+import { CheckCircle2, MessageCircle, FileText, AlertCircle, User, Phone, Mail, MapPin, Monitor, Tag, Cpu, Hash, Clock, Wallet } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { Autocomplete } from '../components/ui/Autocomplete';
 
 export const NewOrder: React.FC = () => {
   const navigate = useNavigate();
@@ -24,7 +25,8 @@ export const NewOrder: React.FC = () => {
     alamat: '',
     // Perangkat
     jenisPerangkat: '',
-    merkModel: '',
+    merek: '',
+    model: '',
     noSeri: '',
     kelengkapanCharger: false,
     kelengkapanMouse: false,
@@ -110,7 +112,7 @@ export const NewOrder: React.FC = () => {
       addOrder({
         pelangganId: pelangganId,
         jenisPerangkat: formData.jenisPerangkat,
-        merkModel: formData.merkModel,
+        merkModel: `${formData.merek} ${formData.model}`.trim(),
         noSeri: formData.noSeri,
         kelengkapan: kelengkapanList,
         keluhan: formData.keluhan,
@@ -132,7 +134,7 @@ export const NewOrder: React.FC = () => {
         noServis: createdOrder.noServis,
         pelanggan: formData.namaPelanggan,
         hp: formData.noHpPelanggan,
-        perangkat: `${formData.jenisPerangkat} ${formData.merkModel}`,
+        perangkat: `${formData.jenisPerangkat} ${formData.merek} ${formData.model}`.trim(),
         keluhan: formData.keluhan,
         biaya: Number(formData.estimasiBiaya) || 0,
         estimasiSelesai: formData.estimasiSelesai
@@ -172,15 +174,16 @@ export const NewOrder: React.FC = () => {
           <div className="p-6">
             <h2 className="text-sm font-medium text-gray-500 uppercase tracking-wide mb-4">Data Pelanggan</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="relative">
-                <Input
+              <div className="md:col-span-2">
+                <Autocomplete
+                  name="namaPelanggan"
                   label="Nama Pelanggan"
                   required
-                  list="customer-names"
-                  placeholder="Ketik untuk mencari pelanggan..."
+                  leftIcon={<User size={18} />}
+                  options={customers.map(c => c.nama)}
+                  placeholder="Ketik untuk mencari atau menambah pelanggan..."
                   value={formData.namaPelanggan}
-                  onChange={(e) => {
-                    const val = e.target.value;
+                  onChange={(val) => {
                     setFormData({ ...formData, namaPelanggan: val });
                     if (val.length >= 3) {
                       const existing = customers.find(c => c.nama.toLowerCase() === val.toLowerCase());
@@ -195,25 +198,23 @@ export const NewOrder: React.FC = () => {
                       }
                     }
                   }}
+                  error={formErrors.namaPelanggan}
                 />
-                <datalist id="customer-names">
-                  {customers.map(c => (
-                    <option key={c.id} value={c.nama}>{c.noHp}</option>
-                  ))}
-                </datalist>
               </div>
-              <Input
+              <Autocomplete
+                name="noHpPelanggan"
                 label="No. HP / WhatsApp"
                 required
-                type="tel"
+                leftIcon={<Phone size={18} />}
+                options={Array.from(new Set(customers.map(c => c.noHp)))}
                 placeholder="Mis: 081234567890"
                 value={formData.noHpPelanggan}
-                className={formErrors.noHpPelanggan ? 'border-red-500 ring-1 ring-red-500' : ''}
-                onChange={(e) => {
-                  const val = e.target.value.replace(/\D/g, '');
-                  setFormData({ ...formData, noHpPelanggan: val });
-                  if (val.length >= 10) {
-                    const existing = customers.find(c => c.noHp === val);
+                error={formErrors.noHpPelanggan}
+                onChange={(val) => {
+                  const cleanVal = val.replace(/\D/g, '');
+                  setFormData({ ...formData, noHpPelanggan: cleanVal });
+                  if (cleanVal.length >= 10) {
+                    const existing = customers.find(c => c.noHp === cleanVal);
                     if (existing) {
                       setFormData(prev => ({ 
                         ...prev, 
@@ -225,24 +226,29 @@ export const NewOrder: React.FC = () => {
                   }
                 }}
               />
-              <div className="md:col-span-2">
-                <Input
-                  label="Email Pelanggan"
-                  type="email"
-                  placeholder="Mis: user@email.com (Opsional)"
-                  value={formData.emailPelanggan}
-                  onChange={(e) => setFormData({ ...formData, emailPelanggan: e.target.value })}
-                />
-              </div>
-              <div className="md:col-span-2">
+              <Autocomplete
+                name="emailPelanggan"
+                label="Email Pelanggan"
+                leftIcon={<Mail size={18} />}
+                options={Array.from(new Set(customers.map(c => c.email).filter(Boolean))) as string[]}
+                placeholder="Mis: user@email.com (Opsional)"
+                value={formData.emailPelanggan}
+                onChange={(val) => setFormData({ ...formData, emailPelanggan: val })}
+              />
+              <div className="md:col-span-2 relative">
                 <label className="block mb-1 text-sm font-medium text-gray-700">Alamat</label>
-                <textarea
-                  rows={2}
-                  className="w-full py-2 px-3 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-                  placeholder="Opsional"
-                  value={formData.alamat}
-                  onChange={(e) => setFormData({ ...formData, alamat: e.target.value })}
-                />
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pt-3 pl-3 pointer-events-none text-gray-400">
+                    <MapPin size={18} />
+                  </div>
+                  <textarea
+                    rows={2}
+                    className="w-full py-2 pl-10 pr-3 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                    placeholder="Opsional"
+                    value={formData.alamat}
+                    onChange={(e) => setFormData({ ...formData, alamat: e.target.value })}
+                  />
+                </div>
               </div>
             </div>
           </div>
@@ -253,29 +259,44 @@ export const NewOrder: React.FC = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
 
               <div>
-                <label className="block mb-1 text-sm font-medium text-gray-700">Jenis Perangkat <span className="text-red-500">*</span></label>
-                <select
+                <Autocomplete
+                  name="jenisPerangkat"
+                  label="Jenis Perangkat"
                   required
-                  className={`w-full py-2 px-3 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent bg-white ${formErrors.jenisPerangkat ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-300'}`}
+                  leftIcon={<Monitor size={18} />}
+                  options={['Laptop', 'PC Desktop', 'Printer', 'Monitor', 'Lainnya']}
+                  placeholder="Ketik atau pilih jenis..."
                   value={formData.jenisPerangkat}
-                  onChange={(e) => setFormData({ ...formData, jenisPerangkat: e.target.value })}
-                >
-                  <option value="">Pilih Jenis</option>
-                  <option value="Laptop">Laptop</option>
-                  <option value="PC Desktop">PC Desktop</option>
-                  <option value="Printer">Printer</option>
-                  <option value="Lainnya">Lainnya</option>
-                </select>
+                  onChange={(val) => setFormData({ ...formData, jenisPerangkat: val })}
+                  error={formErrors.jenisPerangkat}
+                />
               </div>
-              <Input
-                label="Merk & Model"
-                placeholder="Mis: Asus ROG Strix"
-                value={formData.merkModel}
-                onChange={(e) => setFormData({ ...formData, merkModel: e.target.value })}
-              />
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <Autocomplete
+                    name="merek"
+                    label="Merek"
+                    required
+                    leftIcon={<Tag size={18} />}
+                    options={['ASUS', 'Lenovo', 'Dell', 'HP', 'Acer', 'Apple', 'MSI', 'Samsung', 'Toshiba', 'Lainnya']}
+                    placeholder="Ketik merek..."
+                    value={formData.merek}
+                    onChange={(val) => setFormData({ ...formData, merek: val })}
+                  />
+                </div>
+                <Input
+                  label="Model"
+                  placeholder="Mis: ROG Strix"
+                  leftIcon={<Cpu size={18} />}
+                  value={formData.model}
+                  onChange={(e) => setFormData({ ...formData, model: e.target.value })}
+                />
+              </div>
+              
               <Input
                 label="Nomor Seri (S/N)"
                 placeholder="Opsional"
+                leftIcon={<Hash size={18} />}
                 value={formData.noSeri}
                 onChange={(e) => setFormData({ ...formData, noSeri: e.target.value })}
               />
@@ -357,12 +378,15 @@ export const NewOrder: React.FC = () => {
                 <div className="relative">
                   <label className="block mb-1 text-sm font-medium text-gray-700">Estimasi Biaya <span className="text-red-500">*</span></label>
                   <div className="relative">
-                    <div className="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none">
+                    <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-gray-400">
+                      <Wallet size={18} />
+                    </div>
+                    <div className="absolute inset-y-0 left-0 flex items-center pl-9 pointer-events-none">
                       <span className="text-gray-500 font-medium">Rp</span>
                     </div>
                     <input
                       type="text"
-                      className="block w-full rounded-xl border border-gray-300 pl-12 pr-4 py-2.5 text-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary font-medium text-gray-900 bg-gray-50/50 hover:bg-white focus:bg-white"
+                      className="block w-full rounded-xl border border-gray-300 pl-16 pr-4 py-2.5 text-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary font-medium text-gray-900 bg-gray-50/50 hover:bg-white focus:bg-white"
                       placeholder="0"
                       required
                       value={formData.estimasiBiaya ? Number(formData.estimasiBiaya).toLocaleString('id-ID') : ''}
@@ -378,6 +402,7 @@ export const NewOrder: React.FC = () => {
                   <Input
                     label="Estimasi Selesai"
                     type="date"
+                    leftIcon={<Clock size={18} />}
                     className="rounded-xl border-gray-300 py-2.5 bg-gray-50/50 hover:bg-white focus:bg-white transition-colors"
                     value={formData.estimasiSelesai}
                     onChange={(e) => setFormData({ ...formData, estimasiSelesai: e.target.value })}

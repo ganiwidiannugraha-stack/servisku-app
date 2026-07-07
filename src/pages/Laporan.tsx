@@ -3,7 +3,7 @@ import { useStore } from '../store';
 import { Button } from '../components/ui/Button';
 import { 
   Download, FileText, Star, ChevronDown,
-  AlertTriangle, Users, Wrench, Clock
+  AlertTriangle, Users, Wrench, Clock, TrendingUp, Archive, History, Activity
 } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -52,15 +52,39 @@ export const Laporan: React.FC = () => {
     if (preset === 'hari') {
       setStartDate(todayStr);
       setEndDate(todayStr);
+      setEndDate(todayStr);
+    } else if (preset === 'kemarin') {
+      const d = new Date(today);
+      d.setDate(today.getDate() - 1);
+      const yStr = d.toISOString().split('T')[0];
+      setStartDate(yStr);
+      setEndDate(yStr);
+    } else if (preset === 'minggu_ini') {
+      const d = new Date(today);
+      const day = d.getDay();
+      const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+      d.setDate(diff);
+      setStartDate(d.toISOString().split('T')[0]);
+      setEndDate(todayStr);
     } else if (preset === 'minggu') {
       const d = new Date(today);
       d.setDate(today.getDate() - 6);
+      setStartDate(d.toISOString().split('T')[0]);
+      setEndDate(todayStr);
+    } else if (preset === '28_hari') {
+      const d = new Date(today);
+      d.setDate(today.getDate() - 27);
       setStartDate(d.toISOString().split('T')[0]);
       setEndDate(todayStr);
     } else if (preset === 'bulan') {
       const d = new Date(today.getFullYear(), today.getMonth(), 1);
       setStartDate(d.toISOString().split('T')[0]);
       setEndDate(todayStr);
+    } else if (preset === 'bulan_lalu') {
+      const start = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+      const end = new Date(today.getFullYear(), today.getMonth(), 0);
+      setStartDate(start.toISOString().split('T')[0]);
+      setEndDate(end.toISOString().split('T')[0]);
     } else if (preset === 'tahun') {
       const d = new Date(today.getFullYear(), 0, 1);
       setStartDate(d.toISOString().split('T')[0]);
@@ -304,9 +328,44 @@ export const Laporan: React.FC = () => {
       Terjual: item.qty
     }));
 
+    const totalJenis = spareparts.length;
+    const totalKuantitas = spareparts.reduce((sum, sp) => sum + sp.stok, 0);
     const valuasiStok = spareparts.reduce((sum, sp) => sum + (sp.stok * sp.hargaModal), 0);
-    const stokKritis = spareparts.filter(sp => sp.stok <= 5).sort((a,b) => a.stok - b.stok);
+    const stokKritis = spareparts.filter(sp => sp.stok <= sp.minStok).sort((a,b) => a.stok - b.stok);
+    const perluRestock = stokKritis.length;
 
+    // Ringkasan Kategori
+    const kategoriMap: Record<string, { count: number, stok: number }> = {};
+    spareparts.forEach(sp => {
+      const kat = sp.kategori || 'Lainnya';
+      if (!kategoriMap[kat]) kategoriMap[kat] = { count: 0, stok: 0 };
+      kategoriMap[kat].count += 1;
+      kategoriMap[kat].stok += sp.stok;
+    });
+    const ringkasanKategori = Object.entries(kategoriMap).map(([kategori, data]) => ({
+      kategori,
+      totalItem: data.count,
+      totalStok: data.stok
+    })).sort((a, b) => b.totalStok - a.totalStok);
+
+    // Daftar Sparepart Teratas (Aset Terbesar)
+    const sparepartAsetTerbesar = [...spareparts]
+      .map(sp => ({ ...sp, nilaiAset: sp.stok * sp.hargaModal }))
+      .sort((a, b) => b.nilaiAset - a.nilaiAset)
+      .slice(0, 10);
+
+    // Distribusi Nilai Aset
+    const asetKategoriMap: Record<string, number> = {};
+    spareparts.forEach(sp => {
+      const kat = sp.kategori || 'Lainnya';
+      asetKategoriMap[kat] = (asetKategoriMap[kat] || 0) + (sp.stok * sp.hargaModal);
+    });
+    const pieCategoryData = Object.entries(asetKategoriMap)
+      .map(([name, value]) => ({ name, value }))
+      .filter(item => item.value > 0)
+      .sort((a, b) => b.value - a.value);
+
+    // Legacy fields that might still be needed by PDF export
     const mutasiTerakhir = [...mutasiStok]
       .filter(m => {
         const mDate = new Date(m.tanggal);
@@ -332,7 +391,6 @@ export const Laporan: React.FC = () => {
       const sold = terjual[sp.id] || 0;
       const avgDailySold = sold / diffDays;
       const projected30Days = Math.ceil(avgDailySold * 30);
-      // Asumsikan safety stock = 10% dari projected atau minStok
       const safetyStock = Math.max(sp.minStok, Math.ceil(projected30Days * 0.1));
       const restockSuggestion = Math.max(0, (projected30Days + safetyStock) - sp.stok);
       return { detail: sp, avgDailySold, projected30Days, restockSuggestion };
@@ -349,7 +407,10 @@ export const Laporan: React.FC = () => {
       .sort((a, b) => b.totalProfit - a.totalProfit)
       .slice(0, 5);
 
-    return { topSpareparts, valuasiStok, chartData, stokKritis, mutasiTerakhir, deadStock, prediksiRestock, topProfitSpareparts };
+    return { 
+      totalJenis, totalKuantitas, valuasiStok, stokKritis, perluRestock, ringkasanKategori, sparepartAsetTerbesar, pieCategoryData, // New fields
+      topSpareparts, chartData, mutasiTerakhir, deadStock, prediksiRestock, topProfitSpareparts // Legacy fields
+    };
   }, [filteredOrders, spareparts, mutasiStok, startDate, endDate]);
 
   // 4. SDM / TEKNISI METRICS & CHART
@@ -964,7 +1025,7 @@ export const Laporan: React.FC = () => {
       </motion.div>
 
       {/* TABS + FILTER TOOLBAR — satu baris rapi */}
-      <motion.div variants={itemVariants} className="bg-white rounded-2xl border border-gray-100 shadow-sm mb-6 overflow-hidden">
+      <motion.div variants={itemVariants} className="bg-white rounded-2xl border border-gray-100 shadow-sm mb-6">
         {/* Tab bar */}
         <div className="flex border-b border-gray-100 overflow-x-auto">
           {(['KEUANGAN', 'OPERASIONAL', 'INVENTORY', 'SDM', 'CRM'] as TabName[]).map(tab => (
@@ -1000,8 +1061,12 @@ export const Laporan: React.FC = () => {
                 className="appearance-none h-9 pl-3 pr-8 text-sm font-semibold bg-white border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 text-gray-700 cursor-pointer shadow-sm hover:border-blue-300 transition-colors"
               >
                 <option value="hari">Hari Ini</option>
+                <option value="kemarin">Kemarin</option>
+                <option value="minggu_ini">Minggu Ini</option>
                 <option value="minggu">7 Hari Terakhir</option>
+                <option value="28_hari">28 Hari Terakhir</option>
                 <option value="bulan">Bulan Ini</option>
+                <option value="bulan_lalu">Bulan Lalu</option>
                 <option value="tahun">Tahun Ini</option>
                 <option value="custom">Periode Kustom...</option>
               </select>
@@ -1380,94 +1445,262 @@ export const Laporan: React.FC = () => {
 
           {activeTab === 'INVENTORY' && (
             <>
-              <div className="p-6 bg-white rounded-2xl shadow-sm border border-gray-100 flex flex-col sm:flex-row justify-between sm:items-center gap-4">
-                <div>
-                  <p className="text-gray-500 font-medium text-sm mb-1">Valuasi Aset Gudang (Modal)</p>
-                  <h3 className="text-4xl font-bold text-gray-900">Rp {invData.valuasiStok.toLocaleString('id-ID')}</h3>
-                </div>
-                <div className="bg-blue-50 text-blue-700 p-4 rounded-xl flex items-center gap-3">
-                  <Wrench size={24} />
-                  <div>
-                    <p className="text-sm font-bold">{spareparts.length} Jenis Sparepart</p>
-                    <p className="text-xs opacity-80">Tersedia di Gudang</p>
+              {/* Top Summary Cards */}
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
+                <div className="p-6 bg-white rounded-2xl shadow-sm border border-gray-100 flex flex-col justify-center">
+                  <div className="flex justify-between items-center mb-2">
+                    <p className="text-gray-500 font-medium text-sm">Total Jenis Sparepart</p>
+                    <div className="p-2 bg-blue-50 text-blue-600 rounded-lg"><Wrench size={16} /></div>
                   </div>
+                  <h3 className="text-3xl font-bold text-gray-900">{invData.totalJenis}</h3>
                 </div>
-              </div>
-              
-              <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 mt-6">
-                <h3 className="font-bold text-gray-900 mb-6">5 Sparepart Terlaris</h3>
-                <div className="h-64">
-                  {invData.chartData.length > 0 ? (
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={invData.chartData} layout="vertical" margin={{ top: 5, right: 20, bottom: 5, left: 140 }}>
-                        <CartesianGrid strokeDasharray="3 3" horizontal={false} />
-                        <XAxis type="number" fontSize={12} tickLine={false} axisLine={false} />
-                        <YAxis dataKey="name" type="category" width={130} fontSize={11} tickLine={false} axisLine={false} />
-                        <Tooltip cursor={{fill: 'transparent'}} />
-                        <Bar dataKey="Terjual" fill="#10b981" radius={[0, 4, 4, 0]} barSize={24} />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  ) : (
-                    <div className="h-full flex items-center justify-center text-gray-400">Belum ada data penjualan.</div>
-                  )}
+                <div className="p-6 bg-white rounded-2xl shadow-sm border border-gray-100 flex flex-col justify-center">
+                  <div className="flex justify-between items-center mb-2">
+                    <p className="text-gray-500 font-medium text-sm">Total Kuantitas Stok</p>
+                    <div className="p-2 bg-indigo-50 text-indigo-600 rounded-lg"><Wrench size={16} /></div>
+                  </div>
+                  <h3 className="text-3xl font-bold text-gray-900">{invData.totalKuantitas} <span className="text-sm font-medium text-gray-500">unit</span></h3>
+                </div>
+                <div className="p-6 bg-white rounded-2xl shadow-sm border border-gray-100 flex flex-col justify-center">
+                  <div className="flex justify-between items-center mb-2">
+                    <p className="text-gray-500 font-medium text-sm">Nilai Aset Stok</p>
+                    <div className="p-2 bg-emerald-50 text-emerald-600 rounded-lg"><span className="font-bold text-sm">Rp</span></div>
+                  </div>
+                  <h3 className="text-3xl font-bold text-gray-900">Rp {invData.valuasiStok.toLocaleString('id-ID')}</h3>
+                </div>
+                <div className="p-6 bg-white rounded-2xl shadow-sm border border-gray-100 flex flex-col justify-center">
+                  <div className="flex justify-between items-center mb-2">
+                    <p className="text-gray-500 font-medium text-sm">Perlu Restock</p>
+                    <div className="p-2 bg-orange-50 text-orange-600 rounded-lg"><AlertTriangle size={16} /></div>
+                  </div>
+                  <h3 className="text-3xl font-bold text-orange-600">{invData.perluRestock}</h3>
                 </div>
               </div>
 
+              {/* Middle Section: Peringatan Stok Tipis & Ringkasan Kategori */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
-                <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-                  <h3 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
-                    <AlertTriangle size={18} className="text-red-500" /> Stok Kritis (Restock)
-                  </h3>
+                <div className="bg-white p-6 rounded-2xl shadow-sm border border-red-100">
+                  <div className="flex justify-between items-center mb-4">
+                    <h3 className="font-bold text-red-600 flex items-center gap-2">
+                      <AlertTriangle size={18} /> Peringatan Stok Tipis
+                    </h3>
+                    <a href="#" className="text-sm font-medium text-red-500 hover:text-red-700">Lihat Semua &gt;</a>
+                  </div>
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm text-left">
-                      <thead className="text-xs text-gray-500 uppercase bg-gray-50">
+                      <thead className="text-xs text-gray-400 uppercase bg-transparent border-b border-gray-100">
                         <tr>
-                          <th className="px-4 py-3 rounded-tl-lg">Nama Sparepart</th>
-                          <th className="px-4 py-3 text-right">Sisa Stok</th>
+                          <th className="px-4 py-3 font-medium">Nama Sparepart</th>
+                          <th className="px-4 py-3 font-medium">Kategori</th>
+                          <th className="px-4 py-3 text-right font-medium">Stok Tersisa</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {invData.stokKritis.map((t) => (
-                          <tr key={t.id} className="border-b last:border-0 hover:bg-gray-50">
+                        {invData.stokKritis.slice(0, 5).map((t) => (
+                          <tr key={t.id} className="border-b last:border-0 border-gray-50 hover:bg-gray-50/50">
                             <td className="px-4 py-3 font-medium text-gray-900">{t.nama}</td>
+                            <td className="px-4 py-3 text-gray-500">{t.kategori || '-'}</td>
                             <td className="px-4 py-3 text-right">
-                              <span className={`px-2 py-1 rounded text-xs font-bold ${t.stok === 0 ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'}`}>
+                              <span className="px-2 py-1 rounded text-xs font-bold bg-red-100 text-red-600">
                                 {t.stok} unit
                               </span>
                             </td>
                           </tr>
                         ))}
                         {invData.stokKritis.length === 0 && (
-                          <tr><td colSpan={2} className="px-4 py-6 text-center text-gray-500">Stok aman, tidak ada stok kritis.</td></tr>
+                          <tr><td colSpan={3} className="px-4 py-6 text-center text-gray-500">Stok aman, tidak ada peringatan.</td></tr>
                         )}
                       </tbody>
                     </table>
                   </div>
                 </div>
 
-                <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-                  <h3 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
-                    <AlertTriangle size={18} className="text-gray-400" /> Dead Stock / Slow Moving
-                  </h3>
+                <div className="bg-white p-6 rounded-2xl shadow-sm border border-blue-100">
+                  <div className="flex justify-between items-center mb-4">
+                    <h3 className="font-bold text-blue-600 flex items-center gap-2">
+                      <Wrench size={18} /> Ringkasan Kategori
+                    </h3>
+                    <a href="#" className="text-sm font-medium text-blue-500 hover:text-blue-700">Lihat Semua &gt;</a>
+                  </div>
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm text-left">
-                      <thead className="text-xs text-gray-500 uppercase bg-gray-50">
+                      <thead className="text-xs text-gray-400 uppercase bg-transparent border-b border-gray-100">
                         <tr>
-                          <th className="px-4 py-3 rounded-tl-lg">Nama Sparepart</th>
-                          <th className="px-4 py-3 text-right rounded-tr-lg">Stok Menganggur</th>
+                          <th className="px-4 py-3 font-medium">Kategori</th>
+                          <th className="px-4 py-3 text-center font-medium">Total Item</th>
+                          <th className="px-4 py-3 text-right font-medium">Total Stok</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {invData.deadStock.slice(0, 5).map((t) => (
-                          <tr key={t.id} className="border-b last:border-0 hover:bg-gray-50">
-                            <td className="px-4 py-3 font-medium text-gray-900">{t.nama}</td>
-                            <td className="px-4 py-3 text-right font-bold text-gray-500">
-                              {t.stok} unit
+                        {invData.ringkasanKategori.slice(0, 5).map((kat) => (
+                          <tr key={kat.kategori} className="border-b last:border-0 border-gray-50 hover:bg-gray-50/50">
+                            <td className="px-4 py-3 font-medium text-gray-900">{kat.kategori}</td>
+                            <td className="px-4 py-3 text-center">
+                              <span className="px-2 py-1 rounded text-xs bg-gray-100 text-gray-600">{kat.totalItem} jenis</span>
+                            </td>
+                            <td className="px-4 py-3 text-right font-medium text-blue-600">
+                              {kat.totalStok} unit
                             </td>
                           </tr>
                         ))}
-                        {invData.deadStock.length === 0 && (
-                          <tr><td colSpan={2} className="px-4 py-6 text-center text-gray-500">Bagus! Tidak ada dead stock.</td></tr>
+                        {invData.ringkasanKategori.length === 0 && (
+                          <tr><td colSpan={3} className="px-4 py-6 text-center text-gray-500">Belum ada kategori.</td></tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+
+              {/* Bottom Section: Daftar Sparepart Teratas & Distribusi Nilai Aset */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+                <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                  <div className="flex justify-between items-center mb-4">
+                    <h3 className="font-bold text-gray-900">Daftar Sparepart Teratas (Aset Terbesar)</h3>
+                    <a href="#" className="text-sm font-medium text-blue-500 hover:text-blue-700">Lihat Semua &gt;</a>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm text-left">
+                      <thead className="text-xs text-gray-400 uppercase bg-transparent border-b border-gray-100">
+                        <tr>
+                          <th className="px-4 py-3 font-medium">Nama Sparepart</th>
+                          <th className="px-4 py-3 font-medium">Kategori</th>
+                          <th className="px-4 py-3 text-right font-medium">Nilai Aset</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {invData.sparepartAsetTerbesar.slice(0, 6).map((sp) => (
+                          <tr key={sp.id} className="border-b last:border-0 border-gray-50 hover:bg-gray-50/50">
+                            <td className="px-4 py-3 font-medium text-gray-900">{sp.nama}</td>
+                            <td className="px-4 py-3 text-gray-500">{sp.kategori || '-'}</td>
+                            <td className="px-4 py-3 text-right font-bold text-gray-900">
+                              Rp {sp.nilaiAset.toLocaleString('id-ID')}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                  <h3 className="font-bold text-gray-900 mb-6">Distribusi Nilai Aset</h3>
+                  <div className="flex flex-col sm:flex-row h-full">
+                    <div className="h-64 sm:w-1/2">
+                      {invData.pieCategoryData.length > 0 ? (
+                        <ResponsiveContainer width="100%" height="100%">
+                          <PieChart>
+                            <Pie
+                              data={invData.pieCategoryData}
+                              cx="50%" cy="50%" innerRadius={60} outerRadius={80}
+                              paddingAngle={5} dataKey="value"
+                            >
+                              {invData.pieCategoryData.map((_, index) => (
+                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                              ))}
+                            </Pie>
+                            <Tooltip formatter={(value: any) => `Rp ${value.toLocaleString('id-ID')}`} />
+                          </PieChart>
+                        </ResponsiveContainer>
+                      ) : (
+                        <div className="h-full flex justify-center items-center text-gray-400 text-sm">Tidak ada data aset</div>
+                      )}
+                      <div className="absolute top-1/2 left-1/4 -translate-y-1/2 -translate-x-1/2 font-bold text-gray-600 text-sm hidden sm:block">Aset</div>
+                    </div>
+                    <div className="sm:w-1/2 flex flex-col justify-center gap-3 mt-4 sm:mt-0 px-4">
+                      {invData.pieCategoryData.slice(0, 5).map((item, i) => (
+                        <div key={item.name} className="flex justify-between items-center text-sm">
+                          <div className="flex items-center gap-2 text-gray-500">
+                            <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: COLORS[i % COLORS.length] }}></div>
+                            {item.name}
+                          </div>
+                          <div className="font-medium text-gray-900 text-right">
+                            Rp {item.value.toLocaleString('id-ID')}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Restored Old Useful Tables */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+                <div className="bg-white p-6 rounded-2xl shadow-sm border border-blue-100 hover:shadow-md transition-shadow">
+                  <h3 className="font-bold text-blue-900 mb-6 flex items-center gap-3">
+                    <div className="p-2 bg-blue-100 text-blue-600 rounded-xl">
+                      <Activity size={18} />
+                    </div>
+                    Prediksi Restock (30 Hari)
+                  </h3>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm text-left">
+                      <thead className="text-xs text-blue-700 uppercase bg-blue-50/50 border-y border-blue-100">
+                        <tr>
+                          <th className="px-4 py-3 font-semibold">Nama Sparepart</th>
+                          <th className="px-4 py-3 text-right font-semibold">Rata-rata/Hari</th>
+                          <th className="px-4 py-3 text-right font-semibold">Saran Beli</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {invData.prediksiRestock.slice(0, 5).map((p) => (
+                          <tr key={p.detail.id} className="border-b border-blue-50 hover:bg-blue-50/30 transition-colors">
+                            <td className="px-4 py-4 font-medium text-gray-900">{p.detail.nama}</td>
+                            <td className="px-4 py-4 text-right text-gray-600">{p.avgDailySold.toFixed(1)} unit</td>
+                            <td className="px-4 py-4 text-right">
+                              <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full font-bold text-xs">
+                                +{p.restockSuggestion} unit
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                        {invData.prediksiRestock.length === 0 && (
+                          <tr><td colSpan={3} className="px-4 py-8 text-center text-gray-500 italic">Stok saat ini sudah mencukupi prediksi.</td></tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                <div className="bg-white p-6 rounded-2xl shadow-sm border border-emerald-100 hover:shadow-md transition-shadow">
+                  <h3 className="font-bold text-emerald-900 mb-6 flex items-center gap-3">
+                    <div className="p-2 bg-emerald-100 text-emerald-600 rounded-xl">
+                      <TrendingUp size={18} />
+                    </div>
+                    Top 5 Sparepart Paling Cuan
+                  </h3>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm text-left">
+                      <thead className="text-xs text-emerald-700 uppercase bg-emerald-50/50 border-y border-emerald-100">
+                        <tr>
+                          <th className="px-4 py-3 font-semibold">Nama Sparepart</th>
+                          <th className="px-4 py-3 text-center font-semibold">Terjual</th>
+                          <th className="px-4 py-3 text-right font-semibold">Total Profit</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {invData.topProfitSpareparts.map((p, i) => (
+                          <tr key={p.detail?.id} className="border-b border-emerald-50 hover:bg-emerald-50/30 transition-colors">
+                            <td className="px-4 py-4 font-medium text-gray-900 flex items-center gap-3">
+                              {i === 0 ? (
+                                <span className="flex items-center justify-center w-6 h-6 rounded-full bg-yellow-100 text-yellow-600 text-xs font-bold">1</span>
+                              ) : i === 1 ? (
+                                <span className="flex items-center justify-center w-6 h-6 rounded-full bg-gray-100 text-gray-500 text-xs font-bold">2</span>
+                              ) : i === 2 ? (
+                                <span className="flex items-center justify-center w-6 h-6 rounded-full bg-amber-100 text-amber-700 text-xs font-bold">3</span>
+                              ) : (
+                                <span className="w-6 text-center text-gray-400 text-xs font-bold">{i + 1}</span>
+                              )}
+                              {p.detail?.nama}
+                            </td>
+                            <td className="px-4 py-4 text-center text-gray-600">{p.qty}x</td>
+                            <td className="px-4 py-4 text-right font-bold text-emerald-600">
+                              Rp {p.totalProfit.toLocaleString('id-ID')}
+                            </td>
+                          </tr>
+                        ))}
+                        {invData.topProfitSpareparts.length === 0 && (
+                          <tr><td colSpan={3} className="px-4 py-8 text-center text-gray-500 italic">Belum ada data profit sparepart.</td></tr>
                         )}
                       </tbody>
                     </table>
@@ -1476,106 +1709,78 @@ export const Laporan: React.FC = () => {
               </div>
 
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
-                <div className="bg-white p-6 rounded-2xl shadow-sm border border-blue-100">
-                  <h3 className="font-bold text-blue-900 mb-4 flex items-center gap-2">
-                    <Wrench size={18} className="text-blue-500" /> Prediksi Restock (30 Hari)
+                <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+                  <h3 className="font-bold text-gray-900 mb-6 flex items-center gap-3">
+                    <div className="p-2 bg-gray-100 text-gray-600 rounded-xl">
+                      <Archive size={18} />
+                    </div>
+                    Dead Stock / Slow Moving
                   </h3>
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm text-left">
-                      <thead className="text-xs text-blue-700 uppercase bg-blue-50">
+                      <thead className="text-xs text-gray-500 uppercase bg-gray-50/80 border-y border-gray-100">
                         <tr>
-                          <th className="px-4 py-3 rounded-tl-lg">Nama Sparepart</th>
-                          <th className="px-4 py-3 text-right">Rata-rata/Hari</th>
-                          <th className="px-4 py-3 text-right rounded-tr-lg">Saran Beli</th>
+                          <th className="px-4 py-3 font-semibold">Nama Sparepart</th>
+                          <th className="px-4 py-3 text-right font-semibold">Stok Menganggur</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {invData.prediksiRestock.slice(0, 5).map((p) => (
-                          <tr key={p.detail.id} className="border-b border-blue-50 hover:bg-blue-50/50">
-                            <td className="px-4 py-3 font-medium text-gray-900">{p.detail.nama}</td>
-                            <td className="px-4 py-3 text-right text-gray-600">{p.avgDailySold.toFixed(1)} unit</td>
-                            <td className="px-4 py-3 text-right font-bold text-blue-700">
-                              +{p.restockSuggestion} unit
+                        {invData.deadStock.slice(0, 5).map((t) => (
+                          <tr key={t.id} className="border-b last:border-0 hover:bg-gray-50/50 transition-colors">
+                            <td className="px-4 py-4 font-medium text-gray-900">{t.nama}</td>
+                            <td className="px-4 py-4 text-right">
+                              <span className="px-3 py-1 bg-gray-100 text-gray-600 rounded-full font-bold text-xs">
+                                {t.stok} unit
+                              </span>
                             </td>
                           </tr>
                         ))}
-                        {invData.prediksiRestock.length === 0 && (
-                          <tr><td colSpan={3} className="px-4 py-6 text-center text-gray-500">Stok saat ini sudah mencukupi prediksi.</td></tr>
+                        {invData.deadStock.length === 0 && (
+                          <tr><td colSpan={2} className="px-4 py-8 text-center text-gray-500 italic">Bagus! Tidak ada dead stock.</td></tr>
                         )}
                       </tbody>
                     </table>
                   </div>
                 </div>
 
-                <div className="bg-white p-6 rounded-2xl shadow-sm border border-emerald-100">
-                  <h3 className="font-bold text-emerald-900 mb-4 flex items-center gap-2">
-                    <span className="text-emerald-500">💰</span> Top 5 Sparepart Paling Cuan (Highest Margin)
+                <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+                  <h3 className="font-bold text-gray-900 mb-6 flex items-center gap-3">
+                    <div className="p-2 bg-violet-100 text-violet-600 rounded-xl">
+                      <History size={18} />
+                    </div>
+                    Mutasi Stok Terakhir
                   </h3>
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm text-left">
-                      <thead className="text-xs text-emerald-700 uppercase bg-emerald-50">
+                      <thead className="text-xs text-gray-500 uppercase bg-gray-50/80 border-y border-gray-100">
                         <tr>
-                          <th className="px-4 py-3 rounded-tl-lg">Nama Sparepart</th>
-                          <th className="px-4 py-3 text-center">Terjual</th>
-                          <th className="px-4 py-3 text-right rounded-tr-lg">Total Profit</th>
+                          <th className="px-4 py-3 font-semibold">Tanggal</th>
+                          <th className="px-4 py-3 font-semibold">Tipe</th>
+                          <th className="px-4 py-3 font-semibold">Barang</th>
+                          <th className="px-4 py-3 text-right font-semibold">Qty</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {invData.topProfitSpareparts.map((p, i) => (
-                          <tr key={p.detail?.id} className="border-b border-emerald-50 hover:bg-emerald-50/50">
-                            <td className="px-4 py-3 font-medium text-gray-900 flex items-center gap-2">
-                              {i === 0 && <span className="text-yellow-500">🏆</span>}
-                              {p.detail?.nama}
+                        {invData.mutasiTerakhir.map((m) => (
+                          <tr key={m.id} className="border-b last:border-0 hover:bg-gray-50/50 transition-colors">
+                            <td className="px-4 py-4 font-medium text-gray-900">
+                              {new Date(m.tanggal).toLocaleString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
                             </td>
-                            <td className="px-4 py-3 text-center text-gray-600">{p.qty}x</td>
-                            <td className="px-4 py-3 text-right font-bold text-emerald-700">
-                              Rp {p.totalProfit.toLocaleString('id-ID')}
+                            <td className="px-4 py-4">
+                              <span className={`px-2 py-1 rounded-full text-xs font-bold ${m.tipe === 'IN' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
+                                {m.tipe === 'IN' ? 'IN ↓' : 'OUT ↑'}
+                              </span>
                             </td>
+                            <td className="px-4 py-4 text-gray-700">{m.detail?.nama || 'Unknown'}</td>
+                            <td className="px-4 py-4 text-right font-bold text-gray-900">{m.qty}</td>
                           </tr>
                         ))}
-                        {invData.topProfitSpareparts.length === 0 && (
-                          <tr><td colSpan={3} className="px-4 py-6 text-center text-gray-500">Belum ada data profit sparepart.</td></tr>
+                        {invData.mutasiTerakhir.length === 0 && (
+                          <tr><td colSpan={4} className="px-4 py-8 text-center text-gray-500 italic">Belum ada mutasi stok.</td></tr>
                         )}
                       </tbody>
                     </table>
                   </div>
-                </div>
-              </div>
-
-              <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 mt-6">
-                <h3 className="font-bold text-gray-900 mb-4">Mutasi Stok Terakhir</h3>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm text-left">
-                    <thead className="text-xs text-gray-500 uppercase bg-gray-50">
-                      <tr>
-                        <th className="px-4 py-3 rounded-tl-lg">Tanggal</th>
-                        <th className="px-4 py-3">Tipe</th>
-                        <th className="px-4 py-3">Barang</th>
-                        <th className="px-4 py-3 text-right">Qty</th>
-                        <th className="px-4 py-3 rounded-tr-lg">Keterangan</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {invData.mutasiTerakhir.map((m) => (
-                        <tr key={m.id} className="border-b last:border-0 hover:bg-gray-50">
-                          <td className="px-4 py-3 font-medium text-gray-900">
-                            {new Date(m.tanggal).toLocaleString('id-ID', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                          </td>
-                          <td className="px-4 py-3">
-                            <span className={`px-2 py-1 rounded text-xs font-bold ${m.tipe === 'IN' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
-                              {m.tipe}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3 text-gray-700">{m.detail?.nama || 'Unknown'}</td>
-                          <td className="px-4 py-3 text-right font-bold text-gray-900">{m.qty}</td>
-                          <td className="px-4 py-3 text-gray-500">{m.keterangan || '-'}</td>
-                        </tr>
-                      ))}
-                      {invData.mutasiTerakhir.length === 0 && (
-                        <tr><td colSpan={5} className="px-4 py-6 text-center text-gray-500">Belum ada aktivitas mutasi stok.</td></tr>
-                      )}
-                    </tbody>
-                  </table>
                 </div>
               </div>
             </>

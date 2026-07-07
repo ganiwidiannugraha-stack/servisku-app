@@ -1,11 +1,12 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { useStore } from '../store';
 import type { Sparepart } from '../store';
 import { Button } from '../components/ui/Button';
-import { Plus, Search, Filter, AlertTriangle, Wallet, Calendar, Trash2 } from 'lucide-react';
+import { Plus, Search, Filter, AlertTriangle, Wallet, Calendar, Trash2, RefreshCw, Check } from 'lucide-react';
 import { Breadcrumb } from '../components/ui/Breadcrumb';
 import { EmptyState } from '../components/ui/EmptyState';
 import { Modal } from '../components/ui/Modal';
+import { Autocomplete } from '../components/ui/Autocomplete';
 import { toast } from 'react-hot-toast';
 
 export const Stok: React.FC = () => {
@@ -16,8 +17,11 @@ export const Stok: React.FC = () => {
 
   const [dateFilter, setDateFilter] = useState('');
   const [kategoriFilter, setKategoriFilter] = useState('ALL');
+  const [statusFilter, setStatusFilter] = useState('ALL');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
+  
+  const skuInputRef = useRef<HTMLInputElement>(null);
   
   // Modals state
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -30,7 +34,15 @@ export const Stok: React.FC = () => {
     const matchesSearch = (s.nama || '').toLowerCase().includes(searchTerm.toLowerCase()) || 
                           (s.kategori || '').toLowerCase().includes(searchTerm.toLowerCase());
     const matchesKategori = kategoriFilter === 'ALL' || s.kategori === kategoriFilter;
-    return matchesSearch && matchesKategori;
+    
+    let matchesStatus = true;
+    if (statusFilter === 'LOW_STOCK') {
+      matchesStatus = s.stok <= (s.minStok || 0);
+    } else if (statusFilter === 'IN_STOCK') {
+      matchesStatus = s.stok > (s.minStok || 0);
+    }
+
+    return matchesSearch && matchesKategori && matchesStatus;
   });
 
   const paginatedSpareparts = filteredSpareparts.slice(
@@ -43,7 +55,7 @@ export const Stok: React.FC = () => {
   // Reset page when search or filters change
   React.useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, kategoriFilter]);
+  }, [searchTerm, kategoriFilter, statusFilter]);
 
   const totalNilaiStok = useMemo(() => {
     return (spareparts || []).reduce((sum, sp) => sum + (sp.stok * (sp.hargaModal || 0)), 0);
@@ -52,6 +64,10 @@ export const Stok: React.FC = () => {
   const itemsToRestock = useMemo(() => {
     return (spareparts || []).filter(sp => sp.stok <= (sp.minStok || 0)).length;
   }, [spareparts]);
+
+  const uniqueCategories = useMemo(() => Array.from(new Set(spareparts?.map(s => s.kategori).filter(Boolean))), [spareparts]);
+  const uniqueBrands = useMemo(() => Array.from(new Set(spareparts?.map(s => s.merek).filter(Boolean))), [spareparts]);
+  const uniqueRacks = useMemo(() => Array.from(new Set(spareparts?.map(s => s.rak).filter(Boolean))), [spareparts]);
 
   const handleOpenMutasiModal = (sparepart: Sparepart, tipe: 'IN' | 'OUT') => {
     setSelectedSparepart(sparepart);
@@ -133,31 +149,46 @@ export const Stok: React.FC = () => {
           <input
             type="text"
             placeholder={activeTab === 'STOK' ? "Cari nama, kategori atau SKU..." : "Cari nama barang..."}
-            className="w-full py-2.5 pl-10 pr-4 text-sm font-medium border border-gray-200 bg-white rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 shadow-sm placeholder:font-normal"
+            className="w-full py-2.5 pl-10 pr-4 text-sm font-medium border border-gray-200 bg-white rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500/20 shadow-sm placeholder:font-normal transition-all"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
         
-        <div className="flex gap-3">
+        <div className="flex gap-3 overflow-x-auto hide-scrollbar pb-1">
           {activeTab === 'STOK' && (
-            <div className="relative flex items-center border border-gray-200 rounded-xl shadow-sm bg-white">
-              <Filter size={16} className="absolute left-3 text-gray-500" />
-              <select 
-                value={kategoriFilter}
-                onChange={(e) => setKategoriFilter(e.target.value)}
-                className="py-2.5 pl-9 pr-8 text-sm font-medium bg-transparent focus:outline-none appearance-none"
-              >
-                <option value="ALL">Semua Kategori</option>
-                {Array.from(new Set((spareparts || []).map(s => s.kategori))).filter(Boolean).map(k => (
-                  <option key={k} value={k}>{k}</option>
-                ))}
-              </select>
-            </div>
+            <>
+              <div className="relative flex items-center border border-gray-200 rounded-full shadow-sm bg-white flex-shrink-0">
+                <Filter size={16} className="absolute left-3 text-gray-500" />
+                <select 
+                  value={kategoriFilter}
+                  onChange={(e) => setKategoriFilter(e.target.value)}
+                  className="py-2.5 pl-9 pr-8 text-sm font-medium bg-transparent focus:outline-none appearance-none cursor-pointer"
+                >
+                  <option value="ALL">Semua Kategori</option>
+                  {Array.from(new Set((spareparts || []).map(s => s.kategori))).filter(Boolean).map(k => (
+                    <option key={k} value={k}>{k}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="relative flex items-center border border-gray-200 rounded-full shadow-sm bg-white flex-shrink-0">
+                <div className={`absolute left-3 w-2 h-2 rounded-full ${statusFilter === 'LOW_STOCK' ? 'bg-red-500' : statusFilter === 'IN_STOCK' ? 'bg-green-500' : 'bg-gray-400'}`}></div>
+                <select 
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  className="py-2.5 pl-8 pr-8 text-sm font-medium bg-transparent focus:outline-none appearance-none cursor-pointer"
+                >
+                  <option value="ALL">Semua Status Stok</option>
+                  <option value="IN_STOCK">Stok Aman</option>
+                  <option value="LOW_STOCK">Perlu Restok</option>
+                </select>
+              </div>
+            </>
           )}
           
           {activeTab === 'RIWAYAT' && (
-            <div className="relative hidden md:flex items-center border border-gray-200 rounded-xl shadow-sm bg-white overflow-hidden">
+            <div className="relative hidden md:flex items-center border border-gray-200 rounded-full shadow-sm bg-white overflow-hidden flex-shrink-0">
               <Calendar size={16} className="absolute left-3 text-gray-500 pointer-events-none" />
               <input 
                 type="date"
@@ -429,9 +460,9 @@ export const Stok: React.FC = () => {
                   <input name="ket" type="text" className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" />
                 </div>
               </div>
-              <div className="flex justify-end gap-3 mt-6">
+              <div className="flex justify-end gap-3 mt-8 pt-5 border-t border-gray-100">
                 <Button type="button" variant="secondary" onClick={() => setIsMutasiModalOpen(false)}>Batal</Button>
-                <Button type="submit">Simpan Mutasi</Button>
+                <Button type="submit" leftIcon={<Check size={16} />}>Simpan Mutasi</Button>
               </div>
             </form>
           </div>
@@ -441,7 +472,7 @@ export const Stok: React.FC = () => {
       {/* Tambah Sparepart Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/50">
-          <div className="w-full max-w-md bg-white rounded-2xl shadow-lg p-6">
+          <div className="w-full max-w-lg bg-white rounded-2xl shadow-lg p-6">
             <h2 className="text-xl font-bold mb-4">Tambah Sparepart Baru</h2>
             <form onSubmit={(e) => {
               e.preventDefault();
@@ -458,13 +489,34 @@ export const Stok: React.FC = () => {
                 minStok: 5,
                 pajak: Number(formData.get('pajak')) || 0
               });
-              setIsModalOpen(false);
+              
+              toast.success(`${formData.get('nama')} berhasil ditambahkan!`);
+              
+              const submitType = (e.nativeEvent as SubmitEvent).submitter?.getAttribute('value');
+              if (submitType === 'saveAndClose') {
+                setIsModalOpen(false);
+              } else {
+                // Simpan & Tambah Lagi: reset sku, nama, stok. Biarkan kategori & merek.
+                if (skuInputRef.current) skuInputRef.current.value = 'SKU-' + Math.random().toString(36).substr(2, 6).toUpperCase();
+                const namaInput = e.currentTarget.elements.namedItem('nama') as HTMLInputElement;
+                if (namaInput) {
+                  namaInput.value = '';
+                  namaInput.focus();
+                }
+                const stokInput = e.currentTarget.elements.namedItem('stok') as HTMLInputElement;
+                if (stokInput) stokInput.value = '';
+              }
             }}>
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Kode SKU</label>
-                    <input name="id" type="text" required placeholder="Cth: RAM-8GB-01" className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 font-mono text-sm" />
+                    <div className="flex gap-2">
+                      <input ref={skuInputRef} name="id" type="text" required placeholder="Cth: RAM-8GB-01" className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 font-mono text-sm uppercase transition-all" />
+                      <button type="button" onClick={() => { if(skuInputRef.current) skuInputRef.current.value = 'SKU-' + Math.random().toString(36).substr(2, 6).toUpperCase(); }} className="px-3 bg-gray-50 hover:bg-blue-50 border border-gray-300 hover:border-blue-300 rounded-lg text-gray-500 hover:text-blue-600 transition-all flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-blue-500/20 group shadow-sm" title="Generate Otomatis">
+                        <RefreshCw size={16} className="group-hover:rotate-180 transition-transform duration-500" />
+                      </button>
+                    </div>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Nama Barang</label>
@@ -473,16 +525,16 @@ export const Stok: React.FC = () => {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Kategori</label>
-                  <input name="kategori" type="text" required className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" />
+                  <Autocomplete name="kategori" required placeholder="Ketik atau pilih kategori..." options={uniqueCategories} />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Merek (Opsional)</label>
-                    <input name="merek" type="text" className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" />
+                    <Autocomplete name="merek" placeholder="Ketik atau pilih..." options={uniqueBrands} />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Lokasi Rak (Opsional)</label>
-                    <input name="rak" type="text" className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" />
+                    <Autocomplete name="rak" placeholder="Ketik atau pilih..." options={uniqueRacks} />
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
@@ -506,9 +558,10 @@ export const Stok: React.FC = () => {
                   </div>
                 </div>
               </div>
-              <div className="flex justify-end gap-3 mt-6">
+              <div className="flex justify-end gap-3 mt-8 pt-5 border-t border-gray-100">
                 <Button type="button" variant="secondary" onClick={() => setIsModalOpen(false)}>Batal</Button>
-                <Button type="submit">Simpan Sparepart</Button>
+                <Button type="submit" name="submitType" value="saveAndAdd" variant="secondary" leftIcon={<Plus size={16} />} className="border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 hover:border-blue-300 transition-all font-semibold">Simpan & Tambah Lagi</Button>
+                <Button type="submit" name="submitType" value="saveAndClose" leftIcon={<Check size={16} />}>Simpan & Tutup</Button>
               </div>
             </form>
           </div>

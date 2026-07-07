@@ -55,7 +55,7 @@ const OrderStepper: React.FC<{ currentStatus: StatusOrder; orderDate: string; hi
           Pesanan Dibatalkan
         </div>
       ) : (
-        <div className="flex w-full max-w-4xl mx-auto pt-4 pb-10 px-0 sm:px-6 overflow-x-auto hide-scrollbar">
+        <div className="flex w-full justify-between pt-4 pb-10 px-4 sm:px-10 overflow-x-auto hide-scrollbar">
           {steps.map((step, index) => {
             const isCompleted = index <= currentIndex;
             const isCurrent = index === currentIndex;
@@ -680,6 +680,20 @@ export const OrderDetail: React.FC = () => {
                     <span className="text-sm text-gray-500">No. Seri</span>
                     <span className="text-sm font-medium text-gray-900 uppercase">{order.noSeri || '-'}</span>
                   </div>
+                  <div className="flex flex-col gap-2 py-2 border-b border-gray-50">
+                    <span className="text-sm text-gray-500">Kelengkapan Tambahan</span>
+                    <div className="flex flex-wrap gap-2">
+                      {order.kelengkapan && order.kelengkapan.length > 0 ? (
+                        order.kelengkapan.map((item, i) => (
+                          <span key={i} className="bg-gray-100 text-gray-700 px-3 py-1 rounded-full text-[11px] font-medium border border-gray-200">
+                            {item}
+                          </span>
+                        ))
+                      ) : (
+                        <span className="text-sm text-gray-400 italic">Tidak ada kelengkapan tambahan dibawa</span>
+                      )}
+                    </div>
+                  </div>
                 </div>
               </div>
 
@@ -718,36 +732,6 @@ export const OrderDetail: React.FC = () => {
                 <FileText size={18} className="text-blue-500" /> Keluhan Pelanggan
               </h2>
               <p className="text-sm font-semibold text-gray-800 leading-relaxed whitespace-pre-wrap">{order.keluhan}</p>
-            </div>
-
-            {/* Card Kelengkapan & Biaya */}
-            <div className="bg-white border border-gray-100 rounded-2xl shadow-sm p-6">
-              <div className="flex flex-wrap items-end justify-between gap-4">
-                <div>
-                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">KELENGKAPAN PERANGKAT</p>
-                  <div className="flex flex-wrap gap-2">
-                    {order.kelengkapan && order.kelengkapan.length > 0 ? (
-                      order.kelengkapan.map((item, i) => (
-                        <span key={i} className="bg-gray-100 text-gray-700 px-3 py-1 rounded-full text-xs font-medium border border-gray-200">
-                          {item}
-                        </span>
-                      ))
-                    ) : (
-                      <span className="text-sm text-gray-400 italic">-</span>
-                    )}
-                  </div>
-                </div>
-                
-                <div className="bg-gray-50 px-4 py-3 rounded-xl border border-gray-200 relative group min-w-[150px] text-right shadow-sm">
-                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">PERKIRAAN BIAYA</p>
-                  <p className="text-base font-bold text-gray-900">Rp {order.estimasiBiaya.toLocaleString('id-ID')}</p>
-                  {order.status !== 'DIAMBIL' && (
-                    <button onClick={() => { setEditBiayaValue(order.estimasiBiaya.toString()); setIsEditBiayaOpen(true); }} className="absolute -top-2 -right-2 bg-white text-gray-500 hover:text-blue-600 p-2 rounded-full shadow-md border border-gray-200 transition-all opacity-40 hover:opacity-100 group-hover:opacity-100">
-                      <Edit2 size={14} />
-                    </button>
-                  )}
-                </div>
-              </div>
             </div>
 
             {/* Card Penggunaan Sparepart & Jasa */}
@@ -840,8 +824,24 @@ export const OrderDetail: React.FC = () => {
               </div>
 
               {/* Totals Section */}
-              <div className="border-t border-gray-100 flex justify-end px-6 py-5">
-                <div className="w-full max-w-sm space-y-3">
+              <div className="border-t border-gray-100 flex flex-col sm:flex-row justify-between items-start px-6 py-5 gap-6">
+                
+                {/* Bagian Kiri: Info Perkiraan Biaya (Informasional) */}
+                <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 flex flex-col gap-1 w-full sm:w-auto min-w-[200px] relative group shadow-sm">
+                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Perkiraan Biaya Awal</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-bold text-slate-800">Rp {order.estimasiBiaya.toLocaleString('id-ID')}</span>
+                    {order.status !== 'DIAMBIL' && !isReadOnly && (
+                      <button onClick={() => { setEditBiayaValue(order.estimasiBiaya.toString()); setIsEditBiayaOpen(true); }} className="text-slate-400 hover:text-blue-600 transition-colors opacity-0 group-hover:opacity-100" title="Edit Perkiraan Biaya">
+                        <Edit2 size={14} />
+                      </button>
+                    )}
+                  </div>
+                  <p className="text-[10px] text-slate-400 mt-1">Estimasi awal yang disetujui pelanggan</p>
+                </div>
+
+                {/* Bagian Kanan: Kalkulasi Aktual (Matematika) */}
+                <div className="w-full sm:max-w-sm space-y-3">
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-500">Subtotal</span>
                     <span className="font-medium text-gray-700">Rp {((order.biayaJasa ?? 0) + totalSparepartCost + totalCustomJasa).toLocaleString('id-ID')}</span>
@@ -853,7 +853,7 @@ export const OrderDetail: React.FC = () => {
                     </div>
                   )}
                   <div className="flex justify-between items-center pt-3 mt-1 border-t border-gray-100">
-                    <span className="font-bold text-blue-600">Total Biaya</span>
+                    <span className="font-bold text-blue-600">Total Biaya Aktual</span>
                     <span className="text-xl font-bold text-blue-600">Rp {totalBiaya.toLocaleString('id-ID')}</span>
                   </div>
                 </div>

@@ -944,6 +944,43 @@ export const Dashboard: React.FC = () => {
     return pot;
   })();
 
+  // Pendapatan Bersih (Bulan Ini)
+  const pendapatanBulanIni = (() => {
+    let total = 0;
+    const thisMonth = new Date().getMonth();
+    const thisYear = new Date().getFullYear();
+    orders.forEach(o => {
+      if (o.status === 'DIAMBIL' || o.status === 'SELESAI') {
+        const d = new Date(o.tanggalMasuk);
+        if (d.getMonth() === thisMonth && d.getFullYear() === thisYear) {
+          let rev = o.biayaJasa || 0;
+          if (o.spareparts) {
+            o.spareparts.forEach(sp => {
+              const detail = spareparts.find(s => s.id === sp.id);
+              if (detail) rev += (detail.harga * sp.qty);
+            });
+          }
+          if (rev === 0 && o.estimasiBiaya) rev = o.estimasiBiaya;
+          total += rev;
+        }
+      }
+    });
+    return total;
+  })();
+
+  // Aset & Logistik (Owner & Finance)
+  const { nilaiAsetStok, itemPerluRestok } = (() => {
+    let aset = 0;
+    let restok = 0;
+    spareparts.forEach(s => {
+      aset += (s.hargaModal || 0) * (s.stok || 0);
+      if (s.stok <= s.minStok) {
+        restok++;
+      }
+    });
+    return { nilaiAsetStok: aset, itemPerluRestok: restok };
+  })();
+
   return (
     <motion.div 
       className="p-8 w-full min-h-screen"
@@ -957,19 +994,22 @@ export const Dashboard: React.FC = () => {
       </motion.div>
 
       {(userRole === 'FINANCE' || userRole === 'OWNER') && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          {/* Potensi Pendapatan */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          {/* Pendapatan Bersih */}
           <motion.div variants={itemVariants} className="bg-gradient-to-r from-blue-500 to-blue-600 p-6 rounded-2xl shadow-sm text-white flex flex-col justify-between hover:shadow-md transition-shadow">
             <div className="flex justify-between items-start">
               <div>
-                <p className="text-blue-100 font-medium text-sm">Estimasi Potensi Pendapatan</p>
-                <h3 className="text-2xl font-bold mt-1">Rp {potensiPendapatan.toLocaleString('id-ID')}</h3>
+                <p className="text-blue-100 font-medium text-sm">Pendapatan Bersih (Bulan Ini)</p>
+                <h3 className="text-2xl font-bold mt-1">Rp {pendapatanBulanIni.toLocaleString('id-ID')}</h3>
               </div>
               <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center text-white backdrop-blur-sm">
-                <TrendingUp size={20} />
+                <Banknote size={20} />
               </div>
             </div>
-            <p className="text-xs text-blue-100 mt-4">Dari {ordersProses} order yang sedang diproses</p>
+            <div className="mt-4 pt-3 border-t border-blue-400/30 flex justify-between items-center text-xs">
+              <span className="text-blue-100">Potensi Pendapatan:</span>
+              <span className="font-semibold text-white">Rp {potensiPendapatan.toLocaleString('id-ID')}</span>
+            </div>
           </motion.div>
 
           {/* Teknisi Terbaik */}
@@ -1007,6 +1047,30 @@ export const Dashboard: React.FC = () => {
               </div>
             </div>
             <p className="text-xs text-gray-500 mt-4">Rasio Retensi: {repeatCustomers > 0 ? Math.round((repeatCustomers / (newCustomers + repeatCustomers)) * 100) : 0}%</p>
+          </motion.div>
+
+          {/* Aset & Logistik */}
+          <motion.div variants={itemVariants} className="bg-gradient-to-br from-indigo-50 to-indigo-100 p-6 rounded-2xl shadow-sm border border-indigo-100 flex flex-col justify-between hover:shadow-md transition-shadow">
+            <div className="flex justify-between items-start">
+              <div>
+                <p className="text-indigo-800 font-medium text-sm">Nilai Aset Stok (Modal)</p>
+                <h3 className="text-2xl font-bold text-indigo-900 mt-1">Rp {formatRibuan(nilaiAsetStok)}</h3>
+              </div>
+              <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center text-indigo-600 shadow-sm">
+                <Box size={20} />
+              </div>
+            </div>
+            {itemPerluRestok > 0 ? (
+              <p className="text-xs font-semibold text-red-600 mt-4 flex items-center gap-1.5 bg-red-50/50 py-1.5 px-2 rounded-lg w-fit">
+                <AlertTriangle size={14} />
+                Ada {itemPerluRestok} item perlu restock segera!
+              </p>
+            ) : (
+              <p className="text-xs text-indigo-600/80 mt-4 font-medium flex items-center gap-1.5">
+                <CheckCircle size={14} />
+                Stok aman, tidak ada peringatan
+              </p>
+            )}
           </motion.div>
         </div>
       )}

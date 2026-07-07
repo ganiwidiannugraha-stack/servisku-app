@@ -469,7 +469,7 @@ export const Pengaturan: React.FC = () => {
                           </button>
                         </td>
                         <td className="py-3 px-4 text-center">
-                          <button onClick={() => handleOpenEditUser(u)} className="text-blue-600 hover:text-blue-800 text-sm font-semibold mx-2">Edit</button>
+                          <button onClick={() => handleOpenEditUser(u)} className="text-blue-600 hover:text-blue-800 text-sm font-semibold mx-2">Ubah</button>
                           {u.id !== currentUser.id ? (
                             <button onClick={() => handleDeleteUser(u.id, u.username)} className="text-red-600 hover:text-red-800 text-sm font-semibold mx-2">Hapus</button>
                           ) : (

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, Navigate } from 'react-router-dom';
 import { useStore } from '../store';
 import { Eye, EyeOff } from 'lucide-react';
+import { Autocomplete } from '../components/ui/Autocomplete';
 
 /**
  * Komponen Login Authentication (Split-Screen Modern)
@@ -22,7 +23,7 @@ export const Login: React.FC = () => {
   const navigate = useNavigate();
   
   // State dari Global Store Zustand
-  const { isAuthenticated, login } = useStore();
+  const { isAuthenticated, login, users } = useStore();
   
   // Local States untuk pengelolaan Form
   const [username, setUsername] = useState('');
@@ -131,18 +132,18 @@ export const Login: React.FC = () => {
                 Username atau Email
               </label>
               <div className="relative">
-                <input
+                <Autocomplete
                   id="username-input"
-                  ref={usernameRef}
-                  type="text"
-                  required
+                  name="username"
+                  options={users ? users.map(u => u.username) : []}
                   value={username}
-                  onChange={(e) => {
-                    setUsername(e.target.value);
+                  onChange={(val) => {
+                    setUsername(val);
                     setError('');
                   }}
+                  emptyMessage={null}
                   placeholder="Ketik username Anda"
-                  className="w-full bg-gray-100/70 border-0 focus:ring-0 focus:bg-primary-50 px-4 py-3.5 text-sm text-gray-900 placeholder-gray-400 transition-colors rounded-lg"
+                  className="w-full bg-gray-100/70 border-0 focus:ring-0 focus:bg-primary-50 px-5 py-3.5 text-sm text-gray-900 placeholder-gray-400 transition-colors rounded-full"
                 />
                 <div className="absolute inset-y-0 right-0 flex items-center pr-4 pointer-events-none text-gray-400">
                   <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
@@ -166,7 +167,7 @@ export const Login: React.FC = () => {
                     setError('');
                   }}
                   placeholder="Ketik password Anda"
-                  className="w-full bg-gray-100/70 border-0 focus:ring-0 focus:bg-primary-50 px-4 py-3.5 text-sm text-gray-900 placeholder-gray-400 transition-colors rounded-lg"
+                  className="w-full bg-gray-100/70 border-0 focus:ring-0 focus:bg-primary-50 px-5 py-3.5 text-sm text-gray-900 placeholder-gray-400 transition-colors rounded-full"
                 />
                 <button
                   type="button"
@@ -192,7 +193,7 @@ export const Login: React.FC = () => {
               <button
                 type="submit"
                 disabled={!isFormValid || isLoading || lockoutTimer > 0}
-                className="w-full bg-primary hover:bg-primary-dark text-white font-semibold text-xs tracking-widest uppercase py-4 rounded-none transition-all disabled:opacity-50 disabled:cursor-not-allowed flex justify-center items-center shadow-lg shadow-primary/20"
+                className="w-full bg-primary hover:bg-primary-dark text-white font-semibold text-xs tracking-widest uppercase py-4 rounded-full transition-all disabled:opacity-50 disabled:cursor-not-allowed flex justify-center items-center shadow-lg shadow-primary/20"
               >
                 {isLoading ? 'Memproses...' : lockoutTimer > 0 ? `Terkunci (${lockoutTimer}s)` : 'MASUK'}
               </button>
