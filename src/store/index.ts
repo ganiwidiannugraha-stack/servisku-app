@@ -538,6 +538,10 @@ export const useStore = create<AppState>()(
             userName: user.name,
           });
           get().logActivity("LOGIN", "Pengguna masuk ke sistem");
+          
+          // Memuat seluruh data segera setelah login sukses di device baru
+          get().loadInitialData();
+          
           return true;
         }
         
