@@ -416,7 +416,6 @@ export const Pengaturan: React.FC = () => {
                         <option value="FRONTLINE">FRONTLINE</option>
                         <option value="INVENTORY">INVENTORY</option>
                         <option value="FINANCE">FINANCE</option>
-                        <option value="OWNER">OWNER</option>
                       </select>
                     </div>
                     <Input label="Posisi/Jabatan" value={userFormData.position} onChange={e => setUserFormData({...userFormData, position: e.target.value})} />

@@ -6,7 +6,7 @@ ServisKu adalah aplikasi manajemen perbaikan perangkat elektronik terpadu yang d
 
 - **Dashboard Analitik Dinamis**: Memantau grafik pendapatan bulanan, pesanan yang sedang aktif, dan performa keuangan menggunakan `Recharts`.
 - **Manajemen Pesanan (Work Order)**: Siklus *Finite State Machine* dari perangkat Masuk, Diagnosa, Proses, Menunggu Sparepart, hingga Selesai/Batal.
-- **Role-Based Access Control (RBAC)**: Pembatasan rute dan aksi berdasarkan peran pengguna (`OWNER`, `ADMIN`, `TEKNISI`, `FINANCE`, `INVENTORY`, `FRONTLINE`).
+- **Role-Based Access Control (RBAC)**: Pembatasan rute dan aksi berdasarkan peran pengguna (`OWNER`, `ADMIN`, `TEKNISI`, `FINANCE`, `INVENTORY`, `FRONTLINE`). Catatan: Peran `OWNER` adalah eksklusif (root) dan tidak dapat diduplikasi melalui antarmuka aplikasi demi keamanan.
 - **Inventory & Stock Ledger**: Manajemen stok *sparepart*, riwayat masuk/keluar mutasi stok (FIFO/Average HPP logic), dan notifikasi stok menipis.
 - **Sistem Laporan Komprehensif**: Cetak otomatis nota termal (58mm/80mm), ekspor laporan keuangan dan operasional ke PDF (`jspdf`) & Excel (`xlsx`).
 - **Data Persistance**: Local-first state synchronization dengan `Zustand` & sinkronisasi transaksional ke database `Supabase`.
